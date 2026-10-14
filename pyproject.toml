@@ -1,0 +1,28 @@
+[project]
+name = "phytec-yolo"
+version = "0.1.0"
+description = "YOLO26 fine-tuned on PHYTEC modules, deployed to Hailo-8 and the i.MX8MP NPU"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "ultralytics>=8.4",
+    "torch>=2.7",
+    "torchvision>=0.22",
+    "onnx>=1.17",
+    "onnxruntime>=1.20",
+    "onnxslim>=0.1.50",
+    "numpy",
+    "opencv-python",
+]
+
+# RTX 5090 (Blackwell, sm_120) needs CUDA 12.8 wheels.
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu128" }
+torchvision = { index = "pytorch-cu128" }
+
+[tool.uv]
+package = false

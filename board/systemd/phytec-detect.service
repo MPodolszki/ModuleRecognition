@@ -1,0 +1,20 @@
+[Unit]
+Description=PHYTEC module detection demo (phyCAM -> Hailo-8 / i.MX8MP NPU -> HDMI)
+After=weston.service imx8-phycam-isp.service
+Wants=weston.service
+
+[Service]
+User=weston
+WorkingDirectory=/tmp
+Environment=XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0
+Environment=PYTHONPATH=/opt/phytec-detect PYTHONUNBUFFERED=1
+# Backends/models/threshold, overridable without touching this file.
+Environment="PHYTEC_DETECT_ARGS=-b hailo -m /opt/phytec-detect/models/phyflex_synth_n -m /opt/phytec-detect/models/yolo26n_coco -c 0.4"
+EnvironmentFile=-/etc/default/phytec-detect
+ExecStartPre=/bin/sh -c 'for i in $(seq 60); do [ -S /run/user/1000/wayland-0 ] && exit 0; sleep 1; done; exit 1'
+ExecStart=/bin/sh -c 'exec /usr/bin/python3 -m phytec_detect.live_cli $PHYTEC_DETECT_ARGS'
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

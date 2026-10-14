@@ -1,0 +1,16 @@
+.venv/
+export/npu/.venv/
+__pycache__/
+runs/
+datasets_ext/
+dataset_synth*/
+models/**/*.npy
+models/**/*.har
+models/**/*.onnx
+models/**/*.tflite
+models/**/*.hef
+models/*.pt
+*.log
+weights/
+# phyCAM frames show people in the office; kept local, not in git
+dataset/raw/phycam_bg/

@@ -1,0 +1,24 @@
+[project]
+name = "phytec-yolo-npu-export"
+version = "0.1.0"
+description = "Cut YOLO26 ONNX -> full-integer TFLite for the i.MX8MP NPU (VX delegate)"
+requires-python = ">=3.12,<3.13"
+# TensorFlow pinned to the board's TFLite 2.19 runtime, so the converter never
+# emits op versions the board cannot load. onnx2tf range is the one
+# ultralytics tests against TF 2.19.
+dependencies = [
+    "tensorflow==2.19.0",
+    "tf-keras==2.19.0",
+    "onnx2tf>=1.26.3,<1.29.0",
+    "onnx>=1.17,<1.20",
+    "onnxruntime>=1.20",
+    "onnx-graphsurgeon>=0.3.26",
+    "sng4onnx>=1.0.1",
+    "ai-edge-litert>=1.2.0",
+    "psutil",
+    "numpy<2.2",
+    "opencv-python-headless",
+]
+
+[tool.uv]
+package = false
