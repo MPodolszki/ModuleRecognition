@@ -40,11 +40,45 @@ def sharpness(gray):
     return float(std[0, 0] ** 2 / max(cv2.mean(gray)[0], 1.0))
 
 
-def window(size, pane, zoom):
-    """Centre detail of a (w, h) frame that fills a (w, h) pane at zoom."""
+def window(size, pane, zoom, center=None):
+    """Detail of a (w, h) frame that fills a (w, h) pane at zoom, around
+    center (default: the frame centre)."""
     (w, h), (pw, ph) = size, pane
     dw, dh = min(w, pw // zoom) & ~1, min(h, ph // zoom) & ~1
-    return (w - dw) // 2 & ~1, (h - dh) // 2 & ~1, dw, dh
+    cx, cy = center if center is not None else (w / 2, h / 2)
+    x0 = int(min(max(cx - dw / 2, 0), w - dw)) & ~1
+    y0 = int(min(max(cy - dh / 2, 0), h - dh)) & ~1
+    return x0, y0, dw, dh
+
+
+def _gray(img):
+    return img if img.ndim == 2 else cv2.cvtColor(img, cv2.COLOR_BGRA2GRAY)
+
+
+def match_center(img, ref):
+    """Where the centre of ref (a small whole frame of the other camera) lies
+    in img, in img's relative coordinates (0..1) -- or None. Both cameras look
+    at the same table; SIFT copes with their different scale and colour."""
+    sift = cv2.SIFT_create(nfeatures=1500)
+    ka, da = sift.detectAndCompute(_gray(img), None)
+    kb, db = sift.detectAndCompute(_gray(ref), None)
+    if da is None or db is None or len(ka) < 8 or len(kb) < 8:
+        return None
+    pairs = cv2.BFMatcher().knnMatch(db, da, k=2)
+    good = [m for m, n in (p for p in pairs if len(p) == 2) if m.distance < 0.75 * n.distance]
+    if len(good) < 8:
+        return None
+    src = np.float32([kb[m.queryIdx].pt for m in good])
+    dst = np.float32([ka[m.trainIdx].pt for m in good])
+    hom, inliers = cv2.findHomography(src, dst, cv2.RANSAC, 4.0)
+    if hom is None or inliers.sum() < 8:
+        return None
+    rh, rw = ref.shape[:2]
+    x, y = cv2.perspectiveTransform(np.float32([[[rw / 2, rh / 2]]]), hom)[0, 0]
+    ih, iw = img.shape[:2]
+    if not (0 <= x < iw and 0 <= y < ih):
+        return None
+    return x / iw, y / ih
 
 
 class FrameReader:
@@ -52,7 +86,7 @@ class FrameReader:
 
     def __init__(self, cam, pane, zoom, thumb_w):
         self.cam, self.pane, self.zoom, self.thumb_w = cam, pane, zoom, thumb_w
-        self.size = None
+        self.size, self.center, self.small = None, None, None
 
     def read(self):
         ok, frame = self.cam.read()
@@ -60,7 +94,8 @@ class FrameReader:
             return None
         h, w = frame.shape[:2]
         self.size = (w, h)
-        x0, y0, dw, dh = window(self.size, self.pane, self.zoom)
+        x0, y0, dw, dh = window(self.size, self.pane, self.zoom, self.center)
+        self.small = frame[::4, ::4]  # for match_center
         step = max(1, w // self.thumb_w // 2)  # a full-frame INTER_AREA is too slow
         _, _, tw, th = thumb_rect(self.pane, self.thumb_w, self.size)
         thumb = cv2.resize(frame[::step, ::step], (tw, th), interpolation=cv2.INTER_AREA)
@@ -84,7 +119,7 @@ class IspReader:
     to read, and mapping G2D buffers in Python stalled everything)."""
 
     def __init__(self, csi, pane, zoom, thumb_w, size=(2592, 1944)):
-        self.size, self.composed = size, True
+        self.size, self.center = size, None
         (w, h), (pw, ph) = size, pane
         x0, y0, dw, dh = window(size, pane, zoom)
         tx, ty, tw, th = thumb_rect(pane, thumb_w, size)
@@ -175,7 +210,8 @@ class Pane:
 
         # mark the detail in the small whole frame
         scale = tw / size[0]
-        x0, y0, dw, dh = window(size, (self.width, self.height), self.zoom)
+        x0, y0, dw, dh = window(size, (self.width, self.height), self.zoom,
+                                self.reader.center)
         cv2.rectangle(out, (x + tx + int(x0 * scale), ty + int(y0 * scale)),
                       (x + tx + int((x0 + dw) * scale), ty + int((y0 + dh) * scale)),
                       (0, 255, 255, 255), 2)
@@ -240,6 +276,29 @@ def main(argv=None):
     path = "RAW (ISI)" if args.raw else "ISP"
     screen, n, last = None, 0, None
     t_print, seq_print = 0.0, [0] * len(panes)
+    # The colour detail is cut on the G2D at the sensor centre; the S/W detail
+    # (cut on the CPU) follows it, so both show the same spot of the table.
+    fixed = next((p for p in panes if isinstance(p.reader, IspReader)), None)
+    movable = [p for p in panes if isinstance(p.reader, FrameReader)] if fixed else []
+
+    def align():  # SIFT takes ~0.5 s on the board: off the screen loop
+        while not stop.wait(3.0):
+            if getattr(fixed, "_shown", None) is None:
+                continue
+            tx, ty, tw, th = thumb_rect((fixed.width, fixed.height), fixed.width * 2 // 5,
+                                        fixed.reader.size)
+            ref = fixed._shown[0][ty:ty + th, tx:tx + tw].copy()
+            for p in movable:
+                if p.reader.small is not None:
+                    rel = match_center(np.ascontiguousarray(p.reader.small), ref)
+                    if rel is not None:
+                        if p.reader.center is None:
+                            print(f"{p.source}: detail moved onto the {fixed.source} centre, "
+                                  f"at {100 * rel[0]:.0f} % / {100 * rel[1]:.0f} %", flush=True)
+                        p.reader.center = (rel[0] * p.reader.size[0], rel[1] * p.reader.size[1])
+
+    if movable:
+        threading.Thread(target=align, daemon=True).start()
     out = np.zeros((sh, sw, 4), np.uint8)
     try:
         while not stop.is_set():
