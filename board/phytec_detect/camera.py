@@ -193,10 +193,12 @@ class Camera:
             sensor_w, sensor_h = cfg["size"]
             if isp:
                 self.crop = (0, 0, sensor_w, sensor_h)
-                fmt = "GRAY8" if mono else "BGRx"
+                # the ISP outputs YUV or grey only; colour goes YUY2 -> BGRx on the G2D
+                fmt = "format=GRAY8" if mono else \
+                    "format=YUY2 ! imxvideoconvert_g2d ! video/x-raw,format=BGRx"
                 self._cap = cv2.VideoCapture(
                     f"v4l2src device=/dev/video-isp-csi{csi} ! "
-                    f"video/x-raw,format={fmt},width={sensor_w},height={sensor_h} ! "
+                    f"video/x-raw,width={sensor_w},height={sensor_h},{fmt} ! "
                     f"appsink drop=true max-buffers=1", cv2.CAP_GSTREAMER)
                 if not self._cap.isOpened():
                     raise RuntimeError(f"could not open the ISP on CSI{csi} "

@@ -9,3 +9,12 @@
  		setup-pipeline-csi1 -p 0
  	elif [ -e /dev/cam-csi1-port1 ] && ! [ -e /dev/cam-csi1-port0 ]; then
  		isp-mode-select-csi1 -p 1
+@@ -57,7 +57,7 @@
+ 	if [ -e /dev/cam-csi2 ]; then
+ 		isp-mode-select-csi2
+ 	elif [ -e /dev/cam-csi2-port0 ] && ! [ -e /dev/cam-csi2-port1 ]; then
+-		isp-mode-select-csi2 -p 0
++		isp-mode-select-csi2 -p 0 ${ISP_MODE_CSI2:+-m $ISP_MODE_CSI2} ${ISP_LENS_CSI2:+-l $ISP_LENS_CSI2}
+ 		setup-pipeline-csi2 -p 0
+ 	elif [ -e /dev/cam-csi2-port1 ] && ! [ -e /dev/cam-csi2-port0 ]; then
+ 		isp-mode-select-csi2 -p 1
