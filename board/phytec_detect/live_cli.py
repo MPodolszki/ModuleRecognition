@@ -43,6 +43,7 @@ from .tracking import TableTracker
 
 DEFAULT_MODEL_DIR = "/usr/share/phytec-detect/model"
 DEFAULT_CALIB = "/etc/phytec-detect/plane_map.json"
+DEFAULT_CALIB_ISP = "/etc/phytec-detect/plane_map_isp.json"
 # The detection picture, shown without a live camera, is scaled straight to
 # the screen width: scaling to 1296 and letting the G2D blow it up to 1920
 # again made it look softer than the camera is.
@@ -239,6 +240,10 @@ def main(argv=None):
                         help="live camera: csi2, csi1, none, or auto (CSI2 if present)")
     parser.add_argument("--calib", default=DEFAULT_CALIB,
                         help=f"table-plane mapping from phytec-calibrate ({DEFAULT_CALIB})")
+    parser.add_argument("--isp", action="store_true",
+                        help="both cameras through the i.MX8MP ISP in its current mode (e.g. "
+                             "1920x1080 each) instead of raw; mapping from "
+                             "phytec-calibrate --isp (--aspect/--crop-y do not apply)")
     parser.add_argument("--tile-scale", type=float, default=1.0,
                         help="scale before tiling (1 = full resolution, 0.5 = half; "
                              "0 = no tiling, whole frame to 640)")
@@ -253,6 +258,8 @@ def main(argv=None):
     if len(backends) > 2:
         die("at most two backends side by side")
 
+    if args.isp and args.calib == DEFAULT_CALIB:
+        args.calib = DEFAULT_CALIB_ISP
     view_cam = args.view_cam
     if view_cam == "auto":
         view_cam = "csi2" if find_sensor(2) and args.detect_cam != "csi2" else "none"
@@ -276,12 +283,16 @@ def main(argv=None):
 
     workers, sources = [], []
     try:
-        det_source = FrameSource(Camera(args.detect_cam, aspect=_aspect(args.aspect),
-                                         crop_y=args.crop_y), on_demand=True)
+        if args.isp:
+            det_cam = Camera(args.detect_cam, isp=True)
+        else:
+            det_cam = Camera(args.detect_cam, aspect=_aspect(args.aspect), crop_y=args.crop_y)
+        det_source = FrameSource(det_cam, on_demand=True)
         sources.append(det_source)
         view_source = None
         if view_cam != "none":
-            view_source = FrameSource(Camera(view_cam, crop=plane.view_crop))
+            view_source = FrameSource(Camera(view_cam, isp=True) if args.isp
+                                      else Camera(view_cam, crop=plane.view_crop))
             sources.append(view_source)
         for name in backends:
             print(f"loading {NAMES[name]} ...", flush=True)
@@ -299,6 +310,8 @@ def main(argv=None):
     stop = threading.Event()
     for signum in (signal.SIGINT, signal.SIGTERM):
         signal.signal(signum, lambda *_: stop.set())
+    snap = threading.Event()  # kill -USR1: save the screen to /tmp/phytec-detect.png
+    signal.signal(signal.SIGUSR1, lambda *_: snap.set())
 
     screen = canvas = panel = None
     frames, shown_seq = 0, -1
@@ -355,6 +368,11 @@ def main(argv=None):
                 primary = workers[0].result
                 panel.update([int(c) for c in primary[3][:, 5]] if primary else [])
                 panel.compose(canvas)
+            if snap.is_set():
+                snap.clear()
+                cv2.imwrite("/tmp/phytec-detect.png", canvas[..., :3])
+                if view_source is not None and det_source.frame is not None:
+                    cv2.imwrite("/tmp/phytec-detect-cam.png", det_source.frame)
             screen.show(canvas)
             frames += 1
 

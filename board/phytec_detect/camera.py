@@ -188,6 +188,7 @@ class Camera:
         self.mono = False
         self.sensor = None
         self._wb = self._ae = None
+        self._yuy2 = False
         if not self.is_camera:
             self._cap = cv2.VideoCapture(source)
         else:
@@ -209,13 +210,17 @@ class Camera:
                 sensor_w, sensor_h = isp_size(csi) or (sensor_w, sensor_h)
                 self.crop = ((cfg["size"][0] - sensor_w) // 2, (cfg["size"][1] - sensor_h) // 2,
                              sensor_w, sensor_h)
-                # the ISP outputs YUV or grey only; colour goes YUY2 -> BGRx on the G2D
-                fmt = "format=GRAY8" if mono else \
-                    "format=YUY2 ! imxvideoconvert_g2d ! video/x-raw,format=BGRx"
+                # The ISP outputs YUV or grey only. Colour comes as YUY2 and is
+                # converted here (~15 ms at 1920x1080): converting on the G2D
+                # while the screen uses it too gave ghost images in the demo.
+                fmt = "GRAY8" if mono else "YUY2"
                 self._cap = cv2.VideoCapture(
                     f"v4l2src device=/dev/video-isp-csi{csi} ! "
-                    f"video/x-raw,width={sensor_w},height={sensor_h},{fmt} ! "
+                    f"video/x-raw,width={sensor_w},height={sensor_h},format={fmt} ! "
                     f"appsink drop=true max-buffers=1", cv2.CAP_GSTREAMER)
+                if not mono:
+                    self._cap.set(cv2.CAP_PROP_CONVERT_RGB, 0)
+                    self._yuy2 = True
                 if not self._cap.isOpened():
                     raise RuntimeError(f"could not open the ISP on CSI{csi} "
                                        f"(imx8-phycam-isp running, mode 2?)")
@@ -288,8 +293,8 @@ class Camera:
             # by one pixel) -- same conversion as object_detect.
             frame = cv2.cvtColor(raw, cv2.COLOR_BAYER_GB2BGRA)
             return True, self._wb(frame) if self._wb else frame
-        if raw.ndim == 3 and raw.shape[2] == 4:  # BGRx from the ISP
-            return True, raw
+        if self._yuy2:  # colour from the ISP
+            return True, cv2.cvtColor(raw, cv2.COLOR_YUV2BGRA_YUY2)
         return True, cv2.cvtColor(raw, cv2.COLOR_BGR2BGRA)
 
     def release(self):
