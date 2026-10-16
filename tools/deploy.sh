@@ -16,7 +16,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DEST=/opt/phytec-detect
 SSH="ssh -o BatchMode=yes root@$BOARD"
 
-$SSH "mkdir -p $DEST/models $DEST/bin /var/cache/phytec-detect && chmod 777 /var/cache/phytec-detect"
+$SSH "mkdir -p $DEST/models $DEST/bin /var/cache/phytec-detect /etc/phytec-detect && chmod 777 /var/cache/phytec-detect && chown weston:weston /etc/phytec-detect"
 tar -C "$ROOT/board" --exclude=__pycache__ -cf - phytec_detect | $SSH "tar -C $DEST -xf -"
 
 for dir in "$@"; do
