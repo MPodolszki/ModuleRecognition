@@ -11,7 +11,9 @@ be judged by eye. A small picture of the whole frame sits in the corner,
 the yellow frame in it marks the detail.
 
 Pictures come through the i.MX8MP ISP (imx8-phycam-isp, with its current
-tuning files) unless --raw. Sharpness is the variance of the Laplacian
+mode and tuning files) unless --raw. With both cameras streaming, the ISP
+runs them in 1920x1080 (a 1:1 window from the sensor centre): at the full
+2592x1944 on both at once its pictures break up in vertical stripes. Sharpness is the variance of the Laplacian
 (edge contrast) in the detail, divided by its mean brightness, so it does
 not jump when the exposure changes. Turn the lens until the number peaks:
 the bar shows the current value against the best one seen so far (the best
@@ -29,7 +31,8 @@ import time
 import cv2
 import numpy as np
 
-from .camera import Camera, Screen, die, find_sensor, is_mono, screen_size, to_bgrx
+from .camera import (Camera, Screen, die, find_sensor, is_mono, isp_size, screen_size,
+                     to_bgrx)
 
 NAMES = {"csi1": "S/W (CSI1)", "csi2": "Farbe (CSI2)"}
 
@@ -118,7 +121,8 @@ class IspReader:
     picture reaches the CPU (the full 2592x1944 BGRx frame alone took ~150 ms
     to read, and mapping G2D buffers in Python stalled everything)."""
 
-    def __init__(self, csi, pane, zoom, thumb_w, size=(2592, 1944)):
+    def __init__(self, csi, pane, zoom, thumb_w):
+        size = isp_size(csi) or (2592, 1944)
         self.size, self.center = size, None
         (w, h), (pw, ph) = size, pane
         x0, y0, dw, dh = window(size, pane, zoom)
@@ -269,6 +273,8 @@ def main(argv=None):
     stop = threading.Event()
     for signum in (signal.SIGINT, signal.SIGTERM):
         signal.signal(signum, lambda *_: stop.set())
+    snap = threading.Event()  # kill -USR1: save the screen to /tmp/phytec-focus.png
+    signal.signal(signal.SIGUSR1, lambda *_: snap.set())
     threads = [threading.Thread(target=p.run, args=(stop,), daemon=True) for p in panes]
     for t in threads:
         t.start()
@@ -329,6 +335,9 @@ def main(argv=None):
                 p.draw(out, i * pane_w, f"{NAMES.get(p.source, p.source)}  {path}")
             for i in range(1, len(panes)):
                 cv2.line(out, (i * pane_w, 0), (i * pane_w, sh), (255, 255, 255, 255), 3)
+            if snap.is_set():
+                snap.clear()
+                cv2.imwrite("/tmp/phytec-focus.png", out[..., :3])
             if screen is None:
                 screen = Screen(sw, sh)
             screen.show(out)

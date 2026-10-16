@@ -52,6 +52,19 @@ SENSORS = {
 }
 
 
+def isp_size(csi):
+    """Output size of the ISP mode imx8-phycam-isp runs on CSI1/CSI2, from
+    its SensorN_Entry.cfg (mode = N, [mode.N] xml = ..._WxH.xml)."""
+    try:
+        cfg = open(f"/opt/imx8-isp/bin/Sensor{csi - 1}_Entry.cfg").read()
+        mode = cfg.split("mode=")[1].split()[0]
+        xml = cfg.split(f"[mode.{mode}]")[1].split(".xml")[0]
+        width, height = xml.rsplit("_", 1)[1].split("x")
+        return int(width), int(height)
+    except (OSError, IndexError, ValueError):
+        return None
+
+
 def is_mono(subdev):
     """A monochrome sensor offers Y8/Y10/Y12, a colour one Bayer codes."""
     try:
@@ -166,9 +179,8 @@ class Camera:
         crop: (x, y, w, h) sensor window instead, e.g. the table area of a
         wide-angle live camera (phytec-calibrate computes it); read at full
         resolution up to max_width, 2x2-binned above.
-        isp: read the full frame through the i.MX8MP ISP (imx8-phycam-isp
-        service, its sensor mode must match the full sensor size) instead of
-        raw through the ISI -- the ISP does exposure, denoise and sharpening
+        isp: read through the i.MX8MP ISP (imx8-phycam-isp service) in the
+        size of its current mode instead of raw through the ISI -- the ISP does exposure, denoise and sharpening
         itself; aspect/crop are not applied then."""
         self.crop = None  # sensor window actually used, (x, y, w, h)
         self.scale = 1.0  # output pixels per sensor pixel
@@ -192,7 +204,11 @@ class Camera:
             self.sensor, self.mono = name, mono
             sensor_w, sensor_h = cfg["size"]
             if isp:
-                self.crop = (0, 0, sensor_w, sensor_h)
+                # the ISP's mode decides the size: 2592x1944 is the whole
+                # sensor, 1920x1080 a 1:1 window from its centre
+                sensor_w, sensor_h = isp_size(csi) or (sensor_w, sensor_h)
+                self.crop = ((cfg["size"][0] - sensor_w) // 2, (cfg["size"][1] - sensor_h) // 2,
+                             sensor_w, sensor_h)
                 # the ISP outputs YUV or grey only; colour goes YUY2 -> BGRx on the G2D
                 fmt = "format=GRAY8" if mono else \
                     "format=YUY2 ! imxvideoconvert_g2d ! video/x-raw,format=BGRx"

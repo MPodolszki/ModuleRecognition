@@ -9,9 +9,12 @@ camera actually carries.
   every start; the patch passes `ISP_MODE_CSI1/2` / `ISP_LENS_CSI1/2` on to
   `isp-mode-select-csi1` (original kept as `run_isp.sh.orig` on the board).
 * `imx8-phycam-isp-phytec-detect.conf` -- drop-in for
-  `/etc/systemd/system/imx8-phycam-isp.service.d/`: mode 2 on both cameras,
+  `/etc/systemd/system/imx8-phycam-isp.service.d/`: mode 1 (1920x1080, a 1:1
+  window from the sensor centre) on both cameras -- with both streaming at
+  the full 2592x1944 the ISP output breaks up in vertical stripes;
   lens AO070.A1 on CSI1 (CSI2 keeps the default AO062; its XML is set to
-  denoise 1 / sharpen 4 on the board, original kept as `.orig`).
+  denoise 1 / sharpen 4 on the board, original kept as `.orig`; the same
+  for both 1920x1080 XMLs).
 * `VM-017-BW_AO070.A1_2592x1944.xml` -- tuning file as adjusted on the board
   (`/opt/imx8-isp/bin/xml/`), filter denoise 1 / sharpen 8.
 
