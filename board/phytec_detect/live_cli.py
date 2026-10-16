@@ -1,81 +1,221 @@
-"""Live phyCAM detection on HDMI: one backend fullscreen, or two side by side.
+"""Live module detection on HDMI.
 
-    phytec-detect                       # Hailo-8 | NPU side by side
-    phytec-detect -b hailo              # Hailo-8 only, fullscreen
-    phytec-detect -b hailo -b cpu       # any two backends
-    phytec-detect --source clip.mp4     # a video file instead of the camera
-    phytec-detect -m model -m coco      # the module model stacked on a COCO model
+Two-camera setup (default when a live camera is found on CSI2):
 
-In side-by-side mode both backends get the newest camera frame on their
-own thread. Each half shows the frame its backend last finished, so the
-slower side visibly lags -- that, and the numbers in the bar (frame rate
-and the accelerator's own inference time), is the comparison.
+  detection camera (CSI1, VM-017 mono, 2592x1944) -> tiles -> backend(s)
+  live camera      (CSI2, VM-016 colour)          -> screen, with the
+                   detections mapped in through the table-plane
+                   calibration (phytec-calibrate)
+
+Without a live camera or calibration the detection camera itself is shown.
+
+    phytec-detect                         # Hailo-8 | NPU side by side
+    phytec-detect -b hailo                # Hailo-8 only, fullscreen
+    phytec-detect --tile-scale 0.5        # quarter of the tiles, coarser
+    phytec-detect --tile-scale 0          # no tiling: whole frame -> 640
+    phytec-detect -m model -m coco        # models stacked on one backend
+    phytec-detect --detect-cam clip.mp4   # a recording instead of the camera
+
+Each backend runs on its own thread, always on the newest detection frame;
+the screen runs at the live camera's rate and shows each backend's latest
+detections, so the slower accelerator visibly lags.
 """
 
 import argparse
+import json
+import os
 import signal
 import sys
 import threading
 import time
 
+import cv2
 import numpy as np
 
 from .backends import BACKENDS, NAMES
-from .camera import Camera, Screen, die, label_frame
+from .calib import PlaneMap, frame_to_sensor, sensor_to_frame
+from .camera import Camera, Screen, die, find_sensor, label_frame, screen_size, to_bgrx
 from .detector import Detector
+from .info_panel import InfoPanel
 from .postprocess import draw
+from .tiling import Tiler, find_image_circle
+from .tracking import TableTracker
 
 DEFAULT_MODEL_DIR = "/usr/share/phytec-detect/model"
+DEFAULT_CALIB = "/etc/phytec-detect/plane_map.json"
+# The detection picture, shown without a live camera, is scaled straight to
+# the screen width: scaling to 1296 and letting the G2D blow it up to 1920
+# again made it look softer than the camera is.
 
 
-class Worker:
-    """One detector on its own thread, always on the newest frame."""
+class FrameSource:
+    """Reads a camera on its own thread; .latest() is the newest frame.
 
-    def __init__(self, detector):
-        self.detector = detector
-        self.result = None  # (frame, detections, sequence number)
-        self.fps = 0.0
-        self.error = None  # exception that ended the worker thread
-        self._done = []
-        self._lock = threading.Lock()
-        self._next = None
+    on_demand: read a new frame only after the last one was taken. For the
+    5 MP detection camera, reading every frame at 47 fps kept the Python
+    side busy copying pictures nobody used; its appsink drops stale frames
+    anyway, so a read on demand is still the newest picture.
+    """
+
+    def __init__(self, cam, on_demand=False):
+        self.cam = cam
+        self.frame, self.seq, self.fps = None, 0, 0.0
+        self.error = None
+        self._on_demand = on_demand
+        self._taken = threading.Event()
+        self._taken.set()
         self._stop = threading.Event()
         self._thread = threading.Thread(target=self._loop, daemon=True)
         self._thread.start()
 
-    def submit(self, frame):
-        with self._lock:
-            self._next = frame
+    def _loop(self):
+        t0 = time.perf_counter()
+        while not self._stop.is_set():
+            if self._on_demand and not self._taken.wait(0.1):
+                continue
+            self._taken.clear()
+            ok, frame = self.cam.read()
+            if not ok:
+                self.error = "could not read from camera"
+                return
+            self.frame, self.seq = frame, self.seq + 1
+            self.fps = self.seq / (time.perf_counter() - t0)
+
+    def latest(self):
+        return self.frame, self.seq
+
+    def take(self):
+        """latest() for a consumer that processes the frame: lets an
+        on-demand source fetch the next one meanwhile."""
+        self._taken.set()
+        return self.frame, self.seq
 
     def stop(self):
         self._stop.set()
-        self._thread.join(timeout=5)
+        self._thread.join(timeout=3)
+        self.cam.release()
 
-    def _loop(self):
-        runs = 0
+
+class Worker:
+    """One detector, always on the source's newest frame, in two stages:
+    a prepare thread cuts and letterboxes the next frame's tiles while the
+    run thread waits for the accelerator and decodes the previous one --
+    the Cortex-A53s and the accelerator work at the same time.
+
+    The run thread also tracks the detections to tell which products are
+    lifted (tracking.py)."""
+
+    def __init__(self, detector, source, tiler_factory):
+        self.detector, self.source, self._tiler_factory = detector, source, tiler_factory
+        self.tracker = TableTracker()
+        self.tiler = None
+        self.result = None  # (frame, detections, sequence number)
+        self.fps = 0.0
+        self.error = None
+        self._done = []
+        self._job = None  # (frame, seq, prepared) handed from prepare to run
+        self._cond = threading.Condition()
+        self._stop = threading.Event()
+        self._threads = [threading.Thread(target=self._prepare_loop, daemon=True),
+                         threading.Thread(target=self._run_loop, daemon=True)]
+        for t in self._threads:
+            t.start()
+
+    def stop(self):
+        self._stop.set()
+        with self._cond:
+            self._cond.notify_all()
+        for t in self._threads:
+            t.join(timeout=5)
+
+    def _prepare_loop(self):
+        last = -1
         while not self._stop.is_set():
-            with self._lock:
-                frame, self._next = self._next, None
-            if frame is None:
+            with self._cond:  # one prepared frame in flight at most
+                while self._job is not None and not self._stop.is_set():
+                    self._cond.wait(0.1)
+            frame, seq = self.source.take()
+            if frame is None or seq == last:
                 time.sleep(0.002)
                 continue
+            last = seq
+            if self.tiler is None:
+                self.tiler = self._tiler_factory(frame)
+            job = (frame, seq, self.detector.prepare(frame, self.tiler))
+            with self._cond:
+                self._job = job
+                self._cond.notify_all()
+
+    def _run_loop(self):
+        while not self._stop.is_set():
+            with self._cond:
+                while self._job is None and not self._stop.is_set():
+                    self._cond.wait(0.1)
+                job, self._job = self._job, None
+                self._cond.notify_all()
+            if job is None:
+                continue
+            frame, seq, prepared = job
             try:
-                dets = self.detector(frame)
+                dets = self.detector.run(prepared)
+                gray = frame if frame.ndim == 2 else cv2.cvtColor(frame, cv2.COLOR_BGRA2GRAY)
+                tracks = self.tracker.update(gray, dets)
+                lifted = np.array([[*t.box, t.score, t.cls] for t in self.tracker.picked()],
+                                  np.float32).reshape(-1, 6)
             except Exception as error:  # e.g. HailoRTTimeout: let main() exit
                 self.error = error
                 return
-            runs += 1
             now = time.perf_counter()
-            self._done = (self._done + [now])[-15:]
+            self._done = (self._done + [now])[-10:]
             if len(self._done) > 1:
                 self.fps = (len(self._done) - 1) / (self._done[-1] - self._done[0])
-            self.result = (frame, dets, runs)
+            self.result = (frame, dets, seq, lifted)
+
+
+def load_products(model_dirs):
+    """products.json of the model directories (tools/product_info.py)."""
+    info = {}
+    for d in model_dirs:
+        path = os.path.join(d, "products.json")
+        if os.path.exists(path):
+            with open(path, encoding="utf-8") as f:
+                info.update(json.load(f))
+    return info
+
+
+def display_labels(labels, products):
+    return [products.get(l, {}).get("name") or l for l in labels]
+
+
+def to_view(dets, det_cam, view_cam, plane):
+    """Detection-camera frame boxes -> live-camera frame boxes, through
+    sensor pixels and the table-plane mapping."""
+    if not len(dets):
+        return dets
+    d = dets.copy()
+    d[:, :2] = frame_to_sensor(d[:, :2], det_cam)
+    d[:, 2:4] = frame_to_sensor(d[:, 2:4], det_cam)
+    d = plane.boxes(d)
+    d[:, :2] = sensor_to_frame(d[:, :2], view_cam)
+    d[:, 2:4] = sensor_to_frame(d[:, 2:4], view_cam)
+    return d
 
 
 def _bar_text(worker):
     det = worker.detector
+    tiles = f"{len(worker.tiler.tiles)} tiles, " if worker.tiler and len(worker.tiler.tiles) > 1 else ""
+    n = det.nc  # classes of the running model(s) = products it was trained on
     return (f"{NAMES[det.backend_name]}: {worker.fps:4.1f} fps  "
-            f"inference {det.ms('infer'):5.1f} ms")
+            f"({tiles}inference {det.ms('infer'):.0f} ms)  |  "
+            f"{n} Produkt{'e' if n != 1 else ''} trainiert")
+
+
+def _aspect(text):
+    """'16:9' -> 1.777..., None -> None."""
+    if not text:
+        return None
+    w, _, h = text.partition(":")
+    return float(w) / float(h or 1)
 
 
 def main(argv=None):
@@ -89,80 +229,150 @@ def main(argv=None):
     parser.add_argument("--hef", help="explicit HEF (default: *_mz.hef, else *.hef)")
     parser.add_argument("-c", "--conf", type=float, default=0.4,
                         help="minimum score drawn (default: 0.4)")
-    parser.add_argument("--source", default="csi1", help="csi1 or a video file")
-    parser.add_argument("-n", "--frames", type=int, help="stop after N camera frames")
+    parser.add_argument("--detect-cam", default="csi1", help="csi1/csi2 or a video file")
+    parser.add_argument("--aspect", default=None,
+                        help="read a full-width band of this aspect from the detection "
+                             "sensor, e.g. 16:9 to fill the screen (default: whole sensor)")
+    parser.add_argument("--crop-y", type=float, default=0.5,
+                        help="where that band sits: 0 top, 0.5 centre, 1 bottom")
+    parser.add_argument("--view-cam", default="auto",
+                        help="live camera: csi2, csi1, none, or auto (CSI2 if present)")
+    parser.add_argument("--calib", default=DEFAULT_CALIB,
+                        help=f"table-plane mapping from phytec-calibrate ({DEFAULT_CALIB})")
+    parser.add_argument("--tile-scale", type=float, default=1.0,
+                        help="scale before tiling (1 = full resolution, 0.5 = half; "
+                             "0 = no tiling, whole frame to 640)")
+    parser.add_argument("--box-labels", action="store_true",
+                        help="write the product name at every frame (default: frames only)")
+    parser.add_argument("--no-panel", action="store_true",
+                        help="never slide in product info (products.json) for lifted products")
+    parser.add_argument("-n", "--frames", type=int, help="stop after N screen frames")
     args = parser.parse_args(argv)
 
     backends = args.backend or ["hailo", "npu"]
     if len(backends) > 2:
         die("at most two backends side by side")
 
-    workers = []
+    view_cam = args.view_cam
+    if view_cam == "auto":
+        view_cam = "csi2" if find_sensor(2) and args.detect_cam != "csi2" else "none"
+    plane = None
+    if view_cam != "none":
+        if os.path.exists(args.calib):
+            plane = PlaneMap.load(args.calib)
+        else:
+            print(f"no calibration at {args.calib} -- showing the detection camera; "
+                  f"run phytec-calibrate", file=sys.stderr)
+            view_cam = "none"
+
+    def tiler_factory(frame):
+        if args.tile_scale <= 0:
+            return None
+        return Tiler(frame.shape, scale=args.tile_scale, circle=find_image_circle(frame)
+                     if frame.ndim == 2 else None)
+
+    model_dirs = args.model_dir or [DEFAULT_MODEL_DIR]
+    products = load_products(model_dirs)
+
+    workers, sources = [], []
     try:
+        det_source = FrameSource(Camera(args.detect_cam, aspect=_aspect(args.aspect),
+                                         crop_y=args.crop_y), on_demand=True)
+        sources.append(det_source)
+        view_source = None
+        if view_cam != "none":
+            view_source = FrameSource(Camera(view_cam, crop=plane.view_crop))
+            sources.append(view_source)
         for name in backends:
             print(f"loading {NAMES[name]} ...", flush=True)
-            det = Detector(name, args.model_dir or [DEFAULT_MODEL_DIR],
-                           conf=args.conf, hef=args.hef)
+            det = Detector(name, model_dirs, conf=args.conf, hef=args.hef)
             print(f"  {', '.join(det.paths)} ({det.load_s:.1f} s)", flush=True)
-            workers.append(Worker(det))
-        cam = Camera(args.source)
+            workers.append(Worker(det, det_source, tiler_factory))
     except (FileNotFoundError, RuntimeError, ValueError) as error:
         for w in workers:
             w.stop()
             w.detector.close()
+        for s in sources:
+            s.stop()
         die(f"phytec-detect: {error}")
 
     stop = threading.Event()
     for signum in (signal.SIGINT, signal.SIGTERM):
         signal.signal(signum, lambda *_: stop.set())
 
-    screen = canvas = None
-    shown = [None] * len(workers)
-    frames, start = 0, time.perf_counter()
+    screen = canvas = panel = None
+    frames, shown_seq = 0, -1
     try:
         while not stop.is_set() and (args.frames is None or frames < args.frames):
-            ok, frame = cam.read()
-            if not ok:
-                if cam.is_camera:
-                    die("could not read from camera")
-                break
+            for s in sources:
+                if s.error:
+                    die(s.error)
             for w in workers:
                 if w.error is not None:
                     # Exit non-zero so systemd (Restart=on-failure) starts over
-                    # instead of showing a camera picture without detections.
+                    # instead of showing a picture without detections.
                     die(f"{NAMES[w.detector.backend_name]} failed: "
                         f"{type(w.error).__name__}: {w.error}", code=3)
-                w.submit(frame)
-            frames += 1
 
-            h, w_ = frame.shape[:2]
+            frame, seq = view_source.latest() if view_source else det_source.take()
+            if frame is None or seq == shown_seq:
+                time.sleep(0.003)
+                continue
+            shown_seq = seq
+            if view_source is None:  # detection picture itself, scaled for the screen
+                view_scale = min(1.0, screen_size()[0] / frame.shape[1])
+                base = to_bgrx(cv2.resize(frame, None, fx=view_scale, fy=view_scale,
+                                          interpolation=cv2.INTER_AREA))
+            else:
+                base = frame
+            h, w_ = base.shape[:2]
             if canvas is None:
                 canvas = np.zeros((h, w_ * len(workers), 4), np.uint8)
                 screen = Screen(canvas.shape[1], h)
+                panel = None if args.no_panel else InfoPanel(products, workers[0].detector.labels)
             for i, worker in enumerate(workers):
-                result = worker.result
                 half = canvas[:, i * w_:(i + 1) * w_]
+                half[:] = base
+                result = worker.result
                 if result is None:
-                    half[:] = frame
                     label_frame(half, f"{NAMES[worker.detector.backend_name]}: starting ...")
-                elif result[2] != shown[i]:
-                    shown[i] = result[2]
-                    half[:] = result[0]
-                    draw(half, result[1], worker.detector.labels)
-                    label_frame(half, _bar_text(worker))
+                    continue
+                dets, lifted = result[1], result[3]
+                if view_source is None:
+                    dets, lifted = dets.copy(), lifted.copy()
+                    dets[:, :4] *= view_scale
+                    lifted[:, :4] *= view_scale
+                else:
+                    dets, lifted = (to_view(d, det_source.cam, view_source.cam, plane)
+                                    for d in (dets, lifted))
+                draw(half, dets, display_labels(worker.detector.labels, products)
+                     if args.box_labels else None)
+                for x0, y0, x1, y1, _, _ in lifted:  # lifted: thick yellow frame
+                    cv2.rectangle(half, (int(x0) - 4, int(y0) - 4), (int(x1) + 4, int(y1) + 4),
+                                  (0, 230, 255, 255), 7)
+                label_frame(half, _bar_text(worker))
+            if panel is not None:
+                primary = workers[0].result
+                panel.update([int(c) for c in primary[3][:, 5]] if primary else [])
+                panel.compose(canvas)
             screen.show(canvas)
+            frames += 1
 
             if frames % 60 == 0:
-                cam_fps = frames / (time.perf_counter() - start)
-                print(f"camera {cam_fps:5.1f} fps  " + "  ".join(
-                    f"{NAMES[w.detector.backend_name]} {w.fps:5.1f} fps "
-                    f"(pre {w.detector.ms('pre'):.1f} / infer {w.detector.ms('infer'):.1f} / "
-                    f"post {w.detector.ms('post'):.1f} ms)" for w in workers), flush=True)
+                print(f"detect cam {det_source.fps:4.1f} fps"
+                      + (f"  live cam {view_source.fps:4.1f} fps" if view_source else "")
+                      + "  " + "  ".join(
+                          f"{NAMES[w.detector.backend_name]} {w.fps:4.1f} fps "
+                          f"[{len(w.tiler.tiles) if w.tiler else 1} tiles] "
+                          f"(pre {w.detector.ms('pre'):.0f} / infer {w.detector.ms('infer'):.0f}"
+                          f" / post {w.detector.ms('post'):.0f} ms)" for w in workers),
+                      flush=True)
     finally:
         for w in workers:
             w.stop()
             w.detector.close()
-        cam.release()
+        for s in sources:
+            s.stop()
         if screen is not None:
             screen.close()
     return 0

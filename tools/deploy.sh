@@ -6,7 +6,7 @@
 # Installs to /opt/phytec-detect on the board:
 #   /opt/phytec-detect/phytec_detect/      the Python package
 #   /opt/phytec-detect/models/<name>/      labels.txt, model.json, *.hef, *_int8.tflite, <name>.onnx
-#   /opt/phytec-detect/bin/phytec-{detect,benchmark,capture}
+#   /opt/phytec-detect/bin/phytec-{detect,benchmark,capture,calibrate,focus,photo}
 # The bin wrappers run as the weston user, on its Wayland display, like the
 # kiosk demos. Large calibration/HAR/full-ONNX files are not copied.
 set -eu
@@ -26,14 +26,16 @@ for dir in "$@"; do
         --exclude='*_fp32.tflite' -cf - .) | $SSH "mkdir -p $DEST/models/$name && tar -C $DEST/models/$name -xf -"
 done
 
-for tool in detect:live_cli benchmark:benchmark_cli capture:capture_cli; do
+for tool in detect:live_cli benchmark:benchmark_cli capture:capture_cli calibrate:calibrate_cli focus:focus_cli photo:photo_cli; do
     cmd="${tool%%:*}"; module="${tool#*:}"
     $SSH "cat > $DEST/bin/phytec-$cmd" <<EOF
 #!/bin/sh
 # Run as weston on its display (camera, Hailo and the NPU are usable there too).
+# As root, phytec_detect.asuser switches user without a login session, so the
+# tool stays inside whatever systemd unit started it (with su it did not).
 cd /tmp
 if [ "\$(id -u)" = 0 ]; then
-    exec su weston -s /bin/sh -c 'XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 PYTHONPATH=$DEST exec python3 -m phytec_detect.$module "\$@"' -- phytec-$cmd "\$@"
+    PYTHONPATH=$DEST exec python3 -m phytec_detect.asuser weston phytec_detect.$module "\$@"
 fi
 XDG_RUNTIME_DIR=\${XDG_RUNTIME_DIR:-/run/user/1000} WAYLAND_DISPLAY=\${WAYLAND_DISPLAY:-wayland-0} \\
 PYTHONPATH=$DEST exec python3 -m phytec_detect.$module "\$@"

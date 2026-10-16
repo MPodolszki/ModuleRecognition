@@ -1,0 +1,86 @@
+#!/usr/bin/env python3
+"""dataset/products -> products.json for the board's info panel.
+
+Per class (article number, the model's label):
+  name     Bezeichnung from products.csv (falls back to the article number)
+  summary  short lines for the screen: summary.txt if present, otherwise
+           the populated options from info.tsv
+  options  the full info.tsv rows (column name -> value), for later use
+
+    uv run tools/product_info.py models/products_v1_n
+"""
+
+import argparse
+import csv
+import json
+import pathlib
+
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+
+
+def read_tsv(path):
+    with open(path, newline="", encoding="utf-8-sig") as f:
+        rows = list(csv.reader(f, delimiter="\t"))
+    if not rows:
+        return []
+    head = [h.strip() for h in rows[0]]
+    return [{h: (r[i].strip() if i < len(r) else "") for i, h in enumerate(head)} for r in rows[1:]]
+
+
+def summarize(options, limit=12):
+    """Option names worth showing: drop placeholders ("-") and options whose
+    number is 0 unless they describe the base part (no number semantics are
+    known for every product family, so this stays deliberately simple)."""
+    lines = []
+    for row in options:
+        name = row.get("Option", "")
+        desc = row.get("Optionsbeschreibung", "")
+        number = row.get("Optionsnummer", "")
+        if not name or name == "-":
+            continue
+        if number == "0" and lines:  # first row = base CPU option, keep it
+            continue
+        head = row.get("Optionskopf Beschreibung", "")
+        text = name if not head or len(head) > 30 else f"{name} {head}"
+        if desc and len(text) < 14 and len(desc) < 40 and desc.lower() not in text.lower() \
+                and text.lower() not in desc.lower():
+            text = f"{text} ({desc})"
+        lines.append(" ".join(text.split()))
+    return lines[:limit]
+
+
+def build(products_dir, labels):
+    names = {}
+    csv_path = products_dir / "products.csv"
+    if csv_path.exists():
+        with open(csv_path, newline="", encoding="utf-8") as f:
+            for row in csv.reader(f, delimiter=";"):
+                if row and row[0] and row[0] != "Artikelnummer":
+                    names[row[0].strip()] = row[1].strip() if len(row) > 1 else ""
+    out = {}
+    for art in labels:
+        folder = products_dir / art
+        options = read_tsv(folder / "info.tsv") if (folder / "info.tsv").exists() else []
+        summary_file = folder / "summary.txt"
+        summary = [l.strip() for l in summary_file.read_text(encoding="utf-8").splitlines()
+                   if l.strip()] if summary_file.exists() else summarize(options)
+        out[art] = {"name": names.get(art) or art, "summary": summary, "options": options}
+    return out
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__,
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("model_dir", help="model directory with labels.txt")
+    parser.add_argument("--products", default=str(ROOT / "dataset" / "products"))
+    args = parser.parse_args()
+    model_dir = pathlib.Path(args.model_dir)
+    labels = [l.strip() for l in (model_dir / "labels.txt").read_text().splitlines() if l.strip()]
+    info = build(pathlib.Path(args.products), labels)
+    (model_dir / "products.json").write_text(json.dumps(info, indent=1, ensure_ascii=False))
+    for art, d in info.items():
+        print(f"{art}: {d['name']}\n  " + "\n  ".join(d["summary"]))
+
+
+if __name__ == "__main__":
+    main()

@@ -21,13 +21,22 @@ def get_labels(path):
 
 
 def letterbox(bgr, size=640):
-    """Scale `bgr` into a size x size RGB square, grey (114) padding centred.
+    """Scale `bgr` (BGR, BGRx or 2-D gray) into a size x size RGB square,
+    grey (114) padding centred.
 
     Matches ultralytics' LetterBox (center=True, linear interpolation), so
     the model sees the same picture it was validated on. Returns the padded
     RGB uint8 image and (scale, pad_x, pad_y) to map boxes back.
     """
     img_h, img_w = bgr.shape[:2]
+    if bgr.ndim == 2 and img_h <= size and img_w <= size and (img_h == size or img_w == size):
+        # A tile that needs no scaling: pad and expand in C, not numpy (the
+        # numpy path cost ~20 ms per 640x640 tile on the Cortex-A53).
+        pad_x, pad_y = (size - img_w) / 2, (size - img_h) / 2
+        top, left = round(pad_y - 0.1), round(pad_x - 0.1)
+        padded = cv2.copyMakeBorder(bgr, top, size - img_h - top, left, size - img_w - left,
+                                    cv2.BORDER_CONSTANT, value=114)
+        return cv2.cvtColor(padded, cv2.COLOR_GRAY2RGB), (1.0, left, top)
     scale = min(size / img_h, size / img_w)
     new_w, new_h = round(img_w * scale), round(img_h * scale)
     if (new_w, new_h) != (img_w, img_h):
@@ -35,8 +44,10 @@ def letterbox(bgr, size=640):
     pad_x, pad_y = (size - new_w) / 2, (size - new_h) / 2
     top, left = round(pad_y - 0.1), round(pad_x - 0.1)
     out = np.full((size, size, 3), 114, dtype=np.uint8)
-    # BGR(A) -> RGB on the small picture, not the full camera frame.
-    out[top:top + new_h, left:left + new_w] = bgr[..., 2::-1]
+    if bgr.ndim == 2:  # monochrome camera: same value in R, G and B
+        out[top:top + new_h, left:left + new_w] = bgr[..., None]
+    else:  # BGR(A) -> RGB on the small picture, not the full camera frame.
+        out[top:top + new_h, left:left + new_w] = bgr[..., 2::-1]
     return out, (scale, left, top)
 
 
@@ -129,11 +140,14 @@ def id_to_color(class_id):
 
 
 def draw(image, dets, labels):
-    """Draw image-space detections onto a BGR or BGRx frame, in place."""
+    """Draw image-space detections onto a BGR or BGRx frame, in place.
+    labels=None draws the frames only."""
     for x1, y1, x2, y2, score, class_id in dets:
         p1, p2 = (int(x1), int(y1)), (int(x2), int(y2))
         color = id_to_color(class_id) + ((255,) if image.shape[2] == 4 else ())
         cv2.rectangle(image, p1, p2, color, 3)
+        if labels is None:
+            continue
         text = f"{labels[int(class_id)]} {score * 100:.0f}%"
         font, fscale, thick = cv2.FONT_HERSHEY_SIMPLEX, 0.8, 2
         (tw, th), base = cv2.getTextSize(text, font, fscale, thick)

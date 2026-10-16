@@ -20,6 +20,7 @@ import numpy as np
 
 from .backends import make_backend
 from .postprocess import decode, get_labels, letterbox, to_image
+from .tiling import edge_cut, merge
 
 
 class _Model:
@@ -60,26 +61,54 @@ class Detector:
     def paths(self):
         return [m.backend.path for m in self.models]
 
-    def __call__(self, bgr):
-        """BGR or BGRx frame -> (N, 6) x1, y1, x2, y2, score, class in frame pixels."""
+    def __call__(self, frame, tiler=None):
+        """BGR/BGRx/2-D gray frame -> (N, 6) x1, y1, x2, y2, score, class in
+        frame pixels. With a Tiler, every tile is detected and the results
+        are merged (see tiling.py)."""
+        return self.run(self.prepare(frame, tiler))
+
+    def prepare(self, frame, tiler=None):
+        """CPU half before the accelerator: cut tiles, letterbox them.
+        Split from run() so a worker can prepare the next frame while the
+        accelerator is still busy with this one."""
         t0 = time.perf_counter()
-        rgb, info = letterbox(bgr, self.imgsz)
+        if tiler is None:
+            pieces, scale = [(frame, (0, 0))], 1.0
+            frame_size = (frame.shape[1], frame.shape[0])
+        else:
+            pieces, scale = list(tiler.crops(frame)), tiler.scale
+            frame_size = tiler.size
+        boxed = [letterbox(crop, self.imgsz) for crop, _ in pieces]
+        self.times["pre"].append(time.perf_counter() - t0)
+        return [(crop.shape, origin) for crop, origin in pieces], boxed, scale, frame_size
+
+    def run(self, job):
+        """Accelerator + decode/merge of a prepare()d frame."""
+        pieces, boxed, scale, frame_size = job
         t1 = time.perf_counter()
-        maps = [m.backend.infer(rgb) for m in self.models]
+        rgbs = [rgb for rgb, _ in boxed]
+        maps = [m.backend.infer_many(rgbs) for m in self.models]  # [model][piece]
         t2 = time.perf_counter()
-        dets = []
-        for m, out, offset in zip(self.models, maps, self._offsets):
-            d = decode(out, len(m.labels), self.imgsz, self.conf, self.max_det)
-            d[:, 5] += offset
-            dets.append(d)
-        dets = np.concatenate(dets) if len(dets) > 1 else dets[0]
-        if len(self.models) > 1:
+        dets, cuts = [], []
+        for k, ((shape, (x0, y0)), (_, info)) in enumerate(zip(pieces, boxed)):
+            for m, out, offset in zip(self.models, maps, self._offsets):
+                d = decode(out[k], len(m.labels), self.imgsz, self.conf, self.max_det)
+                d = to_image(d, info, shape)
+                d[:, [0, 2]] += x0
+                d[:, [1, 3]] += y0
+                d[:, 5] += offset
+                dets.append(d)
+                cuts.append(edge_cut(d, (x0, y0, x0 + shape[1], y0 + shape[0]), frame_size)
+                            if len(pieces) > 1 else np.zeros(len(d), bool))
+        dets = np.concatenate(dets) if dets else np.zeros((0, 6), np.float32)
+        cut = np.concatenate(cuts) if cuts else np.zeros(0, bool)
+        if scale != 1.0:
+            dets[:, :4] /= scale
+        dets = merge(dets, cut)  # also one box per product across models/classes
+        if len(dets) > self.max_det:
             dets = dets[np.argsort(-dets[:, 4])][:self.max_det]
-        dets = to_image(dets, info, bgr.shape)
-        t3 = time.perf_counter()
-        self.times["pre"].append(t1 - t0)
         self.times["infer"].append(t2 - t1)
-        self.times["post"].append(t3 - t2)
+        self.times["post"].append(time.perf_counter() - t2)
         return dets
 
     def ms(self, stage):

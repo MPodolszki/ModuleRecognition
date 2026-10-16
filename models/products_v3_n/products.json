@@ -1,0 +1,165 @@
+{
+ "PCM-070-0F3243I.A3": {
+  "name": "phyCORE-i.MX8M Plus",
+  "summary": [
+   "Quad Core 1.6 GHz",
+   "NPU",
+   "ISP",
+   "VPU",
+   "CAN-FD",
+   "2 GB (2 GHz) LPDDR4 32-bit",
+   "8 GB (MLC)",
+   "64 MB SPI NOR",
+   "Gbit Ethernet Phy",
+   "Optional Connector mounted",
+   "Industrial Temp"
+  ],
+  "options": [
+   {
+    "Option": "Quad Core 1.6 GHz",
+    "Optionskopf Beschreibung": "",
+    "Optionsbeschreibung": "Tj=-40..+105°C; 8CVN: VPU/NPU/ISP/HIFI4/CAN-FD; 6CVN: VPU/ISP/CAN-FD; 4CVN: CAN-FD",
+    "Option Bemerkung": "Only I-Temp",
+    "Optionskopf Status": "OK",
+    "Optionsstatus": "OK",
+    "Erweitert": "Nein",
+    "Optionsnummer": "0"
+   },
+   {
+    "Option": "NPU",
+    "Optionskopf Beschreibung": "",
+    "Optionsbeschreibung": "With NPU",
+    "Option Bemerkung": "",
+    "Optionskopf Status": "OK",
+    "Optionsstatus": "OK",
+    "Erweitert": "Nein",
+    "Optionsnummer": "1"
+   },
+   {
+    "Option": "ISP",
+    "Optionskopf Beschreibung": "",
+    "Optionsbeschreibung": "With ISP",
+    "Option Bemerkung": "",
+    "Optionskopf Status": "OK",
+    "Optionsstatus": "OK",
+    "Erweitert": "Nein",
+    "Optionsnummer": "1"
+   },
+   {
+    "Option": "VPU",
+    "Optionskopf Beschreibung": "",
+    "Optionsbeschreibung": "With VPU",
+    "Option Bemerkung": "",
+    "Optionskopf Status": "OK",
+    "Optionsstatus": "OK",
+    "Erweitert": "Nein",
+    "Optionsnummer": "1"
+   },
+   {
+    "Option": "CAN-FD",
+    "Optionskopf Beschreibung": "",
+    "Optionsbeschreibung": "",
+    "Option Bemerkung": "",
+    "Optionskopf Status": "OK",
+    "Optionsstatus": "OK",
+    "Erweitert": "Nein",
+    "Optionsnummer": "1"
+   },
+   {
+    "Option": "2 GB  (2 GHz)",
+    "Optionskopf Beschreibung": "LPDDR4 32-bit",
+    "Optionsbeschreibung": "LPDDR4-4266",
+    "Option Bemerkung": "IM922, IM1007 tested.",
+    "Optionskopf Status": "OK",
+    "Optionsstatus": "OK",
+    "Erweitert": "Nein",
+    "Optionsnummer": "3"
+   },
+   {
+    "Option": "8 GB (MLC)",
+    "Optionskopf Beschreibung": "",
+    "Optionsbeschreibung": "",
+    "Option Bemerkung": "IM868 tested.",
+    "Optionskopf Status": "OK",
+    "Optionsstatus": "OK",
+    "Erweitert": "Nein",
+    "Optionsnummer": "2"
+   },
+   {
+    "Option": "64 MB",
+    "Optionskopf Beschreibung": "SPI NOR",
+    "Optionsbeschreibung": "",
+    "Option Bemerkung": "IM925 tested.",
+    "Optionskopf Status": "OK",
+    "Optionsstatus": "OK",
+    "Erweitert": "Nein",
+    "Optionsnummer": "4"
+   },
+   {
+    "Option": "Gbit Ethernet Phy",
+    "Optionskopf Beschreibung": "Option for ETH1 Phy removal. ETH0 is always as RGMII available.",
+    "Optionsbeschreibung": "Gbit Ethernet PHY on module",
+    "Option Bemerkung": "",
+    "Optionskopf Status": "OK",
+    "Optionsstatus": "OK",
+    "Erweitert": "Nein",
+    "Optionsnummer": "1"
+   },
+   {
+    "Option": "Optional Connector mounted",
+    "Optionskopf Beschreibung": "3rd connector, for DSC this option is always 0",
+    "Optionsbeschreibung": "3rd connector mounted (no permissible for DSC)",
+    "Option Bemerkung": "X1-E/F Extension Connector (60pol)  for GPIO[15..8], I2C4, SPDIF, SAI5, CLK, CSI2, DSI1, VDD_1V8_out, VDD_3V3_out",
+    "Optionskopf Status": "OK",
+    "Optionsstatus": "OK",
+    "Erweitert": "Nein",
+    "Optionsnummer": "1"
+   },
+   {
+    "Option": "External RTC",
+    "Optionskopf Beschreibung": "",
+    "Optionsbeschreibung": "I2C-Bus RTC RV-3028-C7",
+    "Option Bemerkung": "",
+    "Optionskopf Status": "OK",
+    "Optionsstatus": "OK",
+    "Erweitert": "Nein",
+    "Optionsnummer": "0"
+   },
+   {
+    "Option": "-",
+    "Optionskopf Beschreibung": "",
+    "Optionsbeschreibung": "",
+    "Option Bemerkung": "",
+    "Optionskopf Status": "OK",
+    "Optionsstatus": "OK",
+    "Erweitert": "Nein",
+    "Optionsnummer": "0"
+   },
+   {
+    "Option": "Industrial Temp",
+    "Optionskopf Beschreibung": "",
+    "Optionsbeschreibung": "-40°C to +85°C (Controller Junction Temp -40°C to +105°C)",
+    "Option Bemerkung": "",
+    "Optionskopf Status": "OK",
+    "Optionsstatus": "OK",
+    "Erweitert": "Nein",
+    "Optionsnummer": "I"
+   },
+   {
+    "Option": "-",
+    "Optionskopf Beschreibung": "",
+    "Optionsbeschreibung": "No TMP102 sensors for board-level temperature monitoring.",
+    "Option Bemerkung": "Sensors are mounted on old style article numer boards with missing extended option number (e.g. PCM-070-0F3243I).",
+    "Optionskopf Status": "OK",
+    "Optionsstatus": "OK",
+    "Erweitert": "Ja",
+    "Optionsnummer": "0"
+   }
+  ]
+ },
+ "PCM-072-42F2DE11I.A1": {
+  "name": "phyCORE-AM64x",
+  "summary": [],
+  "options": []
+ }
+}

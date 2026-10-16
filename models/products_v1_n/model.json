@@ -1,0 +1,17 @@
+{
+  "name": "products_v1_n",
+  "imgsz": 640,
+  "nc": 1,
+  "names": [
+    "PCM-070-0F3243I.A3"
+  ],
+  "outputs": [
+    "box_s8",
+    "cls_s8",
+    "box_s16",
+    "cls_s16",
+    "box_s32",
+    "cls_s32"
+  ],
+  "input": "RGB uint8 letterboxed, /255 inside the model or by the runtime"
+}

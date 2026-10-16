@@ -14,3 +14,11 @@ models/*.pt
 weights/
 # phyCAM frames show people in the office; kept local, not in git
 dataset/raw/phycam_bg/
+dataset_products/
+# product photos and table shots (may show people) stay local; only the
+# article list, product info and README are versioned
+dataset/products/**/*.jpg
+dataset/products/**/*.HEIC
+dataset/products/**/*.heic
+dataset/products/**/*.json
+dataset/products/**/*.txt

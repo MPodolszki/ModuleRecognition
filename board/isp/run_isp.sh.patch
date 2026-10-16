@@ -1,0 +1,11 @@
+--- run_isp.sh.orig
++++ run_isp.sh
+@@ -37,7 +37,7 @@
+ 	if [ -e /dev/cam-csi1 ]; then
+ 		isp-mode-select-csi1
+ 	elif [ -e /dev/cam-csi1-port0 ] && ! [ -e /dev/cam-csi1-port1 ]; then
+-		isp-mode-select-csi1 -p 0
++		isp-mode-select-csi1 -p 0 ${ISP_MODE_CSI1:+-m $ISP_MODE_CSI1} ${ISP_LENS_CSI1:+-l $ISP_LENS_CSI1}
+ 		setup-pipeline-csi1 -p 0
+ 	elif [ -e /dev/cam-csi1-port1 ] && ! [ -e /dev/cam-csi1-port0 ]; then
+ 		isp-mode-select-csi1 -p 1

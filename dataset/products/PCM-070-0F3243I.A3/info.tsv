@@ -1,0 +1,15 @@
+Option	Optionskopf Beschreibung	Optionsbeschreibung	Option Bemerkung	Optionskopf Status	Optionsstatus	Erweitert	Optionsnummer
+Quad Core 1.6 GHz		Tj=-40..+105°C; 8CVN: VPU/NPU/ISP/HIFI4/CAN-FD; 6CVN: VPU/ISP/CAN-FD; 4CVN: CAN-FD	Only I-Temp	OK	OK	Nein	0
+NPU		With NPU		OK	OK	Nein	1
+ISP		With ISP		OK	OK	Nein	1
+VPU		With VPU		OK	OK	Nein	1
+CAN-FD				OK	OK	Nein	1
+2 GB  (2 GHz)	LPDDR4 32-bit	LPDDR4-4266	IM922, IM1007 tested.	OK	OK	Nein	3
+8 GB (MLC)			IM868 tested.	OK	OK	Nein	2
+64 MB	SPI NOR		IM925 tested.	OK	OK	Nein	4
+Gbit Ethernet Phy	Option for ETH1 Phy removal. ETH0 is always as RGMII available.	Gbit Ethernet PHY on module		OK	OK	Nein	1
+Optional Connector mounted	3rd connector, for DSC this option is always 0	3rd connector mounted (no permissible for DSC)	X1-E/F Extension Connector (60pol)  for GPIO[15..8], I2C4, SPDIF, SAI5, CLK, CSI2, DSI1, VDD_1V8_out, VDD_3V3_out	OK	OK	Nein	1
+External RTC		I2C-Bus RTC RV-3028-C7		OK	OK	Nein	0
+-				OK	OK	Nein	0
+Industrial Temp		-40°C to +85°C (Controller Junction Temp -40°C to +105°C)		OK	OK	Nein	I
+-		No TMP102 sensors for board-level temperature monitoring.	Sensors are mounted on old style article numer boards with missing extended option number (e.g. PCM-070-0F3243I).	OK	OK	Ja	0

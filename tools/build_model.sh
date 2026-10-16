@@ -17,7 +17,8 @@ export YOLO_AUTOINSTALL=false
 
 cd "$ROOT"
 uv run export/cut_onnx.py "$WEIGHTS" --name "$NAME"
-uv run export/make_calib.py "$CALIB_SRC" -o "$OUT/calib_640.npy" -n 1024
+uv run tools/product_info.py "$OUT" >/dev/null   # products.json for the info panel
+uv run export/make_calib.py "$CALIB_SRC" -o "$OUT/calib_640.npy" -n 512
 (cd export/npu && uv run to_tflite.py "$OUT/$NAME.onnx" "$OUT/calib_640.npy" \
     --check-image "$(find "$CALIB_SRC" -name '*.jpg' | sort | head -1)") 2>&1 \
     | grep -vE '^[EWI]0000|^\s*$'

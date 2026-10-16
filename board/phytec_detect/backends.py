@@ -27,7 +27,7 @@ NPU_CACHE_DIR = os.environ.get("PHYTEC_DETECT_NPU_CACHE", "/var/cache/phytec-det
 class HailoDetector:
     """HEF on the Hailo-8 via the HailoRT InferModel API, float32 outputs."""
 
-    def __init__(self, hef_path, timeout_ms=10_000):
+    def __init__(self, hef_path, timeout_ms=10_000, batch_size=8):
         from hailo_platform import (HEF, FormatType, HailoSchedulingAlgorithm,
                                     VDevice)
 
@@ -46,27 +46,51 @@ class HailoDetector:
         self._stack = []
         try:
             self._model = self._vdevice.create_infer_model(self.path)
+            # A multi-context HEF switches contexts for every batch; batching
+            # tiles spreads that cost (batch 1: ~19 ms per tile).
+            self._model.set_batch_size(batch_size)
             self._model.input().set_format_type(FormatType.UINT8)
             # Let HailoRT dequantise (and handle the 16-bit outputs of the
             # Model Zoo profile) -- the host gets plain float32 maps.
             for name in self.output_names:
                 self._model.output(name).set_format_type(FormatType.FLOAT32)
-            self._outputs = {name: np.empty(self._model.output(name).shape, np.float32)
-                             for name in self.output_names}
             configured = self._model.configure()
             self._stack.append(configured)
             self._configured = configured.__enter__()
-            self._bindings = self._configured.create_bindings()
-            for name, buf in self._outputs.items():
-                self._bindings.output(name).set_buffer(buf)
+            self._pool = []  # (bindings, {output name: buffer}), grown on demand
         except BaseException:
             self.close()
             raise
 
+    def _binding(self, i):
+        while len(self._pool) <= i:
+            outputs = {name: np.empty(self._model.output(name).shape, np.float32)
+                       for name in self.output_names}
+            bindings = self._configured.create_bindings()
+            for name, buf in outputs.items():
+                bindings.output(name).set_buffer(buf)
+            self._pool.append((bindings, outputs))
+        return self._pool[i]
+
     def infer(self, rgb):
-        self._bindings.input(self.input_name).set_buffer(np.ascontiguousarray(rgb))
-        self._configured.run([self._bindings], self._timeout_ms)
-        return [self._outputs[name] for name in self.output_names]
+        return self.infer_many([rgb])[0]
+
+    def infer_many(self, rgbs):
+        """Several pictures in one run(): HailoRT pipelines them through the
+        device instead of one round trip each (the tiled detector's case)."""
+        # Submit everything first, then wait: run() with a list of bindings
+        # still went frame by frame (~19 ms per tile, vs ~6 ms per frame the
+        # device manages at batch 8 in `hailortcli run`).
+        used, jobs = [], []
+        for i, rgb in enumerate(rgbs):
+            bindings, outputs = self._binding(i)
+            bindings.input(self.input_name).set_buffer(np.ascontiguousarray(rgb))
+            self._configured.wait_for_async_ready(timeout_ms=self._timeout_ms)
+            jobs.append(self._configured.run_async([bindings]))
+            used.append(outputs)
+        for job in jobs:
+            job.wait(self._timeout_ms)
+        return [[outputs[name].copy() for name in self.output_names] for outputs in used]
 
     def close(self):
         while self._stack:
@@ -133,6 +157,9 @@ class TFLiteDetector:
             out.append((y.astype(np.float32) - zero) * scale if scale else y)
         return out
 
+    def infer_many(self, rgbs):
+        return [self.infer(rgb) for rgb in rgbs]
+
     def close(self):
         self._interp = None
 
@@ -152,6 +179,9 @@ class OnnxDetector:
     def infer(self, rgb):
         blob = rgb.transpose(2, 0, 1)[None].astype(np.float32) * (1 / 255.0)
         return [m.transpose(0, 2, 3, 1) for m in self._sess.run(None, {self._input: blob})]
+
+    def infer_many(self, rgbs):
+        return [self.infer(rgb) for rgb in rgbs]
 
     def close(self):
         self._sess = None

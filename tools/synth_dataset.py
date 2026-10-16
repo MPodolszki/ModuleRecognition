@@ -45,7 +45,12 @@ def find_module(img):
     small = cv2.resize(gray, (W // 8, H // 8), interpolation=cv2.INTER_AREA)
     background = cv2.resize(cv2.medianBlur(small, 61), (W, H), interpolation=cv2.INTER_LINEAR)
     sat = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)[..., 1]
-    mask = (((background.astype(int) - gray) > 35) | (sat > 60)).astype(np.uint8) * 255
+    # Saturation relative to the surroundings: under tinted light the whole
+    # background is saturated (a blue-lit photo was boxed as one big blob).
+    sat_small = cv2.resize(sat, (W // 8, H // 8), interpolation=cv2.INTER_AREA)
+    sat_bg = cv2.resize(cv2.medianBlur(sat_small, 61), (W, H), interpolation=cv2.INTER_LINEAR)
+    mask = (((background.astype(int) - gray) > 35) |
+            ((sat.astype(int) - sat_bg) > 60)).astype(np.uint8) * 255
     k = max(5, int(min(H, W) * 0.01)) | 1
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((k, k), np.uint8))
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((k, k), np.uint8))
@@ -53,7 +58,7 @@ def find_module(img):
     best = None
     for c in contours:
         area = cv2.contourArea(c)
-        if area < 0.001 * H * W:
+        if area < 0.001 * H * W or area > 0.9 * H * W:
             continue
         x, y, w, h = cv2.boundingRect(c)
         rect = cv2.minAreaRect(c)

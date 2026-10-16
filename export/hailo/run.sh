@@ -24,7 +24,7 @@ CALIB="$(in_work "$2")"
 shift 2
 
 # shellcheck disable=SC2086
-exec docker run --rm $GPU \
+exec docker run --rm --network none $GPU \
     --user "$(id -u):$(id -g)" -e HOME=/tmp \
     -v "$ROOT":/work -w /tmp \
     "$IMAGE" \
