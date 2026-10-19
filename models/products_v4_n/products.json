@@ -156,7 +156,8 @@
     "Optionsnummer": "0"
    }
   ],
-  "link": "https://www.phytec.de/produkte/development-kits/phyboard-pollux-kit/#jetzt-bestellen/"
+  "link": "https://www.phytec.de/produkte/development-kits/phyboard-pollux-kit/#jetzt-bestellen/",
+  "chart": "charts/PCM-070-0F3243I.A3.png"
  },
  "PCM-072-42F2DE11I.A1": {
   "name": "phyCORE-AM64x",
