@@ -286,6 +286,9 @@ def main(argv=None):
                              "0 = no tiling, whole frame to 640)")
     parser.add_argument("--box-labels", action="store_true",
                         help="write the product name at every frame (default: frames only)")
+    parser.add_argument("--voice", nargs="?", const="Jabra", default=None, metavar="MIC",
+                        help="voice commands ('Phytec, wo ist der i.MX6?') with Whisper on the "
+                             "Hailo-8, from this microphone (default: Jabra)")
     parser.add_argument("--axis-boxes", action="store_true",
                         help="plain axis-aligned boxes instead of frames turned like the module")
     parser.add_argument("--no-panel", action="store_true",
@@ -345,6 +348,14 @@ def main(argv=None):
         for s in sources:
             s.stop()
         die(f"phytec-detect: {error}")
+
+    listener = None
+    if args.voice:
+        try:
+            from .whisper_voice import Listener
+            listener = Listener(args.voice, log=lambda m: print(m, flush=True))
+        except Exception as error:  # noqa: BLE001 -- the demo runs without voice
+            print(f"voice: not available: {type(error).__name__}: {error}", flush=True)
 
     stop = threading.Event()
     for signum in (signal.SIGINT, signal.SIGTERM):
@@ -448,6 +459,8 @@ def main(argv=None):
                           for w in workers),
                       flush=True)
     finally:
+        if listener is not None:
+            listener.stop()
         for w in workers:
             w.stop()
             w.detector.close()

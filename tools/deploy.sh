@@ -61,7 +61,7 @@ $SSH "cat > $DEST/bin/phytec-mode && chmod +x $DEST/bin/phytec-mode" <<EOF2
 # Switch demo / training by hand (as root): phytec-mode demo|training
 PYTHONPATH=$DEST exec python3 -m phytec_detect.mode_cli "\$@"
 EOF2
-$SSH "systemctl daemon-reload && systemctl enable -q phytec-mode phytec-voice && systemctl restart phytec-mode phytec-voice"
+$SSH "systemctl daemon-reload && systemctl enable -q phytec-mode && systemctl restart phytec-mode"
 
 # Search requests ("Wo ist der i.MX6?", phytec-find / voice) for the demo.
 $SSH "echo 'd /run/phytec-detect 1777 root root -' > /etc/tmpfiles.d/phytec-detect.conf && systemd-tmpfiles --create /etc/tmpfiles.d/phytec-detect.conf"

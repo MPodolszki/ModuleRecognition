@@ -3,6 +3,8 @@
     phytec-voice                         # phytec-voice.service
     phytec-voice --device Jabra --show   # print everything it hears
 
+  Every command starts with "Phytec" (fütek), alone or in the same breath:
+
   "Wo ist der i.MX6?"       only the matching products are framed
   "Alle zeigen"             everything again (also after 30 s by itself)
   "Reset" / "Zurücksetzen"  forget the table (e.g. a guest's module that
@@ -37,6 +39,10 @@ _TENS = ["", "", "zwanzig", "dreißig", "vierzig", "fünfzig", "sechzig", "siebz
          "neunzig"]
 PREFIXES = ["wo ist der", "wo ist das", "wo ist die", "wo ist", "wo liegt der", "zeig mir den",
             "zeig mir das", "zeig den", "zeige", "such den", "suche", "finde den"]
+# "Phytec" (fütek) is not in the model's vocabulary; these are the words it
+# heard instead, from several speakers at the demo table (--free).
+WAKE = ["für tag", "für technik", "fühlte", "fühlt", "führt", "gültig"]
+WAKE_S = 6.0  # "Phytec" ... pause ... command still counts
 OTHER = ["alle zeigen", "alles zeigen", "zeig alle", "reset", "zurücksetzen", "neustart"]
 
 
@@ -84,6 +90,7 @@ def grammar(products):
                 part = " ".join(words[:n])
                 phrases.update(f"{p} {part}" for p in PREFIXES)
                 phrases.add(part)
+    phrases |= {f"{w} {p}" for w in WAKE for p in phrases} | set(WAKE)
     return sorted(phrases) + ["[unk]"]
 
 
@@ -99,6 +106,8 @@ def main(argv=None):
     parser.add_argument("--model", default=MODEL)
     parser.add_argument("--products", default=PRODUCTS)
     parser.add_argument("--show", action="store_true", help="print every recognised sentence")
+    parser.add_argument("--free", action="store_true",
+                        help="free recognition, no sentence list (to see how a word is heard)")
     args = parser.parse_args(argv)
 
     sys.path.insert(0, PYLIB)
@@ -124,7 +133,7 @@ def main(argv=None):
     print(f"listening on {info['name']} at {rate} Hz", flush=True)
 
     model = vosk.Model(args.model)
-    csv_mtime, rec = None, None
+    csv_mtime, rec, woken_until = None, None, 0.0
     audio = queue.Queue(maxsize=50)
 
     def callback(data, frames, t, status):
@@ -140,6 +149,9 @@ def main(argv=None):
                 mtime = os.stat(args.products).st_mtime
             except OSError:
                 mtime = 0
+            if args.free and rec is None:
+                rec = vosk.KaldiRecognizer(model, rate)
+                csv_mtime = mtime
             if mtime != csv_mtime:  # (re)build the sentence list
                 csv_mtime = mtime
                 phrases = grammar(read_products(args.products))
@@ -153,6 +165,16 @@ def main(argv=None):
                 continue
             if args.show:
                 print(f"heard: {text}", flush=True)
+            wake = next((w for w in WAKE if text == w or text.startswith(w + " ")), None)
+            if wake:
+                text = text[len(wake):].strip()
+                woken_until = time.monotonic() + WAKE_S
+                if not text:
+                    print("wake word", flush=True)
+                    continue
+            elif time.monotonic() > woken_until:
+                continue  # no "Phytec" first: someone talking at the stand
+            woken_until = 0.0
             if not COMMAND.search(text):
                 continue
             products = read_products(args.products)
