@@ -14,4 +14,6 @@ EnvironmentFile=-/etc/default/phytec-trial
 ExecStartPre=/bin/sh -c 'for i in $(seq 60); do [ -S /run/user/1000/wayland-0 ] && exit 0; sleep 1; done; exit 1'
 ExecStart=/bin/sh -c 'exec /usr/bin/python3 -m phytec_detect.photo_cli $PHYTEC_TRIAL_ARGS --name "Neues Produkt"'
 Restart=always
+# photo_cli exits 1 when stopped before the end: that is how this one ends
+SuccessExitStatus=1
 RestartSec=3
