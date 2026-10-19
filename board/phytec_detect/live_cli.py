@@ -175,6 +175,13 @@ class Worker:
             self._done = (self._done + [now])[-10:]
             if len(self._done) > 1:
                 self.fps = (len(self._done) - 1) / (self._done[-1] - self._done[0])
+            # Show the new boxes right away, at the accelerator's rate: the
+            # turned outlines and the lifted state of the last tracked frame
+            # are carried over (outlines moved with their box); tracking
+            # catches up a frame or two later.
+            last = self.result
+            if last is not None:
+                self.result = (frame, dets, seq, last[3], carry_quads(last[1], last[4], dets))
             with self._track_cond:
                 self._track_job = (frame, seq, dets)
                 self._track_cond.notify_all()
@@ -201,6 +208,32 @@ class Worker:
                 self.error = error
                 return
             self.result = (frame, dets, seq, lifted, quads)
+
+
+def carry_quads(old_dets, old_quads, dets):
+    """Outlines for new boxes from the previous ones: same class and
+    overlapping -> the old outline shifted by the box centre's move; else
+    the box corners."""
+    out = np.empty((len(dets), 4, 2), np.float32)
+    for i, (x0, y0, x1, y1, _, cls) in enumerate(dets):
+        out[i] = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]]
+        best, best_iou = None, 0.3
+        for j, (a0, b0, a1, b1, _, c) in enumerate(old_dets):
+            if int(c) != int(cls):
+                continue
+            iw = min(x1, a1) - max(x0, a0)
+            ih = min(y1, b1) - max(y0, b0)
+            if iw <= 0 or ih <= 0:
+                continue
+            inter = iw * ih
+            iou = inter / ((x1 - x0) * (y1 - y0) + (a1 - a0) * (b1 - b0) - inter)
+            if iou > best_iou:
+                best, best_iou = j, iou
+        if best is not None:
+            a0, b0, a1, b1 = old_dets[best][:4]
+            shift = [(x0 + x1 - a0 - a1) / 2, (y0 + y1 - b0 - b1) / 2]
+            out[i] = old_quads[best] + shift
+    return out
 
 
 def load_products(model_dirs):
@@ -408,7 +441,7 @@ def main(argv=None):
     resets = 0
     canvas = panel = None
     screen_tries = 0
-    frames, shown_seq, last_draw = 0, -1, 0.0
+    frames, shown_seq, last_draw, last_state = 0, -1, 0.0, None
     try:
         while not stop.is_set() and (args.frames is None or frames < args.frames):
             for s in sources:
@@ -439,6 +472,16 @@ def main(argv=None):
                 wait = 0.04 - (time.monotonic() - last_draw)
                 if wait > 0:
                     time.sleep(wait)
+                # Redraw only when something changed: new detections, the
+                # panel sliding, the voice dot, a search -- drawing the layer
+                # costs the tracking thread GIL time.
+                state = (tuple(id(w.result) for w in workers),
+                         panel is not None and panel.moving(),
+                         listener is not None and time.monotonic() < listener.awake_until,
+                         search.text, int(time.monotonic()))  # and once a second anyway
+                if state == last_state:
+                    continue
+                last_state = state
                 last_draw = time.monotonic()
                 frame = None
             else:

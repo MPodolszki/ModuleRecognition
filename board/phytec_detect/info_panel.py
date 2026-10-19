@@ -112,6 +112,10 @@ class InfoPanel:
         self._target = 0.0
         self._last = time.monotonic()
 
+    def moving(self):
+        """Still sliding in or out (the screen must be redrawn)."""
+        return self._pos != self._target
+
     def update(self, lifted_classes):
         """Classes of the lifted products, the one lifted first first."""
         key = tuple(dict.fromkeys(lifted_classes))[:2]  # unique, max two
