@@ -1,0 +1,12 @@
+[Unit]
+Description=Retry FPD-Link camera deserializers that did not lock at boot
+Before=imx8-phycam-isp.service phytec-detect.service
+After=systemd-modules-load.service systemd-udev-settle.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/phytec-detect/bin/phytec-camera-retry
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

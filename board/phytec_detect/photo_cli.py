@@ -184,6 +184,9 @@ def main(argv=None):
     parser.add_argument("--crop-y", type=float, default=1.0)
     parser.add_argument("--hold", type=float, default=1.0, help="seconds still before a shot")
     parser.add_argument("--source", default="csi1")
+    parser.add_argument("--isp", action="store_true",
+                        help="through the ISP in its current mode (as phytec-detect --isp); "
+                             "--aspect/--crop-y do not apply")
     parser.add_argument("--start", type=int, default=None,
                         help="continue at this shot number of the plan (2 = first table "
                              "shot), skipping the background and reference shots; the "
@@ -197,7 +200,8 @@ def main(argv=None):
         if os.path.isdir(out_dir) else 0
 
     try:
-        cam = Camera(args.source, aspect=_aspect(args.aspect), crop_y=args.crop_y)
+        cam = Camera(args.source, isp=True) if args.isp else \
+            Camera(args.source, aspect=_aspect(args.aspect), crop_y=args.crop_y)
     except RuntimeError as error:
         die(str(error))
     stop = threading.Event()
@@ -319,6 +323,8 @@ def main(argv=None):
             if (stable_since and now - stable_since >= hold) or (fire and hold == 0.0):
                 meta = {"article": args.article, "name": args.name, "aspect": args.aspect,
                         "crop_y": args.crop_y, "time": time.strftime("%Y-%m-%d %H:%M:%S")}
+                if args.isp:
+                    meta.update(path="isp", aspect=None, crop_y=None, sensor_window=cam.crop)
                 if step == -2:
                     save(os.path.join(args.out, "_background"),
                          f"bg_{args.article}_{int(time.time())}", gray, None, meta)

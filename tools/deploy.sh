@@ -42,3 +42,9 @@ PYTHONPATH=$DEST exec python3 -m phytec_detect.$module "\$@"
 EOF
 done
 $SSH "chmod +x $DEST/bin/*; ls -R $DEST | head -40"
+
+# Boot helper: re-bind FPD-Link deserializers that did not lock at boot.
+$SSH "cat > $DEST/bin/phytec-camera-retry && chmod +x $DEST/bin/phytec-camera-retry" \
+    < "$ROOT/board/systemd/phytec-camera-retry.sh"
+$SSH "cat > /etc/systemd/system/phytec-camera-retry.service && systemctl daemon-reload \
+    && systemctl enable -q phytec-camera-retry" < "$ROOT/board/systemd/phytec-camera-retry.service"
