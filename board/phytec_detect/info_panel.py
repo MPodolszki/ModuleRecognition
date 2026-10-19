@@ -94,7 +94,8 @@ class InfoPanel:
             return canvas
         region = canvas[:, w - shown:]
         cv2.addWeighted(self._image[:, :shown], 0.93, region, 0.07, 0, dst=region)
-        cv2.line(canvas, (w - shown, 0), (w - shown, h), YELLOW, 3)
+        region[..., 3] = 255  # opaque also on the transparent overlay layer
+        cv2.line(canvas, (w - shown, 0), (w - shown, h), tuple(YELLOW[:3]) + (255,), 3)
         return canvas
 
     # -- rendering -------------------------------------------------------

@@ -22,6 +22,8 @@ import time
 
 import numpy as np
 
+from .whisper_grammar import Encoder, Grammar
+
 DATA = "/usr/share/demo-whisper-benchmark"
 RATE = 16000
 WAKE = ("phytec", "fytek", "fytec", "feitek", "feitec", "fuetek", "fietek", "vitec", "fitek",
@@ -29,6 +31,7 @@ WAKE = ("phytec", "fytek", "fytec", "feitek", "feitec", "fuetek", "fietek", "vit
         # as Whisper wrote it at the demo table
         "futeck", "fueteck", "fuegtig", "fuetig", "fueteg")
 WAKE_S = 6.0
+MIN_SCORE = -2.5  # mean log-probability a restricted command needs
 # <|startoftranscript|> <|de|> <|transcribe|> <|notimestamps|>
 GERMAN_PROMPT = [50258, 50261, 50359, 50363]
 
@@ -48,7 +51,8 @@ def wake_split(text):
 class Listener:
     """Microphone -> utterances -> Whisper on the Hailo-8 -> search requests."""
 
-    def __init__(self, device="Jabra", log=print):
+    def __init__(self, device="Jabra", log=print,
+                 products="/var/lib/phytec-detect/products.csv"):
         import sounddevice as sd
         from whisper_bench import audio as wa
         from whisper_bench import tokenizer as tok
@@ -62,6 +66,8 @@ class Listener:
                                     f"{DATA}/hailo/onnx_add_input_tiny.npy")
         self.filters = wa.load_mel_filters(f"{DATA}/assets/mel_filters.npz")
         self.tokenizer = tok.WhisperTokenizer(f"{DATA}/assets/vocab.json")
+        self.encoder = Encoder(f"{DATA}/assets/vocab.json")
+        self.products_csv, self._csv_mtime, self.grammar = products, None, None
         self.device = None
         for i, d in enumerate(sd.query_devices()):
             if device.lower() in d["name"].lower() and d["max_input_channels"] > 0:
@@ -79,15 +85,53 @@ class Listener:
         self._thread.join(timeout=3)
         self.backend.close()
 
-    def transcribe(self, audio):
+    def _grammar(self):
+        """The command trie, rebuilt when products.csv changes."""
+        import os
+
+        from .photo_cli import read_products
+        try:
+            mtime = os.stat(self.products_csv).st_mtime
+        except OSError:
+            mtime = 0
+        if mtime != self._csv_mtime:
+            self._csv_mtime = mtime
+            self.grammar = Grammar(self.encoder, read_products(self.products_csv))
+            self.log(f"voice: {self.grammar.size} command token paths")
+        return self.grammar
+
+    def transcribe(self, audio, awake):
+        """Free transcript, and -- after the wake word, in this utterance or
+        the one before -- the command the restricted decoder picks:
+        (text, wake word seen, command or None, its mean log-probability)."""
         wa = self._wa
         audio = wa.normalize_peak(audio)
         window = wa.pad_or_trim(audio, self.backend.chunk_length * RATE)
         mel = wa.log_mel_spectrogram(window, self.filters)
         t0 = time.perf_counter()
-        tokens, _ = self.backend.generate(self.backend.encode(mel))
+        encoded = self.backend.encode(mel)
+        tokens, _ = self.backend.generate(encoded)
+        text = self._tok.clean_transcription(self.tokenizer.decode(tokens))
+        woke, _ = wake_split(text)
+        command, score = None, -99.0
+        if woke or awake:
+            prefix = list(GERMAN_PROMPT)
+            if woke:  # force the wake word as written, decide only the rest
+                k = self._wake_tokens(tokens)
+                prefix += [int(t) for t in tokens[:k]]
+            if len(prefix) < self.backend.sequence_length - 4:
+                command, score = self._grammar().decode(self.backend, encoded, prefix)
         self.last_ms = (time.perf_counter() - t0) * 1000
-        return self._tok.clean_transcription(self.tokenizer.decode(tokens))
+        return text, woke, command, score
+
+    def _wake_tokens(self, tokens):
+        """How many of the free tokens make up the wake word."""
+        for k in range(1, len(tokens) + 1):
+            head = self.tokenizer.decode(tokens[:k])
+            nxt = self.tokenizer.decode(tokens[k:k + 1]) if k < len(tokens) else " "
+            if wake_split(head)[0] and (not nxt or nxt[0] in " ,.!?"):
+                return k
+        return len(tokens)
 
     def _utterances(self):
         """Yield float32 utterances from the energy detector."""
@@ -130,27 +174,29 @@ class Listener:
                                   dtype="float32", blocksize=RATE // 10, callback=callback):
             self.log(f"voice: listening (Whisper-tiny on the Hailo-8, German)")
             for audio in self._utterances():
+                awake = time.monotonic() < woken_until
                 try:
-                    text = self.transcribe(audio)
+                    text, woke, command, score = self.transcribe(audio, awake)
                 except Exception as error:  # noqa: BLE001 -- keep listening
                     self.log(f"voice: {type(error).__name__}: {error}")
                     continue
-                text = re.sub(r"[\[(][^\])]*[\])]?", "", text).strip(" .")  # (Geräusch), [Musik]
-                if len(re.sub(r"[^a-zA-Z0-9äöüß]", "", text)) < 3:
+                shown = re.sub(r"[\[(][^\])]*[\])]?", "", text).strip(" .")
+                if not woke and not awake and len(re.sub(r"[^a-zA-Z0-9äöüß]", "", shown)) < 3:
                     continue
-                woke, rest = wake_split(text)
                 self.log(f"voice: heard '{text}' ({self.last_ms:.0f} ms)"
-                         + (" [Phytec]" if woke else ""))
+                         + (" [Phytec]" if woke else "")
+                         + (f" -> '{command}' ({score:.2f})" if command else ""))
                 if woke:
                     woken_until = time.monotonic() + WAKE_S
                     self.awake_until = woken_until
-                    if not rest:
-                        continue
-                elif time.monotonic() > woken_until:
+                if not (woke or awake) or command is None:
+                    continue
+                if score < MIN_SCORE:  # talk forced into a command: not one
+                    self.log(f"voice: '{command}' too unsure ({score:.2f}), ignored")
                     continue
                 woken_until = 0.0
                 self.awake_until = time.monotonic() + 1.5  # keep the dot a moment
                 try:
-                    write_request("reset" if is_reset(rest) else rest)
+                    write_request("reset" if is_reset(command) else command)
                 except OSError as error:
                     self.log(f"voice: {error}")

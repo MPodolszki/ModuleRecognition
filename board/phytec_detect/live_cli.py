@@ -28,13 +28,15 @@ import signal
 import sys
 import threading
 import time
+import types
 
 import cv2
 import numpy as np
 
 from .backends import BACKENDS, NAMES
 from .calib import PlaneMap, frame_to_sensor, sensor_to_frame
-from .camera import Camera, Screen, die, find_sensor, label_frame, screen_size, to_bgrx
+from .camera import (Camera, OverlayScreen, Screen, die, find_sensor, isp_size, label_frame,
+                     screen_size, to_bgrx)
 from .detector import Detector
 from .info_panel import InfoPanel
 from .postprocess import draw, module_quad
@@ -331,10 +333,15 @@ def main(argv=None):
             det_cam = Camera(args.detect_cam, aspect=_aspect(args.aspect), crop_y=args.crop_y)
         det_source = FrameSource(det_cam, on_demand=True)
         sources.append(det_source)
-        view_source = None
-        if view_cam != "none":
-            view_source = FrameSource(Camera(view_cam, isp=True) if args.isp
-                                      else Camera(view_cam, crop=plane.view_crop))
+        view_source = view_geo = None
+        if view_cam != "none" and args.isp:
+            # live picture: ISP -> G2D -> screen, never through Python; only
+            # its geometry is needed to place the frames
+            w, h = isp_size(int(view_cam[-1])) or (1920, 1080)
+            view_geo = types.SimpleNamespace(crop=((2592 - w) // 2, (1944 - h) // 2, w, h),
+                                             scale=screen_size()[0] / w, size=(w, h))
+        elif view_cam != "none":
+            view_source = FrameSource(Camera(view_cam, crop=plane.view_crop))
             sources.append(view_source)
         for name in backends:
             print(f"loading {NAMES[name]} ...", flush=True)
@@ -367,7 +374,7 @@ def main(argv=None):
     search = SearchState([(l, products.get(l, {}).get("name") or l) for l in labels])
     resets = 0
     screen = canvas = panel = None
-    frames, shown_seq = 0, -1
+    frames, shown_seq, last_draw = 0, -1, 0.0
     try:
         while not stop.is_set() and (args.frames is None or frames < args.frames):
             for s in sources:
@@ -380,25 +387,39 @@ def main(argv=None):
                     die(f"{NAMES[w.detector.backend_name]} failed: "
                         f"{type(w.error).__name__}: {w.error}", code=3)
 
-            frame, seq = view_source.latest() if view_source else det_source.take()
-            if frame is None or seq == shown_seq:
-                time.sleep(0.003)
-                continue
-            shown_seq = seq
-            if view_source is None:  # detection picture itself, scaled for the screen
+            if view_geo is not None:  # overlay layer only, at most ~25 times a second
+                wait = 0.04 - (time.monotonic() - last_draw)
+                if wait > 0:
+                    time.sleep(wait)
+                last_draw = time.monotonic()
+                frame = None
+            else:
+                frame, seq = view_source.latest() if view_source else det_source.take()
+                if frame is None or seq == shown_seq:
+                    time.sleep(0.003)
+                    continue
+                shown_seq = seq
+            if view_geo is not None:
+                base = None
+            elif view_source is None:  # detection picture itself, scaled for the screen
                 view_scale = min(1.0, screen_size()[0] / frame.shape[1])
                 base = to_bgrx(cv2.resize(frame, None, fx=view_scale, fy=view_scale,
                                           interpolation=cv2.INTER_AREA))
             else:
                 base = frame
-            h, w_ = base.shape[:2]
             if canvas is None:
-                canvas = np.zeros((h, w_ * len(workers), 4), np.uint8)
-                screen = Screen(canvas.shape[1], h)
+                if view_geo is not None:
+                    screen = OverlayScreen(int(view_cam[-1]), view_geo.size)
+                    w_, h = screen.size
+                    canvas = np.zeros((h, w_, 4), np.uint8)
+                else:
+                    h, w_ = base.shape[:2]
+                    canvas = np.zeros((h, w_ * len(workers), 4), np.uint8)
+                    screen = Screen(canvas.shape[1], h)
                 panel = None if args.no_panel else InfoPanel(products, workers[0].detector.labels)
             for i, worker in enumerate(workers):
                 half = canvas[:, i * w_:(i + 1) * w_]
-                half[:] = base
+                half[:] = 0 if base is None else base  # transparent layer, or the picture
                 result = worker.result
                 if result is None:
                     label_frame(half, f"{NAMES[worker.detector.backend_name]}: starting ...")
@@ -414,14 +435,15 @@ def main(argv=None):
                     keep = np.isin(dets[:, 5].astype(int), list(wanted))
                     dets, quads = dets[keep], quads[keep]
                     lifted = lifted[np.isin(lifted[:, 5].astype(int), list(wanted))]
-                if view_source is None:
+                if view_source is None and view_geo is None:
                     dets, lifted = dets.copy(), lifted.copy()
                     dets[:, :4] *= view_scale
                     lifted[:, :4] *= view_scale
                     quads = quads * view_scale
                 else:
-                    quads = quads_to_view(quads, det_source.cam, view_source.cam, plane)
-                    dets, lifted = (to_view(d, det_source.cam, view_source.cam, plane)
+                    view = view_geo or view_source.cam
+                    quads = quads_to_view(quads, det_source.cam, view, plane)
+                    dets, lifted = (to_view(d, det_source.cam, view, plane)
                                     for d in (dets, lifted))
                 draw(half, dets, display_labels(worker.detector.labels, products)
                      if args.box_labels else None, None if args.axis_boxes else quads)
@@ -448,7 +470,7 @@ def main(argv=None):
             if snap.is_set():
                 snap.clear()
                 cv2.imwrite("/tmp/phytec-detect.png", canvas[..., :3])
-                if view_source is not None and det_source.frame is not None:
+                if (view_source or view_geo) is not None and det_source.frame is not None:
                     cv2.imwrite("/tmp/phytec-detect-cam.png", det_source.frame)
             screen.show(canvas)
             frames += 1
@@ -456,6 +478,7 @@ def main(argv=None):
             if frames % 60 == 0:
                 print(f"detect cam {det_source.fps:4.1f} fps"
                       + (f"  live cam {view_source.fps:4.1f} fps" if view_source else "")
+                      + ("  live picture 30 fps (G2D)" if view_geo is not None else "")
                       + "  " + "  ".join(
                           f"{NAMES[w.detector.backend_name]} {w.fps:4.1f} fps "
                           f"[{len(w.tiler.tiles) if w.tiler else 1} tiles] "

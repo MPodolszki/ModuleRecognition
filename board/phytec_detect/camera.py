@@ -353,12 +353,51 @@ class Screen:
         self._pipeline.set_state(self._Gst.State.NULL)
 
 
+class OverlayScreen:
+    """Live colour picture straight from the ISP to the screen -- camera,
+    ISP, G2D compositor, Wayland, at the camera's 30 fps without passing
+    through Python -- with a transparent BGRA layer on top for frames,
+    labels and panels. show(layer) replaces the layer whenever it changes;
+    the compositor keeps the last one in between."""
+
+    def __init__(self, csi, size, fps=30):
+        import gi
+        gi.require_version("Gst", "1.0")
+        from gi.repository import Gst
+
+        Gst.init(None)
+        self._Gst = Gst
+        w, h = size
+        sw, sh = screen_size()
+        leaky = "queue max-size-buffers=2 leaky=downstream"
+        self._pipeline = Gst.parse_launch(
+            f"imxcompositor_g2d name=c sink_0::width={sw} sink_0::height={sh} "
+            f"sink_1::width={sw} sink_1::height={sh} sink_1::zorder=1 ! "
+            f"waylandsink fullscreen=true sync=false "
+            f"v4l2src device=/dev/video-isp-csi{csi} ! "
+            f"video/x-raw,format=YUY2,width={w},height={h},framerate={fps}/1 ! {leaky} ! c.sink_0 "
+            f"appsrc name=layer is-live=true do-timestamp=true format=time "
+            f"caps=video/x-raw,format=BGRA,width={sw},height={sh},framerate=0/1 ! "
+            f"{leaky} ! c.sink_1")
+        self._src = self._pipeline.get_by_name("layer")
+        self.size = (sw, sh)
+        self._pipeline.set_state(Gst.State.PLAYING)
+
+    def show(self, bgra):
+        self._src.emit("push-buffer", self._Gst.Buffer.new_wrapped(bgra.tobytes()))
+
+    def close(self):
+        self._src.emit("end-of-stream")
+        self._pipeline.set_state(self._Gst.State.NULL)
+
+
 def label_frame(frame, text, color=(0, 255, 255)):
     """Solid bar with large text at the top, readable from a few metres."""
     font, scale, thickness, margin = cv2.FONT_HERSHEY_SIMPLEX, 1.1, 3, 12
     (_, text_h), baseline = cv2.getTextSize(text, font, scale, thickness)
     bar_height = text_h + baseline + 2 * margin
-    cv2.rectangle(frame, (0, 0), (frame.shape[1], bar_height), (0, 0, 0), -1)
+    alpha = (255,) if frame.ndim == 3 and frame.shape[2] == 4 else ()
+    cv2.rectangle(frame, (0, 0), (frame.shape[1], bar_height), (0, 0, 0) + alpha, -1)
     cv2.putText(frame, text, (margin, margin + text_h), font, scale,
                 color + ((255,) if frame.ndim == 3 and frame.shape[2] == 4 else ()),
                 thickness, cv2.LINE_AA)
