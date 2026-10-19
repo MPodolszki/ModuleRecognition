@@ -377,15 +377,29 @@ class OverlayScreen:
             f"v4l2src device=/dev/video-isp-csi{csi} ! "
             f"video/x-raw,format=YUY2,width={w},height={h},framerate={fps}/1 ! {leaky} ! c.sink_0 "
             f"appsrc name=layer is-live=true do-timestamp=true format=time "
-            f"caps=video/x-raw,format=BGRA,width={sw},height={sh},framerate=0/1 ! "
-            f"{leaky} ! c.sink_1")
+            f"caps=video/x-raw,format=BGRA,width={sw},height={sh},framerate={fps}/1 ! "
+            # The G2D only blends DMA buffers: a wrapped Python buffer is
+            # dropped without a word. videoconvert writes the layer into a
+            # buffer from the compositor's own pool (the BGRA -> RGBA swap is
+            # just the price of that copy).
+            f"videoconvert ! video/x-raw,format=RGBA ! {leaky} ! c.sink_1")
         self._src = self._pipeline.get_by_name("layer")
         self.size = (sw, sh)
         self.frames, self.error = 0, None  # composed frames; first pipeline error
+        self._last = None
+
+        self.grab_to = None  # path: save the next composed frame there (snapshot)
 
         def count(pad, info):
             self.frames += 1
+            if self.grab_to:
+                try:
+                    self._grab(pad, info)
+                except Exception as error:  # noqa: BLE001 -- a snapshot is not worth a crash
+                    print(f"overlay screen: snapshot failed: {error!r}", flush=True)
+                self.grab_to = None
             return Gst.PadProbeReturn.OK
+
         self._pipeline.get_by_name("c").get_static_pad("src").add_probe(
             Gst.PadProbeType.BUFFER, count)
         bus = self._pipeline.get_bus()
@@ -404,7 +418,29 @@ class OverlayScreen:
         if self._pipeline.set_state(Gst.State.PLAYING) == Gst.StateChangeReturn.FAILURE:
             self.error = "pipeline does not start"
 
+    def _grab(self, pad, info):
+        Gst = self._Gst
+        caps = pad.get_current_caps().get_structure(0)
+        cw, ch = caps.get_value("width"), caps.get_value("height")
+        rgb = caps.get_value("format").startswith("RGB")
+        buf = info.get_buffer()
+        ok, m = buf.map(Gst.MapFlags.READ)
+        if not ok:
+            raise RuntimeError("cannot map the composed frame")
+        try:
+            a = np.frombuffer(m.data, np.uint8)
+            stride = cw * 4 if a.size % (cw * 4) == 0 else a.size // ch
+            img = a[:stride * ch].reshape(ch, stride)[:, :cw * 4].reshape(ch, cw, 4)
+            cv2.imwrite(self.grab_to, img[..., 2::-1] if rgb else img[..., :3])
+        finally:
+            buf.unmap(m)
+
     def show(self, bgra):
+        """Replace the layer -- only when it changed: every push costs a
+        full-screen copy (videoconvert)."""
+        if self._last is not None and np.array_equal(self._last, bgra):
+            return
+        self._last = bgra.copy()
         self._src.emit("push-buffer", self._Gst.Buffer.new_wrapped(bgra.tobytes()))
 
     def close(self):

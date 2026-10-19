@@ -147,7 +147,9 @@ class Listener:
                 rms = float(np.sqrt(np.mean(f * f))) + 1e-6
                 floor = rms if floor is None else (0.995 * floor + 0.005 * rms
                                                    if not active else floor)
-                loud = rms > 3.0 * floor and rms > 0.004
+                # clearly above the room, and not just a clatter: every
+                # utterance costs the Hailo 0.5-2.5 s that detection misses
+                loud = rms > 4.0 * floor and rms > 0.01
                 if not active:
                     buf = (buf + [f])[-15:]  # keep 0.3 s before the start
                     if loud:
@@ -156,7 +158,7 @@ class Listener:
                 buf.append(f)
                 quiet = 0 if loud else quiet + 1
                 if quiet >= 30 or len(buf) >= 8 * 50:  # 0.6 s quiet, or 8 s
-                    if len(buf) >= 25:  # at least 0.5 s
+                    if len(buf) - quiet >= 35:  # at least ~0.7 s of sound
                         yield np.concatenate(buf)
                     active, buf = False, []
 
@@ -180,7 +182,7 @@ class Listener:
                 except Exception as error:  # noqa: BLE001 -- keep listening
                     self.log(f"voice: {type(error).__name__}: {error}")
                     continue
-                shown = re.sub(r"[\[(][^\])]*[\])]?", "", text).strip(" .")
+                shown = re.sub(r"[\[(*][^\])*]*[\])*]?", "", text).strip(" .")
                 if not woke and not awake and len(re.sub(r"[^a-zA-Z0-9äöüß]", "", shown)) < 3:
                     continue
                 self.log(f"voice: heard '{text}' ({self.last_ms:.0f} ms)"

@@ -326,6 +326,27 @@ def main(argv=None):
     products = load_products(model_dirs)
 
     workers, sources = [], []
+    screen = None
+    if args.isp and view_cam != "none":
+        # Live picture first: its compositor needs large contiguous DMA
+        # buffers, which are hard to get once the cameras, the Hailo and
+        # Whisper have broken the CMA area up ("failed to activate bufferpool").
+        # Whisper alone takes ~230 MB of it, so wait until the pipeline runs
+        # (its pools are allocated) before anything else starts.
+        for attempt in range(5):
+            screen = OverlayScreen(int(view_cam[-1]), isp_size(int(view_cam[-1])) or (1920, 1080))
+            screen.show(np.zeros((screen.size[1], screen.size[0], 4), np.uint8))
+            t0 = time.monotonic()
+            while screen.frames < 5 and not screen.error and time.monotonic() - t0 < 5:
+                time.sleep(0.05)
+            if screen.frames >= 5 and not screen.error:
+                break
+            print(f"live picture: {screen.error or 'no frames'} -- try {attempt + 2}", flush=True)
+            screen.close()
+            time.sleep(2)
+        else:
+            die("live picture does not start", code=3)
+        t_screen = time.monotonic()
     try:
         if args.isp:
             det_cam = Camera(args.detect_cam, isp=True)
@@ -373,7 +394,8 @@ def main(argv=None):
     labels = workers[0].detector.labels
     search = SearchState([(l, products.get(l, {}).get("name") or l) for l in labels])
     resets = 0
-    screen = canvas = panel = None
+    canvas = panel = None
+    screen_tries = 0
     frames, shown_seq, last_draw = 0, -1, 0.0
     try:
         while not stop.is_set() and (args.frames is None or frames < args.frames):
@@ -381,7 +403,16 @@ def main(argv=None):
                 if s.error:
                     die(s.error)
             if view_geo is not None and screen is not None and screen.error:
-                die(f"live picture: {screen.error}", code=3)
+                # right after a restart the camera or the display may still be
+                # held by the previous run: a few new tries before giving up
+                screen_tries += 1
+                if screen_tries > 5:
+                    die(f"live picture: {screen.error}", code=3)
+                print(f"live picture: {screen.error} -- try {screen_tries} again", flush=True)
+                screen.close()
+                time.sleep(2)
+                screen = OverlayScreen(int(view_cam[-1]), view_geo.size)
+                t_screen = time.monotonic()
             for w in workers:
                 if w.error is not None:
                     # Exit non-zero so systemd (Restart=on-failure) starts over
@@ -411,8 +442,6 @@ def main(argv=None):
                 base = frame
             if canvas is None:
                 if view_geo is not None:
-                    screen = OverlayScreen(int(view_cam[-1]), view_geo.size)
-                    t_screen = time.monotonic()
                     w_, h = screen.size
                     canvas = np.zeros((h, w_, 4), np.uint8)
                 else:
@@ -473,6 +502,8 @@ def main(argv=None):
             if snap.is_set():
                 snap.clear()
                 cv2.imwrite("/tmp/phytec-detect.png", canvas[..., :3])
+                if view_geo is not None:  # what the screen really shows
+                    screen.grab_to = "/tmp/phytec-detect-screen.png"
                 if (view_source or view_geo) is not None and det_source.frame is not None:
                     cv2.imwrite("/tmp/phytec-detect-cam.png", det_source.frame)
             screen.show(canvas)
