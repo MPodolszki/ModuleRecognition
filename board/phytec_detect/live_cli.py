@@ -37,7 +37,7 @@ from .calib import PlaneMap, frame_to_sensor, sensor_to_frame
 from .camera import Camera, Screen, die, find_sensor, label_frame, screen_size, to_bgrx
 from .detector import Detector
 from .info_panel import InfoPanel
-from .postprocess import draw
+from .postprocess import draw, module_quad
 from .tiling import Tiler, find_image_circle
 from .tracking import TableTracker
 
@@ -103,22 +103,26 @@ class Worker:
     run thread waits for the accelerator and decodes the previous one --
     the Cortex-A53s and the accelerator work at the same time.
 
-    The run thread also tracks the detections to tell which products are
-    lifted (tracking.py)."""
+    A third thread tracks the detections (which products are lifted,
+    tracking.py) and finds their turned outlines, one frame behind, so the
+    accelerator does not wait for it."""
 
     def __init__(self, detector, source, tiler_factory):
         self.detector, self.source, self._tiler_factory = detector, source, tiler_factory
         self.tracker = TableTracker()
         self.tiler = None
-        self.result = None  # (frame, detections, sequence number)
+        self.result = None  # (frame, detections, sequence number, lifted, turned outlines)
         self.fps = 0.0
         self.error = None
         self._done = []
         self._job = None  # (frame, seq, prepared) handed from prepare to run
         self._cond = threading.Condition()
+        self._track_job = None  # (frame, seq, dets) handed from run to track; newest wins
+        self._track_cond = threading.Condition()
         self._stop = threading.Event()
         self._threads = [threading.Thread(target=self._prepare_loop, daemon=True),
-                         threading.Thread(target=self._run_loop, daemon=True)]
+                         threading.Thread(target=self._run_loop, daemon=True),
+                         threading.Thread(target=self._track_loop, daemon=True)]
         for t in self._threads:
             t.start()
 
@@ -126,6 +130,8 @@ class Worker:
         self._stop.set()
         with self._cond:
             self._cond.notify_all()
+        with self._track_cond:
+            self._track_cond.notify_all()
         for t in self._threads:
             t.join(timeout=5)
 
@@ -159,10 +165,6 @@ class Worker:
             frame, seq, prepared = job
             try:
                 dets = self.detector.run(prepared)
-                gray = frame if frame.ndim == 2 else cv2.cvtColor(frame, cv2.COLOR_BGRA2GRAY)
-                tracks = self.tracker.update(gray, dets)
-                lifted = np.array([[*t.box, t.score, t.cls] for t in self.tracker.picked()],
-                                  np.float32).reshape(-1, 6)
             except Exception as error:  # e.g. HailoRTTimeout: let main() exit
                 self.error = error
                 return
@@ -170,7 +172,32 @@ class Worker:
             self._done = (self._done + [now])[-10:]
             if len(self._done) > 1:
                 self.fps = (len(self._done) - 1) / (self._done[-1] - self._done[0])
-            self.result = (frame, dets, seq, lifted)
+            with self._track_cond:
+                self._track_job = (frame, seq, dets)
+                self._track_cond.notify_all()
+
+    def _track_loop(self):
+        while not self._stop.is_set():
+            with self._track_cond:
+                while self._track_job is None and not self._stop.is_set():
+                    self._track_cond.wait(0.1)
+                job, self._track_job = self._track_job, None
+            if job is None:
+                continue
+            frame, seq, dets = job
+            try:
+                t0 = time.perf_counter()
+                gray = frame if frame.ndim == 2 else cv2.cvtColor(frame, cv2.COLOR_BGRA2GRAY)
+                self.tracker.update(gray, dets)
+                lifted = np.array([[*t.box, t.score, t.cls] for t in self.tracker.picked()],
+                                  np.float32).reshape(-1, 6)
+                quads = np.array([module_quad(gray, d) for d in dets],
+                                 np.float32).reshape(-1, 4, 2)
+                self.detector.times["track"].append(time.perf_counter() - t0)
+            except Exception as error:
+                self.error = error
+                return
+            self.result = (frame, dets, seq, lifted, quads)
 
 
 def load_products(model_dirs):
@@ -200,6 +227,15 @@ def to_view(dets, det_cam, view_cam, plane):
     d[:, :2] = sensor_to_frame(d[:, :2], view_cam)
     d[:, 2:4] = sensor_to_frame(d[:, 2:4], view_cam)
     return d
+
+
+def quads_to_view(quads, det_cam, view_cam, plane):
+    """Turned outlines (N, 4, 2) from the detection to the live picture."""
+    if not len(quads):
+        return quads
+    pts = frame_to_sensor(quads.reshape(-1, 2), det_cam)
+    pts = sensor_to_frame(plane(pts), view_cam)
+    return pts.reshape(-1, 4, 2).astype(np.float32)
 
 
 def _bar_text(worker):
@@ -249,6 +285,8 @@ def main(argv=None):
                              "0 = no tiling, whole frame to 640)")
     parser.add_argument("--box-labels", action="store_true",
                         help="write the product name at every frame (default: frames only)")
+    parser.add_argument("--axis-boxes", action="store_true",
+                        help="plain axis-aligned boxes instead of frames turned like the module")
     parser.add_argument("--no-panel", action="store_true",
                         help="never slide in product info (products.json) for lifted products")
     parser.add_argument("-n", "--frames", type=int, help="stop after N screen frames")
@@ -350,16 +388,18 @@ def main(argv=None):
                 if result is None:
                     label_frame(half, f"{NAMES[worker.detector.backend_name]}: starting ...")
                     continue
-                dets, lifted = result[1], result[3]
+                dets, lifted, quads = result[1], result[3], result[4]
                 if view_source is None:
                     dets, lifted = dets.copy(), lifted.copy()
                     dets[:, :4] *= view_scale
                     lifted[:, :4] *= view_scale
+                    quads = quads * view_scale
                 else:
+                    quads = quads_to_view(quads, det_source.cam, view_source.cam, plane)
                     dets, lifted = (to_view(d, det_source.cam, view_source.cam, plane)
                                     for d in (dets, lifted))
                 draw(half, dets, display_labels(worker.detector.labels, products)
-                     if args.box_labels else None)
+                     if args.box_labels else None, None if args.axis_boxes else quads)
                 for x0, y0, x1, y1, _, _ in lifted:  # lifted: thick yellow frame
                     cv2.rectangle(half, (int(x0) - 4, int(y0) - 4), (int(x1) + 4, int(y1) + 4),
                                   (0, 230, 255, 255), 7)
@@ -383,7 +423,8 @@ def main(argv=None):
                           f"{NAMES[w.detector.backend_name]} {w.fps:4.1f} fps "
                           f"[{len(w.tiler.tiles) if w.tiler else 1} tiles] "
                           f"(pre {w.detector.ms('pre'):.0f} / infer {w.detector.ms('infer'):.0f}"
-                          f" / post {w.detector.ms('post'):.0f} ms)" for w in workers),
+                          f" / post {w.detector.ms('post'):.0f} / track {w.detector.ms('track'):.0f} ms)"
+                          for w in workers),
                       flush=True)
     finally:
         for w in workers:

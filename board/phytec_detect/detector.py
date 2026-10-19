@@ -55,7 +55,7 @@ class Detector:
             self._offsets.append(len(self.labels))
             self.labels += m.labels
         self.nc = len(self.labels)
-        self.times = {k: deque(maxlen=100) for k in ("pre", "infer", "post")}
+        self.times = {k: deque(maxlen=100) for k in ("pre", "infer", "post", "track")}
 
     @property
     def paths(self):

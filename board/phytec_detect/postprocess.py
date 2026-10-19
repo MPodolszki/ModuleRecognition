@@ -139,13 +139,54 @@ def id_to_color(class_id):
     return tuple(int(c) for c in rng.randint(64, 255, size=3))
 
 
-def draw(image, dets, labels):
+def module_quad(gray, box, margin=0.15):
+    """The module's turned outline inside a detection box: 4 corners (x, y)
+    of the minimum-area rectangle around the dark board on the bright table,
+    or the box corners when that does not work out (module in a hand, on
+    something dark, ...)."""
+    x1, y1, x2, y2 = (float(v) for v in box[:4])
+    w, h = x2 - x1, y2 - y1
+    corners = np.float32([[x1, y1], [x2, y1], [x2, y2], [x1, y2]])
+    if w < 12 or h < 12:
+        return corners
+    gh, gw = gray.shape[:2]
+    cx0, cy0 = max(0, int(x1 - margin * w)), max(0, int(y1 - margin * h))
+    cx1, cy1 = min(gw, int(x2 + margin * w)), min(gh, int(y2 + margin * h))
+    if cx1 - cx0 < 8 or cy1 - cy0 < 8:
+        return corners
+    # on <= ~100 px: a few ms less per module, and a pixel or two is plenty
+    step = max(1, int(max(cx1 - cx0, cy1 - cy0) / 100))
+    crop = cv2.GaussianBlur(np.ascontiguousarray(gray[cy0:cy1:step, cx0:cx1:step]), (3, 3), 0)
+    _, mask = cv2.threshold(crop, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if not contours:
+        return corners
+    c = max(contours, key=cv2.contourArea)
+    rect = cv2.minAreaRect(c)
+    area = rect[1][0] * rect[1][1] * step * step
+    # plausible: the turned rectangle fills a good part of the box and does
+    # not reach far beyond it (a hand or a shadow merged with the board)
+    if not 0.35 * w * h <= area <= 1.15 * w * h:
+        return corners
+    if cv2.contourArea(c) * step * step < 0.75 * area:  # not rectangular enough
+        return corners
+    return (cv2.boxPoints(rect) * step + [cx0, cy0]).astype(np.float32)
+
+
+def draw(image, dets, labels, quads=None):
     """Draw image-space detections onto a BGR or BGRx frame, in place.
-    labels=None draws the frames only."""
-    for x1, y1, x2, y2, score, class_id in dets:
+    labels=None draws the frames only; quads (N, 4, 2) draws turned frames
+    (module_quad) instead of the boxes."""
+    for i, (x1, y1, x2, y2, score, class_id) in enumerate(dets):
         p1, p2 = (int(x1), int(y1)), (int(x2), int(y2))
         color = id_to_color(class_id) + ((255,) if image.shape[2] == 4 else ())
-        cv2.rectangle(image, p1, p2, color, 3)
+        if quads is not None:
+            q = np.round(quads[i]).astype(np.int32)
+            cv2.polylines(image, [q], True, color, 3, cv2.LINE_AA)
+            p1 = (int(q[:, 0].min()), int(q[:, 1].min()))
+        else:
+            cv2.rectangle(image, p1, p2, color, 3)
         if labels is None:
             continue
         text = f"{labels[int(class_id)]} {score * 100:.0f}%"
