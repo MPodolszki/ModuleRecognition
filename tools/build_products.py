@@ -175,7 +175,7 @@ def main():
     parser.add_argument("--max-size", type=float, default=0.45)
     parser.add_argument("--color", action="store_true", help="keep colour (default: gray)")
     parser.add_argument("--setup-repeat", type=int, default=5,
-                        help="training copies of each demo-setup picture (vm017/ folders)")
+                        help="training copies of each demo-setup picture (vm017/, vm017_isp/ folders)")
     parser.add_argument("--seed", type=int, default=0)
     args = parser.parse_args()
 
@@ -224,7 +224,7 @@ def main():
             # Pictures from the demo setup itself (phytec-photo, in vm017/)
             # are what the model will see -- weight them up against the
             # thousands of synthetic scenes.
-            copies = args.setup_repeat if (split == "train" and path.parent.name == "vm017") else 1
+            copies = args.setup_repeat if (split == "train" and path.parent.name in ("vm017", "vm017_isp")) else 1
             for c in range(copies):
                 write(out, split, f"real_{art}_{path.stem}" + (f"_r{c}" if c else ""),
                       to_out(small, gray), [(cid, x0, y0, x1, y1)])
