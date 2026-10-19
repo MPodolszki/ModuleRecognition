@@ -1,0 +1,13 @@
+[Unit]
+Description=PHYTEC trade fair: buttons switch between demo and training
+After=multi-user.target
+
+[Service]
+Environment=PYTHONPATH=/opt/phytec-detect PYTHONUNBUFFERED=1
+EnvironmentFile=-/etc/default/phytec-mode
+ExecStart=/usr/bin/python3 -m phytec_detect.mode_cli
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

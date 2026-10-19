@@ -51,3 +51,14 @@ $SSH "cat > /etc/systemd/system/phytec-camera-retry.service && systemctl daemon-
 
 # Product list for phytec-photo-queue (Artikelnummer;Bezeichnung).
 "$ROOT/tools/sync_products.sh" "$BOARD" --once >/dev/null
+
+# Demo, trade-fair training show and the buttons switching between them.
+for unit in phytec-detect phytec-trial phytec-mode; do
+    $SSH "cat > /etc/systemd/system/$unit.service" < "$ROOT/board/systemd/$unit.service"
+done
+$SSH "cat > $DEST/bin/phytec-mode && chmod +x $DEST/bin/phytec-mode" <<EOF2
+#!/bin/sh
+# Switch demo / training by hand (as root): phytec-mode demo|training
+PYTHONPATH=$DEST exec python3 -m phytec_detect.mode_cli "\$@"
+EOF2
+$SSH "systemctl daemon-reload && systemctl enable -q phytec-mode && systemctl restart phytec-mode"

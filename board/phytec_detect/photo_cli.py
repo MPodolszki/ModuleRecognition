@@ -266,6 +266,9 @@ def main(argv=None):
     parser.add_argument("--list-csv", default=None,
                         help="show this products.csv on the right, with what is done "
                              "(phytec-photo-queue)")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="show the whole procedure without saving anything, over and "
+                             "over (trade fair: phytec-trial)")
     parser.add_argument("--isp", action="store_true",
                         help="through the ISP in its current mode (as phytec-detect --isp); "
                              "--aspect/--crop-y do not apply")
@@ -278,7 +281,7 @@ def main(argv=None):
     plan = make_plan(back=not args.no_back, lifted=args.lifted,
                      seed=sum(map(ord, args.article)))
     out_dir = os.path.join(args.out, args.article)
-    done = len([f for f in os.listdir(out_dir) if f.endswith(".jpg")]) \
+    done = 0 if args.dry_run else len([f for f in os.listdir(out_dir) if f.endswith(".jpg")]) \
         if os.path.isdir(out_dir) else 0
 
     try:
@@ -316,6 +319,7 @@ def main(argv=None):
     flash_until, countdown_at = 0.0, None
     shot = done
     intro_until = time.monotonic() + args.intro
+    intro_text = None
     plist = ProductList(args.list_csv, args.out, args.article) if args.list_csv else None
     finished = False
     try:
@@ -340,7 +344,7 @@ def main(argv=None):
                 lines = ["Tisch leer raeumen - Hintergrundbild"]
                 fire = rect is None and now >= intro_until
                 hold = 2.0
-                banner = f"NAECHSTES PRODUKT: {args.name or args.article}" \
+                banner = intro_text or f"NAECHSTES PRODUKT: {args.name or args.article}" \
                     if now < intro_until else None
             elif step == -1:
                 lines = ["Produkt (Vorderseite) in die Mitte legen"]
@@ -423,19 +427,25 @@ def main(argv=None):
                 if args.isp:
                     meta.update(path="isp", aspect=None, crop_y=None, sensor_window=cam.crop)
                 if step == -2:
-                    save(os.path.join(args.out, "_background"),
-                         f"bg_{args.article}_{int(time.time())}", gray, None, meta)
+                    if not args.dry_run:
+                        save(os.path.join(args.out, "_background"),
+                             f"bg_{args.article}_{int(time.time())}", gray, None, meta)
                 else:
                     if step == -1:
                         size = tuple(sorted(rect[1], reverse=True))
                     meta.update(plan[step] if step >= 0 else {"kind": "reference"})
                     shot += 1
-                    save(out_dir, f"{args.article}_{shot:03d}", gray, rect, meta)
+                    if not args.dry_run:
+                        save(out_dir, f"{args.article}_{shot:03d}", gray, rect, meta)
                     print(f"shot {shot}: {meta.get('kind')} {meta.get('side', '')} "
                           f"{meta.get('where', '')}", flush=True)
                 step += 1
                 stable_since, countdown_at, flash_until = None, None, now + 0.3
                 flip_until = None
+                if args.dry_run and step >= len(plan):  # show it again, from the start
+                    step, size, shot = -2, None, 0
+                    intro_until = now + 8.0
+                    intro_text = "FERTIG - so einfach lernt die Demo ein neues Produkt"
 
             # overlay
             cv2.rectangle(view, (0, 0), (view.shape[1], 120 + 34 * (len(lines) - 1)),

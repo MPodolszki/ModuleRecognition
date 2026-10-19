@@ -1,0 +1,17 @@
+[Unit]
+Description=PHYTEC trade fair: guided product photos as a show (nothing saved)
+After=weston.service imx8-phycam-isp.service
+Wants=weston.service
+Conflicts=phytec-detect.service
+
+[Service]
+User=weston
+WorkingDirectory=/tmp
+Environment=XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0
+Environment=PYTHONPATH=/opt/phytec-detect PYTHONUNBUFFERED=1
+Environment="PHYTEC_TRIAL_ARGS=--dry-run --isp --wait-start --article VORFUEHRUNG"
+EnvironmentFile=-/etc/default/phytec-trial
+ExecStartPre=/bin/sh -c 'for i in $(seq 60); do [ -S /run/user/1000/wayland-0 ] && exit 0; sleep 1; done; exit 1'
+ExecStart=/bin/sh -c 'exec /usr/bin/python3 -m phytec_detect.photo_cli $PHYTEC_TRIAL_ARGS --name "Neues Produkt"'
+Restart=always
+RestartSec=3
