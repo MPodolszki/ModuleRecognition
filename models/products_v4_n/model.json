@@ -1,0 +1,27 @@
+{
+  "name": "products_v4_n",
+  "imgsz": 640,
+  "nc": 11,
+  "names": [
+    "PCM-070-0F3243I.A3",
+    "PCM-072-42F2DE11I.A1",
+    "PFL-A-02-23237E0.A5",
+    "PCL-071-5432DE11I.A0",
+    "PCL-063-23500CI.A0",
+    "PCM-067-82EA01I.A0",
+    "PCM-058-33230C0I.A0",
+    "PCM-071-5432DE11I.A0",
+    "PCM-061-2111111C.A0",
+    "PCM-060-03051F2I.A0",
+    "PCM-057-40A00111I.A0"
+  ],
+  "outputs": [
+    "box_s8",
+    "cls_s8",
+    "box_s16",
+    "cls_s16",
+    "box_s32",
+    "cls_s32"
+  ],
+  "input": "RGB uint8 letterboxed, /255 inside the model or by the runtime"
+}
