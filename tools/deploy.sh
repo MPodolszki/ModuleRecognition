@@ -26,7 +26,7 @@ for dir in "$@"; do
         --exclude='*_fp32.tflite' -cf - .) | $SSH "mkdir -p $DEST/models/$name && tar -C $DEST/models/$name -xf -"
 done
 
-for tool in detect:live_cli benchmark:benchmark_cli capture:capture_cli calibrate:calibrate_cli focus:focus_cli photo:photo_cli photo-queue:photo_queue_cli; do
+for tool in detect:live_cli benchmark:benchmark_cli capture:capture_cli calibrate:calibrate_cli focus:focus_cli photo:photo_cli photo-queue:photo_queue_cli find:search; do
     cmd="${tool%%:*}"; module="${tool#*:}"
     $SSH "cat > $DEST/bin/phytec-$cmd" <<EOF
 #!/bin/sh
@@ -53,7 +53,7 @@ $SSH "cat > /etc/systemd/system/phytec-camera-retry.service && systemctl daemon-
 "$ROOT/tools/sync_products.sh" "$BOARD" --once >/dev/null
 
 # Demo, trade-fair training show and the buttons switching between them.
-for unit in phytec-detect phytec-trial phytec-mode; do
+for unit in phytec-detect phytec-trial phytec-mode phytec-voice; do
     $SSH "cat > /etc/systemd/system/$unit.service" < "$ROOT/board/systemd/$unit.service"
 done
 $SSH "cat > $DEST/bin/phytec-mode && chmod +x $DEST/bin/phytec-mode" <<EOF2
@@ -61,4 +61,7 @@ $SSH "cat > $DEST/bin/phytec-mode && chmod +x $DEST/bin/phytec-mode" <<EOF2
 # Switch demo / training by hand (as root): phytec-mode demo|training
 PYTHONPATH=$DEST exec python3 -m phytec_detect.mode_cli "\$@"
 EOF2
-$SSH "systemctl daemon-reload && systemctl enable -q phytec-mode && systemctl restart phytec-mode"
+$SSH "systemctl daemon-reload && systemctl enable -q phytec-mode phytec-voice && systemctl restart phytec-mode phytec-voice"
+
+# Search requests ("Wo ist der i.MX6?", phytec-find / voice) for the demo.
+$SSH "echo 'd /run/phytec-detect 1777 root root -' > /etc/tmpfiles.d/phytec-detect.conf && systemd-tmpfiles --create /etc/tmpfiles.d/phytec-detect.conf"

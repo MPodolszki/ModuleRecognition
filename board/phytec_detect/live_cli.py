@@ -38,6 +38,7 @@ from .camera import Camera, Screen, die, find_sensor, label_frame, screen_size, 
 from .detector import Detector
 from .info_panel import InfoPanel
 from .postprocess import draw, module_quad
+from .search import SearchState
 from .tiling import Tiler, find_image_circle
 from .tracking import TableTracker
 
@@ -351,6 +352,9 @@ def main(argv=None):
     snap = threading.Event()  # kill -USR1: save the screen to /tmp/phytec-detect.png
     signal.signal(signal.SIGUSR1, lambda *_: snap.set())
 
+    labels = workers[0].detector.labels
+    search = SearchState([(l, products.get(l, {}).get("name") or l) for l in labels])
+    resets = 0
     screen = canvas = panel = None
     frames, shown_seq = 0, -1
     try:
@@ -389,6 +393,16 @@ def main(argv=None):
                     label_frame(half, f"{NAMES[worker.detector.backend_name]}: starting ...")
                     continue
                 dets, lifted, quads = result[1], result[3], result[4]
+                wanted = search.poll()  # "Wo ist der i.MX6?": only those, else all
+                if search.resets != resets:  # "Reset": forget the table, start afresh
+                    resets = search.resets
+                    for w in workers:
+                        w.tracker = TableTracker()
+                    print("reset: table forgotten", flush=True)
+                if wanted is not None:
+                    keep = np.isin(dets[:, 5].astype(int), list(wanted))
+                    dets, quads = dets[keep], quads[keep]
+                    lifted = lifted[np.isin(lifted[:, 5].astype(int), list(wanted))]
                 if view_source is None:
                     dets, lifted = dets.copy(), lifted.copy()
                     dets[:, :4] *= view_scale
@@ -403,7 +417,14 @@ def main(argv=None):
                 for x0, y0, x1, y1, _, _ in lifted:  # lifted: thick yellow frame
                     cv2.rectangle(half, (int(x0) - 4, int(y0) - 4), (int(x1) + 4, int(y1) + 4),
                                   (0, 230, 255, 255), 7)
-                label_frame(half, _bar_text(worker))
+                if wanted is not None:
+                    found = len(dets)
+                    label_frame(half, f"Suche: {search.text}  -  "
+                                + (f"{found} gefunden" if found else
+                                   ("nicht auf dem Tisch" if wanted else "unbekanntes Produkt")),
+                                color=(0, 230, 0))
+                else:
+                    label_frame(half, _bar_text(worker))
             if panel is not None:
                 primary = workers[0].result
                 panel.update([int(c) for c in primary[3][:, 5]] if primary else [])

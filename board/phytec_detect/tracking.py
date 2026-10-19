@@ -35,7 +35,8 @@ LIFT_BOX = 1.25       # the box must have grown too (a hand next to a product
                       # table grows the box, not the area)
 CONFIRM = 3           # consecutive frames for a lifted/put-down change
 FORGET_S = 1.5        # a never-resting track unseen this long is dropped
-TAKEN_MAX_S = 600.0   # give up on a taken product after this long
+TAKEN_MAX_S = 120.0   # give up on a taken product after this long (info panel closes;
+                      # a guest's module that never comes back must not stay forever)
 
 
 def dark_area(gray, box):

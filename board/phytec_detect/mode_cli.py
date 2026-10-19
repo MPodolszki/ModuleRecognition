@@ -4,7 +4,8 @@
     phytec-mode demo         # switch by hand
     phytec-mode training
 
-  demo       phytec-detect: products on the table, framed in the live picture
+  demo       phytec-detect: products on the table, framed in the live picture;
+             pressed again while the demo runs: reset (forget the table)
   training   phytec-trial: the guided photo procedure for a new product, as
              it is really done -- but nothing is saved and nothing trained
 
@@ -33,7 +34,12 @@ def switch(mode):
     unit = UNITS[mode]
     active = subprocess.run(["systemctl", "is-active", "-q", unit]).returncode == 0
     if active:
-        print(f"{mode}: already running", flush=True)
+        if mode == "demo":  # demo button while the demo runs: start afresh
+            from .search import write_request
+            write_request("reset")
+            print("demo: reset (table forgotten)", flush=True)
+        else:
+            print(f"{mode}: already running", flush=True)
         return
     print(f"-> {mode} ({unit})", flush=True)
     subprocess.run(["systemctl", "start", "--no-block", unit], check=False)

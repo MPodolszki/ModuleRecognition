@@ -1,0 +1,13 @@
+[Unit]
+Description=PHYTEC demo: voice commands ("Wo ist der i.MX6?") from the USB microphone
+After=sound.target
+
+[Service]
+Environment=PYTHONPATH=/opt/phytec-detect PYTHONUNBUFFERED=1
+EnvironmentFile=-/etc/default/phytec-voice
+ExecStart=/bin/sh -c 'exec /usr/bin/python3 -m phytec_detect.voice_cli $PHYTEC_VOICE_ARGS'
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
