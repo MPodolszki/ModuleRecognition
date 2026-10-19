@@ -26,7 +26,7 @@ for dir in "$@"; do
         --exclude='*_fp32.tflite' -cf - .) | $SSH "mkdir -p $DEST/models/$name && tar -C $DEST/models/$name -xf -"
 done
 
-for tool in detect:live_cli benchmark:benchmark_cli capture:capture_cli calibrate:calibrate_cli focus:focus_cli photo:photo_cli; do
+for tool in detect:live_cli benchmark:benchmark_cli capture:capture_cli calibrate:calibrate_cli focus:focus_cli photo:photo_cli photo-queue:photo_queue_cli; do
     cmd="${tool%%:*}"; module="${tool#*:}"
     $SSH "cat > $DEST/bin/phytec-$cmd" <<EOF
 #!/bin/sh
@@ -48,3 +48,7 @@ $SSH "cat > $DEST/bin/phytec-camera-retry && chmod +x $DEST/bin/phytec-camera-re
     < "$ROOT/board/systemd/phytec-camera-retry.sh"
 $SSH "cat > /etc/systemd/system/phytec-camera-retry.service && systemctl daemon-reload \
     && systemctl enable -q phytec-camera-retry" < "$ROOT/board/systemd/phytec-camera-retry.service"
+
+# Product list for phytec-photo-queue (Artikelnummer;Bezeichnung).
+$SSH "cat > /var/lib/phytec-detect/products.csv && chown weston:weston /var/lib/phytec-detect/products.csv" \
+    < "$ROOT/dataset/products/products.csv"

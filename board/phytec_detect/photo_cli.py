@@ -184,6 +184,9 @@ def main(argv=None):
     parser.add_argument("--crop-y", type=float, default=1.0)
     parser.add_argument("--hold", type=float, default=1.0, help="seconds still before a shot")
     parser.add_argument("--source", default="csi1")
+    parser.add_argument("--intro", type=float, default=0.0,
+                        help="seconds to announce the product before the first shot "
+                             "(phytec-photo-queue)")
     parser.add_argument("--isp", action="store_true",
                         help="through the ISP in its current mode (as phytec-detect --isp); "
                              "--aspect/--crop-y do not apply")
@@ -227,6 +230,8 @@ def main(argv=None):
     frame_times, n_frames = [], 0
     flash_until, countdown_at = 0.0, None
     shot = done
+    intro_until = time.monotonic() + args.intro
+    finished = False
     try:
         while not stop.is_set() and step < len(plan):
             ok, gray = cam.read()
@@ -247,8 +252,10 @@ def main(argv=None):
 
             if step == -2:
                 lines = ["Tisch leer raeumen - Hintergrundbild"]
-                fire = rect is None
+                fire = rect is None and now >= intro_until
                 hold = 2.0
+                banner = f"NAECHSTES PRODUKT: {args.name or args.article}" \
+                    if now < intro_until else None
             elif step == -1:
                 lines = ["Produkt (Vorderseite) in die Mitte legen"]
                 target = ((w / 2, h / 2), None, 0)
@@ -350,7 +357,7 @@ def main(argv=None):
                         cv2.FONT_HERSHEY_SIMPLEX, 0.8, (160, 160, 160, 255), 2, cv2.LINE_AA)
             for i, line in enumerate(lines):
                 text(view, line, 82 + 34 * i, 0.85)
-            if step >= 0 and banner:
+            if banner and (step >= 0 or step == -2):
                 vh, vw = view.shape[:2]
                 cv2.rectangle(view, (0, vh // 2 - 70), (vw, vh // 2 + 70), (0, 0, 200, 255), -1)
                 fs = 1.6
@@ -366,11 +373,14 @@ def main(argv=None):
             screen.show(view)
         if step >= len(plan):
             print(f"done: {shot - done} new pictures in {out_dir}", flush=True)
+            with open(os.path.join(out_dir, "DONE"), "w") as f:  # phytec-photo-queue
+                f.write(time.strftime("%Y-%m-%d %H:%M:%S\n"))
+            finished = True
     finally:
         cam.release()
         if screen is not None:
             screen.close()
-    return 0
+    return 0 if finished else 1
 
 
 if __name__ == "__main__":
