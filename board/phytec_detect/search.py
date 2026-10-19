@@ -98,10 +98,28 @@ def request_of(text):
 def matches(request, products, fuzzy=0.65):
     """Indices of the products a request means. products: [(article, name)].
     Exact part of a name first ("imx6" -> all i.MX6); failing that the
-    names that sound closest (speech recognition is not exact)."""
+    names that sound closest (speech recognition is not exact). Leading
+    words the filler pattern missed ("Woste I-Mix 6") are tried away."""
+    words = request.split()
+    best_hits, best_score = [], 0.0
+    for k in range(len(words)):
+        key = squeeze(" ".join(words[k:]))
+        if len(key) < 3 or not re.search(r"[a-z]", key) or not re.search(r"\d", key) \
+                and k > 0:  # a lone "6" or a stray word is no product name
+            continue
+        hits, score = _matches(" ".join(words[k:]), products, fuzzy)
+        if hits and score >= 1.0:
+            return hits  # exact
+        if hits and score > best_score:
+            best_hits, best_score = hits, score
+    return best_hits
+
+
+def _matches(request, products, fuzzy):
+    """(indices, score): score 1.0 for exact hits, else the fuzzy ratio."""
     key = squeeze(request)
     if not key:
-        return []
+        return [], 0.0
     hits, scores = [], []
     for i, (article, name) in enumerate(products):
         sq = squeeze(name)
@@ -113,9 +131,9 @@ def matches(request, products, fuzzy=0.65):
                    for n in range(min(len(short), max(2, len(key) - 2)), len(short) + 1))
         scores.append(best)
     if hits:
-        return hits
+        return hits, 1.0
     top = max(scores)
-    return [i for i, sc in enumerate(scores) if sc >= fuzzy and sc >= top - 0.05]
+    return [i for i, sc in enumerate(scores) if sc >= fuzzy and sc >= top - 0.05], top
 
 
 def write_request(text, path=SEARCH_FILE):
@@ -124,7 +142,12 @@ def write_request(text, path=SEARCH_FILE):
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump({"text": text, "time": time.time()}, f)
     os.chmod(tmp, 0o666)
-    os.replace(tmp, path)
+    try:
+        os.replace(tmp, path)
+    except PermissionError:  # left by another user in the sticky /run dir
+        with open(path, "w", encoding="utf-8") as f, open(tmp, encoding="utf-8") as t:
+            f.write(t.read())
+        os.remove(tmp)
 
 
 class SearchState:

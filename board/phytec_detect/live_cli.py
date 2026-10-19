@@ -440,6 +440,11 @@ def main(argv=None):
                 primary = workers[0].result
                 panel.update([int(c) for c in primary[3][:, 5]] if primary else [])
                 panel.compose(canvas)
+            if listener is not None and time.monotonic() < listener.awake_until:
+                # "Phytec" heard: red dot top right while it listens for the command
+                cx, cy = canvas.shape[1] - 50, 100
+                cv2.circle(canvas, (cx, cy), 30, (0, 0, 220, 255), -1, cv2.LINE_AA)
+                cv2.circle(canvas, (cx, cy), 30, (255, 255, 255, 255), 3, cv2.LINE_AA)
             if snap.is_set():
                 snap.clear()
                 cv2.imwrite("/tmp/phytec-detect.png", canvas[..., :3])

@@ -64,4 +64,4 @@ EOF2
 $SSH "systemctl daemon-reload && systemctl enable -q phytec-mode && systemctl restart phytec-mode"
 
 # Search requests ("Wo ist der i.MX6?", phytec-find / voice) for the demo.
-$SSH "echo 'd /run/phytec-detect 1777 root root -' > /etc/tmpfiles.d/phytec-detect.conf && systemd-tmpfiles --create /etc/tmpfiles.d/phytec-detect.conf"
+$SSH "echo 'd /run/phytec-detect 0777 root root -' > /etc/tmpfiles.d/phytec-detect.conf && systemd-tmpfiles --create /etc/tmpfiles.d/phytec-detect.conf"

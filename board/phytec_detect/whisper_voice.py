@@ -25,7 +25,9 @@ import numpy as np
 DATA = "/usr/share/demo-whisper-benchmark"
 RATE = 16000
 WAKE = ("phytec", "fytek", "fytec", "feitek", "feitec", "fuetek", "fietek", "vitec", "fitek",
-        "physik", "phytek", "fighttec", "fitec")
+        "physik", "phytek", "fighttec", "fitec",
+        # as Whisper wrote it at the demo table
+        "futeck", "fueteck", "fuegtig", "fuetig", "fueteg")
 WAKE_S = 6.0
 # <|startoftranscript|> <|de|> <|transcribe|> <|notimestamps|>
 GERMAN_PROMPT = [50258, 50261, 50359, 50363]
@@ -66,6 +68,7 @@ class Listener:
                 self.device = i
                 break
         self.last_ms = 0.0
+        self.awake_until = 0.0  # "Phytec" heard: the demo shows a red dot until then
         self._chunks = queue.Queue(maxsize=200)
         self._stop = threading.Event()
         self._thread = threading.Thread(target=self._run, daemon=True)
@@ -132,16 +135,22 @@ class Listener:
                 except Exception as error:  # noqa: BLE001 -- keep listening
                     self.log(f"voice: {type(error).__name__}: {error}")
                     continue
-                if not text:
+                text = re.sub(r"[\[(][^\])]*[\])]?", "", text).strip(" .")  # (Geräusch), [Musik]
+                if len(re.sub(r"[^a-zA-Z0-9äöüß]", "", text)) < 3:
                     continue
                 woke, rest = wake_split(text)
                 self.log(f"voice: heard '{text}' ({self.last_ms:.0f} ms)"
                          + (" [Phytec]" if woke else ""))
                 if woke:
                     woken_until = time.monotonic() + WAKE_S
+                    self.awake_until = woken_until
                     if not rest:
                         continue
                 elif time.monotonic() > woken_until:
                     continue
                 woken_until = 0.0
-                write_request("reset" if is_reset(rest) else rest)
+                self.awake_until = time.monotonic() + 1.5  # keep the dot a moment
+                try:
+                    write_request("reset" if is_reset(rest) else rest)
+                except OSError as error:
+                    self.log(f"voice: {error}")
