@@ -287,6 +287,10 @@ def main(argv=None):
     except RuntimeError as error:
         die(str(error))
     stop = threading.Event()
+    # restored on return: phytec-photo-queue calls main() again and again,
+    # and must still end on SIGTERM while it waits for new products
+    old_handlers = {n: signal.getsignal(n) for n in (signal.SIGINT, signal.SIGTERM,
+                                                     signal.SIGUSR1)}
     for signum in (signal.SIGINT, signal.SIGTERM):
         signal.signal(signum, lambda *_: stop.set())
     snap = threading.Event()  # kill -USR1: save the screen to /tmp/phytec-photo.png
@@ -474,6 +478,8 @@ def main(argv=None):
         cam.release()
         if screen is not None:
             screen.close()
+        for signum, handler in old_handlers.items():
+            signal.signal(signum, handler)
     return 0 if finished else 1
 
 
