@@ -14,7 +14,6 @@ word "Phytec" -- which Whisper writes in many ways (Fytek, Feitek, Vitec,
 phytec-find request.
 """
 
-import difflib
 import queue
 import re
 import threading
@@ -22,30 +21,15 @@ import time
 
 import numpy as np
 
-from .whisper_grammar import Encoder, Grammar
+from .whisper_grammar import Encoder, Grammar, Wake
 
 DATA = "/usr/share/demo-whisper-benchmark"
 RATE = 16000
-WAKE = ("phytec", "fytek", "fytec", "feitek", "feitec", "fuetek", "fietek", "vitec", "fitek",
-        "physik", "phytek", "fighttec", "fitec",
-        # as Whisper wrote it at the demo table
-        "futeck", "fueteck", "fuegtig", "fuetig", "fueteg")
 WAKE_S = 6.0
 MIN_SCORE = -2.5  # mean log-probability a restricted command needs
+WAKE_MIN = -2.0   # mean log-probability of "Phytec" at the start of an utterance
 # <|startoftranscript|> <|de|> <|transcribe|> <|notimestamps|>
 GERMAN_PROMPT = [50258, 50261, 50359, 50363]
-
-
-def wake_split(text):
-    """('Phytec, wo ist der i.MX6?') -> (True, 'wo ist der i.MX6?')."""
-    words = text.strip().split()
-    for n in (1, 2):  # "Fy Tek" may come as two words
-        if len(words) < n:
-            break
-        head = re.sub(r"[^a-z]", "", " ".join(words[:n]).lower().replace("ü", "ue"))
-        if head and max(difflib.SequenceMatcher(None, head, w).ratio() for w in WAKE) >= 0.7:
-            return True, " ".join(words[n:]).lstrip(",.!? ")
-    return False, text
 
 
 class Listener:
@@ -67,6 +51,7 @@ class Listener:
         self.filters = wa.load_mel_filters(f"{DATA}/assets/mel_filters.npz")
         self.tokenizer = tok.WhisperTokenizer(f"{DATA}/assets/vocab.json")
         self.encoder = Encoder(f"{DATA}/assets/vocab.json")
+        self.wake = Wake(self.encoder)
         self.products_csv, self._csv_mtime, self.grammar = products, None, None
         self.device = None
         for i, d in enumerate(sd.query_devices()):
@@ -101,37 +86,23 @@ class Listener:
         return self.grammar
 
     def transcribe(self, audio, awake):
-        """Free transcript, and -- after the wake word, in this utterance or
-        the one before -- the command the restricted decoder picks:
-        (text, wake word seen, command or None, its mean log-probability)."""
+        """Score the wake word; after it -- in this utterance or the one
+        before -- the command the restricted decoder picks:
+        (wake score, wake word seen, command or None, its mean log-probability)."""
         wa = self._wa
         audio = wa.normalize_peak(audio)
         window = wa.pad_or_trim(audio, self.backend.chunk_length * RATE)
         mel = wa.log_mel_spectrogram(window, self.filters)
         t0 = time.perf_counter()
         encoded = self.backend.encode(mel)
-        tokens, _ = self.backend.generate(encoded)
-        text = self._tok.clean_transcription(self.tokenizer.decode(tokens))
-        woke, _ = wake_split(text)
+        wake_score, wake_ids = self.wake.score(self.backend, encoded, GERMAN_PROMPT)
+        woke = wake_score >= WAKE_MIN
         command, score = None, -99.0
         if woke or awake:
-            prefix = list(GERMAN_PROMPT)
-            if woke:  # force the wake word as written, decide only the rest
-                k = self._wake_tokens(tokens)
-                prefix += [int(t) for t in tokens[:k]]
-            if len(prefix) < self.backend.sequence_length - 4:
-                command, score = self._grammar().decode(self.backend, encoded, prefix)
+            prefix = list(GERMAN_PROMPT) + (wake_ids if woke else [])
+            command, score = self._grammar().decode(self.backend, encoded, prefix)
         self.last_ms = (time.perf_counter() - t0) * 1000
-        return text, woke, command, score
-
-    def _wake_tokens(self, tokens):
-        """How many of the free tokens make up the wake word."""
-        for k in range(1, len(tokens) + 1):
-            head = self.tokenizer.decode(tokens[:k])
-            nxt = self.tokenizer.decode(tokens[k:k + 1]) if k < len(tokens) else " "
-            if wake_split(head)[0] and (not nxt or nxt[0] in " ,.!?"):
-                return k
-        return len(tokens)
+        return wake_score, woke, command, score
 
     def _utterances(self):
         """Yield float32 utterances from the energy detector."""
@@ -178,23 +149,20 @@ class Listener:
             for audio in self._utterances():
                 awake = time.monotonic() < woken_until
                 try:
-                    text, woke, command, score = self.transcribe(audio, awake)
+                    wake_score, woke, command, score = self.transcribe(audio, awake)
                 except Exception as error:  # noqa: BLE001 -- keep listening
                     self.log(f"voice: {type(error).__name__}: {error}")
                     continue
-                shown = re.sub(r"[\[(*][^\])*]*[\])*]?", "", text).strip(" .")
-                if not woke and not awake and len(re.sub(r"[^a-zA-Z0-9äöüß]", "", shown)) < 3:
-                    continue
-                self.log(f"voice: heard '{text}' ({self.last_ms:.0f} ms)"
+                self.log(f"voice: {len(audio) / RATE:.1f} s, Phytec {wake_score:.2f}"
                          + (" [Phytec]" if woke else "")
-                         + (f" -> '{command}' ({score:.2f})" if command else ""))
+                         + (f" -> '{command}' ({score:.2f})" if command else "")
+                         + f" ({self.last_ms:.0f} ms)")
                 if woke:
                     woken_until = time.monotonic() + WAKE_S
                     self.awake_until = woken_until
                 if not (woke or awake) or command is None:
                     continue
-                if score < MIN_SCORE:  # talk forced into a command: not one
-                    self.log(f"voice: '{command}' too unsure ({score:.2f}), ignored")
+                if score < MIN_SCORE:  # talk forced into a command, or only "Phytec"
                     continue
                 woken_until = 0.0
                 self.awake_until = time.monotonic() + 1.5  # keep the dot a moment

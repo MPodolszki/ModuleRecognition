@@ -97,6 +97,48 @@ def sentences(products):
     return sorted(out)
 
 
+WAKE_TEXTS = ["Phytec", "phytec", "PHYTEC", "Fytek", "Feitek", "Fütek", "Fytec", "Phytek",
+              "Füttek", "Vitec"]
+
+
+def _logp(backend, encoded, token_ids, pos):
+    logits = backend.decode_logits(encoded, token_ids, pos).astype(np.float64)
+    logits -= logits.max()
+    return logits - np.log(np.exp(logits).sum())
+
+
+class Wake:
+    """Does an utterance start with 'Phytec'? Whisper scores the wake word's
+    spellings (token trie, best token each step) instead of writing down
+    freely what it heard -- free transcripts of 'Phytec' came out as
+    'Torig', 'Dünne', 'Futeck', ... A few decoder steps per utterance."""
+
+    def __init__(self, encoder):
+        self.trie, self.texts = {}, {}
+        for w in WAKE_TEXTS:
+            for lead in (" ", ""):
+                ids = encoder.encode(lead + w)
+                node = self.trie
+                for t in ids:
+                    node = node.setdefault(t, {})
+                self.texts[tuple(ids)] = w
+
+    def score(self, backend, encoded, prompt):
+        """(mean log-probability of the best wake spelling, its token ids)."""
+        token_ids = np.zeros((1, backend.sequence_length), dtype=np.int64)
+        token_ids[0, :len(prompt)] = prompt
+        pos, node, chosen, logps = len(prompt) - 1, self.trie, [], []
+        while node:
+            logp = _logp(backend, encoded, token_ids, pos)
+            best = max(node, key=lambda t: logp[t])
+            chosen.append(best)
+            logps.append(float(logp[best]))
+            node = node[best]
+            pos += 1
+            token_ids[0, pos] = best
+        return float(np.mean(logps)), chosen
+
+
 class Grammar:
     """Token trie of the command sentences, each with ' ', ', ' or '. '
     before it (after the wake word) and optional '?'/'.'/'!' at the end."""
