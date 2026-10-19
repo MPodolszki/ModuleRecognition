@@ -381,7 +381,28 @@ class OverlayScreen:
             f"{leaky} ! c.sink_1")
         self._src = self._pipeline.get_by_name("layer")
         self.size = (sw, sh)
-        self._pipeline.set_state(Gst.State.PLAYING)
+        self.frames, self.error = 0, None  # composed frames; first pipeline error
+
+        def count(pad, info):
+            self.frames += 1
+            return Gst.PadProbeReturn.OK
+        self._pipeline.get_by_name("c").get_static_pad("src").add_probe(
+            Gst.PadProbeType.BUFFER, count)
+        bus = self._pipeline.get_bus()
+        bus.add_signal_watch()
+        bus.enable_sync_message_emission()
+
+        def on_message(_bus, msg):
+            if msg.type in (Gst.MessageType.ERROR, Gst.MessageType.WARNING):
+                err, dbg = msg.parse_error() if msg.type == Gst.MessageType.ERROR \
+                    else msg.parse_warning()
+                text = f"{msg.src.get_name()}: {err.message} ({dbg})"
+                print(f"overlay screen: {text}", flush=True)
+                if msg.type == Gst.MessageType.ERROR and self.error is None:
+                    self.error = text
+        bus.connect("sync-message", on_message)
+        if self._pipeline.set_state(Gst.State.PLAYING) == Gst.StateChangeReturn.FAILURE:
+            self.error = "pipeline does not start"
 
     def show(self, bgra):
         self._src.emit("push-buffer", self._Gst.Buffer.new_wrapped(bgra.tobytes()))

@@ -380,6 +380,8 @@ def main(argv=None):
             for s in sources:
                 if s.error:
                     die(s.error)
+            if view_geo is not None and screen is not None and screen.error:
+                die(f"live picture: {screen.error}", code=3)
             for w in workers:
                 if w.error is not None:
                     # Exit non-zero so systemd (Restart=on-failure) starts over
@@ -410,6 +412,7 @@ def main(argv=None):
             if canvas is None:
                 if view_geo is not None:
                     screen = OverlayScreen(int(view_cam[-1]), view_geo.size)
+                    t_screen = time.monotonic()
                     w_, h = screen.size
                     canvas = np.zeros((h, w_, 4), np.uint8)
                 else:
@@ -478,7 +481,8 @@ def main(argv=None):
             if frames % 60 == 0:
                 print(f"detect cam {det_source.fps:4.1f} fps"
                       + (f"  live cam {view_source.fps:4.1f} fps" if view_source else "")
-                      + ("  live picture 30 fps (G2D)" if view_geo is not None else "")
+                      + (f"  live picture {screen.frames / max(time.monotonic() - t_screen, 1e-3):4.1f} fps (G2D)"
+                         if view_geo is not None and screen is not None else "")
                       + "  " + "  ".join(
                           f"{NAMES[w.detector.backend_name]} {w.fps:4.1f} fps "
                           f"[{len(w.tiler.tiles) if w.tiler else 1} tiles] "
