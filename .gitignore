@@ -22,3 +22,5 @@ dataset/products/**/*.HEIC
 dataset/products/**/*.heic
 dataset/products/**/*.json
 dataset/products/**/*.txt
+!dataset/products/**/link.txt
+!dataset/products/**/chart.jpg

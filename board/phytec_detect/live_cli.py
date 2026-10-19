@@ -210,7 +210,11 @@ def load_products(model_dirs):
         path = os.path.join(d, "products.json")
         if os.path.exists(path):
             with open(path, encoding="utf-8") as f:
-                info.update(json.load(f))
+                data = json.load(f)
+            for entry in data.values():  # chart images: relative to the model dir
+                if entry.get("chart"):
+                    entry["chart"] = os.path.join(d, entry["chart"])
+            info.update(data)
     return info
 
 
@@ -378,12 +382,20 @@ def main(argv=None):
         die(f"phytec-detect: {error}")
 
     listener = None
-    if args.voice:
+
+    def start_voice():
         try:
             from .whisper_voice import Listener
-            listener = Listener(args.voice, log=lambda m: print(m, flush=True))
+            return Listener(args.voice, log=lambda m: print(m, flush=True))
         except Exception as error:  # noqa: BLE001 -- the demo runs without voice
             print(f"voice: not available: {type(error).__name__}: {error}", flush=True)
+            return None
+    # Whisper takes ~230 MB of CMA: with the live picture on the G2D it starts
+    # only once that has settled (its pools re-allocate when the window goes
+    # fullscreen, and then failed for lack of contiguous memory).
+    voice_pending = bool(args.voice)
+    if voice_pending and screen is None:
+        listener, voice_pending = start_voice(), False
 
     stop = threading.Event()
     for signum in (signal.SIGINT, signal.SIGTERM):
@@ -402,6 +414,9 @@ def main(argv=None):
             for s in sources:
                 if s.error:
                     die(s.error)
+            if voice_pending and screen.frames > 150 and not screen.error \
+                    and time.monotonic() - t_screen > 5:
+                listener, voice_pending = start_voice(), False
             if view_geo is not None and screen is not None and screen.error:
                 # right after a restart the camera or the display may still be
                 # held by the previous run: a few new tries before giving up

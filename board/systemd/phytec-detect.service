@@ -13,6 +13,9 @@ Environment=PYTHONPATH=/opt/phytec-detect PYTHONUNBUFFERED=1
 Environment="PHYTEC_DETECT_ARGS=-b hailo -m /opt/phytec-detect/models/products_v4_n -c 0.4 --tile-scale 0.5 --box-labels --isp --voice"
 EnvironmentFile=-/etc/default/phytec-detect
 ExecStartPre=/bin/sh -c 'for i in $(seq 60); do [ -S /run/user/1000/wayland-0 ] && exit 0; sleep 1; done; exit 1'
+# Give the previous run's Hailo/Whisper DMA memory (CMA) time to come back:
+# right after a restart the live picture's G2D pools sometimes found none.
+ExecStartPre=/bin/sleep 3
 ExecStart=/bin/sh -c 'exec /usr/bin/python3 -m phytec_detect.live_cli $PHYTEC_DETECT_ARGS'
 Restart=on-failure
 RestartSec=3

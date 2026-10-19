@@ -37,6 +37,53 @@ def _option_lines(info):
     return rows
 
 
+def _draw_qr(img, link, size=260, margin=28):
+    """QR code for `link` in the bottom right corner (white, with its quiet
+    zone), 'Mehr Infos' above it; returns the top edge of the block."""
+    try:
+        code = cv2.QRCodeEncoder.create().encode(link)
+    except cv2.error:
+        return img.shape[0]
+    n = code.shape[0]
+    cell = max(1, size // (n + 8))  # 4 modules quiet zone each side
+    qr = cv2.resize(code, (n * cell, n * cell), interpolation=cv2.INTER_NEAREST)
+    qr = cv2.copyMakeBorder(qr, 4 * cell, 4 * cell, 4 * cell, 4 * cell,
+                            cv2.BORDER_CONSTANT, value=255)
+    h, w = img.shape[:2]
+    q = qr.shape[0]
+    x0, y0 = w - margin - q, h - margin - q
+    img[y0:y0 + q, x0:x0 + q, :3] = qr[..., None]
+    img[y0:y0 + q, x0:x0 + q, 3] = 255
+    (tw, _), _ = cv2.getTextSize("Mehr Infos", cv2.FONT_HERSHEY_SIMPLEX, 0.8, 2)
+    _put(img, "Mehr Infos", x0 + (q - tw) // 2, y0 - 14, 0.8, WHITE, 2)
+    return y0 - 40
+
+
+def _draw_chart(img, path, qr, height=300, margin=28, gap=24):
+    """Product chart (e.g. the comparison spider) at the bottom, left of
+    the QR code; returns its top edge (the panel's height if unreadable)."""
+    chart = cv2.imread(path, cv2.IMREAD_UNCHANGED)
+    h, w = img.shape[:2]
+    if chart is None:
+        return h
+    if chart.ndim == 2:
+        chart = cv2.cvtColor(chart, cv2.COLOR_GRAY2BGRA)
+    elif chart.shape[2] == 3:
+        chart = cv2.cvtColor(chart, cv2.COLOR_BGR2BGRA)
+    right = w - margin - (height + gap if qr else 0)  # QR block is ~height wide
+    max_w = right - margin
+    scale = min(height / chart.shape[0], max_w / chart.shape[1])
+    chart = cv2.resize(chart, None, fx=scale, fy=scale,
+                       interpolation=cv2.INTER_AREA if scale < 1 else cv2.INTER_CUBIC)
+    ch, cw = chart.shape[:2]
+    x0, y0 = right - cw, h - margin - ch
+    alpha = chart[..., 3:4].astype(np.float32) / 255
+    region = img[y0:y0 + ch, x0:x0 + cw]
+    region[..., :3] = (chart[..., :3] * alpha + region[..., :3] * (1 - alpha)).astype(np.uint8)
+    region[..., 3] = 255
+    return y0
+
+
 def _wrap(text, width_px, scale, thickness=1):
     words, lines, line = text.split(), [], ""
     for w in words:
@@ -116,6 +163,12 @@ class InfoPanel:
     def _render_single(self, img, art, info):
         h, w = img.shape[:2]
         x, y = 28, 60
+        bottom = h - 20  # option lines stop here (above the QR code, if any)
+        if info.get("link"):
+            bottom = _draw_qr(img, info["link"]) - 20
+        if info.get("chart"):
+            bottom = min(bottom, _draw_chart(img, info["chart"],
+                                             qr=bool(info.get("link"))) - 20)
         for line in _wrap(info.get("name") or art, w - 2 * x, 1.3, 3):
             _put(img, line, x, y, 1.3, YELLOW, 3)
             y += 48
@@ -124,12 +177,12 @@ class InfoPanel:
         cv2.line(img, (x, y), (w - x, y), GREY, 1)
         y += 40
         for name, value in _option_lines(info):
-            if y > h - 20:
+            if y > bottom:
                 break
             _put(img, name, x, y, 0.75, WHITE, 2)
             y += 30
             for line in _wrap(value, w - 2 * x - 20, 0.6)[:2]:
-                if y > h - 20:
+                if y > bottom:
                     break
                 _put(img, line, x + 20, y, 0.6, GREY, 1)
                 y += 26

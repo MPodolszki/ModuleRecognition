@@ -6,6 +6,10 @@ Per class (article number, the model's label):
   summary  short lines for the screen: summary.txt if present, otherwise
            the populated options from info.tsv
   options  the full info.tsv rows (column name -> value), for later use
+  link     first line of link.txt if present (shop page; the panel shows it
+           as a QR code)
+  chart    chart.png/.jpg if present, copied to <model>/charts/<article>.<ext>
+           (the panel shows it next to the QR code)
 
     uv run tools/product_info.py models/products_v1_n
 """
@@ -14,6 +18,7 @@ import argparse
 import csv
 import json
 import pathlib
+import shutil
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
@@ -49,7 +54,7 @@ def summarize(options, limit=12):
     return lines[:limit]
 
 
-def build(products_dir, labels):
+def build(products_dir, labels, model_dir=None):
     names = {}
     csv_path = products_dir / "products.csv"
     if csv_path.exists():
@@ -64,7 +69,19 @@ def build(products_dir, labels):
         summary_file = folder / "summary.txt"
         summary = [l.strip() for l in summary_file.read_text(encoding="utf-8").splitlines()
                    if l.strip()] if summary_file.exists() else summarize(options)
+        link_file = folder / "link.txt"
+        link = next((l.strip() for l in link_file.read_text(encoding="utf-8").splitlines()
+                     if l.strip()), "") if link_file.exists() else ""
         out[art] = {"name": names.get(art) or art, "summary": summary, "options": options}
+        if link:
+            out[art]["link"] = link
+        chart = next((folder / f"chart{e}" for e in (".png", ".jpg", ".jpeg")
+                      if (folder / f"chart{e}").exists()), None)
+        if chart is not None and model_dir is not None:
+            (model_dir / "charts").mkdir(exist_ok=True)
+            dest = model_dir / "charts" / f"{art}{chart.suffix.lower()}"
+            shutil.copyfile(chart, dest)
+            out[art]["chart"] = f"charts/{dest.name}"  # relative to the model dir
     return out
 
 
@@ -76,7 +93,7 @@ def main():
     args = parser.parse_args()
     model_dir = pathlib.Path(args.model_dir)
     labels = [l.strip() for l in (model_dir / "labels.txt").read_text().splitlines() if l.strip()]
-    info = build(pathlib.Path(args.products), labels)
+    info = build(pathlib.Path(args.products), labels, model_dir)
     (model_dir / "products.json").write_text(json.dumps(info, indent=1, ensure_ascii=False))
     for art, d in info.items():
         print(f"{art}: {d['name']}\n  " + "\n  ".join(d["summary"]))
