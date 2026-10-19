@@ -12,6 +12,7 @@ The panel covers `fraction` of the screen width and eases in/out over
 screen frame just blends the cached picture in at the current offset.
 """
 
+import os
 import time
 
 import cv2
@@ -146,7 +147,7 @@ class InfoPanel:
         region = canvas[:, w - shown:]
         cv2.addWeighted(self._image[:, :shown], 0.93, region, 0.07, 0, dst=region)
         region[..., 3] = 255  # opaque also on the transparent overlay layer
-        cv2.line(canvas, (w - shown, 0), (w - shown, h), tuple(YELLOW[:3]) + (255,), 3)
+        cv2.line(canvas, (w - shown, 0), (w - shown, h), (115, 110, 0, 255), 4)  # petrol
         return canvas
 
     # -- rendering -------------------------------------------------------
@@ -156,81 +157,262 @@ class InfoPanel:
         return art, self.products.get(art, {})
 
     def _render(self, h, w):
-        img = np.zeros((h, w, 4), np.uint8)
-        img[:] = (32, 28, 24, 255)
+        page = Page(w, h)
         if len(self._key) == 1:
-            self._render_single(img, *self._info(self._key[0]))
+            _render_single(page, *self._info(self._key[0]))
         else:
-            self._render_compare(img, self._info(self._key[0]), self._info(self._key[1]))
-        return img
+            _render_compare(page, self._info(self._key[0]), self._info(self._key[1]))
+        return page.image()
 
-    def _render_single(self, img, art, info):
-        h, w = img.shape[:2]
-        x, y = 28, 60
-        bottom = h - 20  # option lines stop here (above the QR code, if any)
-        qr_size = 0
-        if info.get("link"):
-            top, qr_size = _draw_qr(img, info["link"])
-            bottom = top - 20
-        if info.get("chart"):  # as high as the QR code, bottom-aligned with it
-            bottom = min(bottom, _draw_chart(img, info["chart"], qr_size,
-                                             height=qr_size or 300) - 20)
-        for line in _wrap(info.get("name") or art, w - 2 * x, 1.3, 3):
-            _put(img, line, x, y, 1.3, YELLOW, 3)
-            y += 48
-        _put(img, art, x, y, 0.8, GREY, 2)
-        y += 30
-        cv2.line(img, (x, y), (w - x, y), GREY, 1)
-        y += 40
-        for name, value in _option_lines(info):
-            if y > bottom:
+
+# -- PHYTEC web look: white page, Roboto, petrol accents ---------------------
+
+FONTS = os.path.join(os.path.dirname(__file__), "fonts")
+PETROL = (0, 110, 115)          # RGB, phytec.de breadcrumb / buttons
+PETROL_TINT = (229, 241, 241)
+INK = (20, 20, 20)
+MUTED = (112, 112, 112)
+RULE = (221, 226, 226)
+BAND = (243, 246, 246)
+ORANGE = (255, 151, 8)          # phytec.de "NEW" tag
+ORANGE_TINT = (255, 241, 222)
+
+
+class Page:
+    """A panel drawn like a phytec.de product page (PIL, Roboto)."""
+
+    def __init__(self, w, h):
+        self.w, self.h = w, h
+        self._fonts = {}
+        self.pastes = []  # (numpy BGR(A) image, x, y): QR code, chart
+        try:
+            from PIL import Image, ImageDraw
+        except ImportError:  # no Pillow on the board: OpenCV's own font
+            self.img, self.draw = None, _CvDraw(np.full((h, w, 3), 255, np.uint8))
+            return
+        self.img = Image.new("RGB", (w, h), (255, 255, 255))
+        self.draw = ImageDraw.Draw(self.img)
+
+    def font(self, size, weight="Regular"):
+        if self.img is None:
+            return (size, weight)
+        from PIL import ImageFont
+        key = (size, weight)
+        if key not in self._fonts:
+            self._fonts[key] = ImageFont.truetype(os.path.join(FONTS, f"Roboto-{weight}.ttf"), size)
+        return self._fonts[key]
+
+    def text(self, x, y, text, size, weight="Regular", fill=INK):
+        """Draw with the top of the text at y; returns the line height."""
+        self.draw.text((x, y), text, font=self.font(size, weight), fill=fill)
+        return int(size * 1.25)
+
+    def width(self, text, size, weight="Regular"):
+        return self.draw.textlength(text, font=self.font(size, weight))
+
+    def wrap(self, text, width, size, weight="Regular"):
+        words, lines, line = text.split(), [], ""
+        for word in words:
+            test = f"{line} {word}".strip()
+            if self.width(test, size, weight) > width and line:
+                lines.append(line)
+                line = word
+            else:
+                line = test
+        return lines + ([line] if line else [])
+
+    def rect(self, box, fill=None, outline=None, width=1, radius=0):
+        self.draw.rounded_rectangle(box, radius=radius, fill=fill, outline=outline, width=width)
+
+    def check(self, x, y, s=18):
+        """phytec.de list bullet: petrol box with a white tick."""
+        self.rect((x, y, x + s, y + s), fill=PETROL, radius=3)
+        self.draw.line([(x + 4, y + s * 0.52), (x + s * 0.42, y + s - 5), (x + s - 4, y + 5)],
+                       fill=(255, 255, 255), width=3)
+
+    def image(self):
+        rgb = np.asarray(self.img) if self.img is not None else self.draw.rgb
+        out = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGRA)
+        for picture, x, y in self.pastes:
+            ph, pw = picture.shape[:2]
+            if picture.ndim == 2:
+                picture = cv2.cvtColor(picture, cv2.COLOR_GRAY2BGRA)
+            elif picture.shape[2] == 3:
+                picture = cv2.cvtColor(picture, cv2.COLOR_BGR2BGRA)
+            a = picture[..., 3:4].astype(np.float32) / 255
+            region = out[y:y + ph, x:x + pw]
+            region[..., :3] = (picture[..., :3] * a + region[..., :3] * (1 - a)).astype(np.uint8)
+        return out
+
+
+class _CvDraw:
+    """The few ImageDraw calls Page uses, with OpenCV (Hershey font)."""
+
+    def __init__(self, rgb):
+        self.rgb = rgb
+
+    def _scale(self, font):
+        size, weight = font
+        return size / 30, 3 if weight == "Bold" else 2 if weight == "Medium" else 1
+
+    def text(self, xy, text, font, fill):
+        scale, thick = self._scale(font)
+        (_, th), _ = cv2.getTextSize("Hg", cv2.FONT_HERSHEY_SIMPLEX, scale, thick)
+        cv2.putText(self.rgb, text, (int(xy[0]), int(xy[1] + th)), cv2.FONT_HERSHEY_SIMPLEX,
+                    scale, fill, thick, cv2.LINE_AA)
+
+    def textlength(self, text, font):
+        scale, thick = self._scale(font)
+        return cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, scale, thick)[0][0]
+
+    def rounded_rectangle(self, box, radius=0, fill=None, outline=None, width=1):
+        p0, p1 = (int(box[0]), int(box[1])), (int(box[2]), int(box[3]))
+        if fill is not None:
+            cv2.rectangle(self.rgb, p0, p1, fill, -1)
+        if outline is not None:
+            cv2.rectangle(self.rgb, p0, p1, outline, width)
+
+    def line(self, points, fill, width=1):
+        pts = np.array([[int(x), int(y)] for x, y in points], np.int32)
+        cv2.polylines(self.rgb, [pts], False, fill, width, cv2.LINE_AA)
+
+
+def _header(page, crumb):
+    """Petrol bar with a breadcrumb, as on top of every phytec.de page."""
+    page.rect((0, 0, page.w, 58), fill=PETROL)
+    x = 32
+    for i, part in enumerate(crumb):
+        if i:
+            page.text(x, 18, ">", 18, fill=(160, 205, 207))
+            x += 22
+        page.text(x, 18, part, 18, "Medium" if i == len(crumb) - 1 else "Regular",
+                  fill=(255, 255, 255))
+        x += page.width(part, 18, "Medium" if i == len(crumb) - 1 else "Regular") + 14
+
+
+def _family(name):
+    n = (name or "").lower()
+    return "System on Modules" if n.startswith(("phycore", "phyflex")) else "Produkte"
+
+
+def _bottom_band(page, info, margin=32):
+    """Grey band at the bottom: chart and QR code ('Mehr Infos' button
+    above it). Returns the band's top edge."""
+    link, chart_path = info.get("link"), info.get("chart")
+    if not link and not chart_path:
+        return page.h
+    q = 0
+    qr = None
+    if link:
+        try:
+            code = cv2.QRCodeEncoder.create().encode(link)
+            n = code.shape[0]
+            cell = max(1, 236 // (n + 8))
+            qr = cv2.resize(code, (n * cell, n * cell), interpolation=cv2.INTER_NEAREST)
+            qr = cv2.copyMakeBorder(qr, 4 * cell, 4 * cell, 4 * cell, 4 * cell,
+                                    cv2.BORDER_CONSTANT, value=255)
+            q = qr.shape[0]
+        except cv2.error:
+            qr = None
+    block = q or 236
+    top = page.h - margin - block - 70  # room for the button above
+    page.rect((0, top - 24, page.w, page.h), fill=BAND)
+    page.draw.line([(0, top - 24), (page.w, top - 24)], fill=RULE, width=1)
+    y_img = page.h - margin - block
+    if qr is not None:
+        x0 = page.w - margin - q
+        page.pastes.append((qr, x0, y_img))
+        # petrol button like "Anfragen" on phytec.de
+        bw, bh = q, 48
+        page.rect((x0, y_img - bh - 16, x0 + bw, y_img - 16), fill=PETROL, radius=4)
+        label = "Mehr Infos  \u203a"
+        page.text(x0 + (bw - page.width(label, 20, "Medium")) / 2, y_img - bh - 3, label, 20,
+                  "Medium", fill=(255, 255, 255))
+    if chart_path:
+        chart = cv2.imread(chart_path, cv2.IMREAD_UNCHANGED)
+        if chart is not None:
+            right = page.w - margin - (q + 24 if q else 0)
+            scale = min(block / chart.shape[0], (right - margin) / chart.shape[1])
+            chart = cv2.resize(chart, None, fx=scale, fy=scale,
+                               interpolation=cv2.INTER_AREA if scale < 1 else cv2.INTER_CUBIC)
+            ch, cw = chart.shape[:2]
+            page.pastes.append((chart, right - cw, page.h - margin - ch))
+            page.text(right - cw, top - 6, "Im Vergleich", 20, "Medium")
+    return top - 24
+
+
+def _render_single(page, art, info):
+    name = info.get("name") or art
+    _header(page, ["Produkte", _family(name), name])
+    x, w = 32, page.w
+    bottom = _bottom_band(page, info) - 16
+    y = 92
+    page.text(x, y, "PHYTEC " + ("System on Module" if _family(name) != "Produkte" else "Produkt"),
+              18, fill=MUTED)
+    y += 30
+    for line in page.wrap(name, w - 2 * x, 46, "Bold"):
+        page.text(x, y, line, 46, "Bold")
+        y += 58
+    page.text(x, y + 2, f"Artikelnummer {art}", 20, fill=MUTED)
+    y += 54
+    page.text(x, y, "Highlights", 28, "Bold")
+    y += 48
+    if not _option_lines(info):
+        page.text(x, y, "Produktdaten folgen.", 20, fill=MUTED)
+    for label, value in _option_lines(info):
+        lines = page.wrap(value, w - 2 * x - 34, 17) if value else []
+        need = 28 + 24 * min(len(lines), 1)
+        if y + need > bottom:
+            break
+        page.check(x, y + 3)
+        page.text(x + 34, y, label, 21, "Medium")
+        y += 28
+        for line in lines[:1]:
+            page.text(x + 34, y, line, 17, fill=MUTED)
+            y += 24
+        y += 10
+
+
+def _render_compare(page, a, b):
+    (art_a, info_a), (art_b, info_b) = a, b
+    _header(page, ["Produkte", "Vergleich"])
+    w, h = page.w, page.h
+    col = (w - 3 * 32) // 2
+    xs = (32, 64 + col)
+    y0 = 92
+    ends = []
+    for x, art, info in ((xs[0], art_a, info_a), (xs[1], art_b, info_b)):
+        y = y0
+        for line in page.wrap(info.get("name") or art, col, 32, "Bold")[:2]:
+            page.text(x, y, line, 32, "Bold")
+            y += 40
+        page.text(x, y, art, 17, fill=MUTED)
+        ends.append(y + 34)
+    y = max(ends)
+    page.draw.line([(32, y), (w - 32, y)], fill=RULE, width=2)
+    y += 20
+    rows_a, rows_b = _option_lines(info_a), _option_lines(info_b)
+    if len(rows_a) == len(rows_b):  # same option layout: row by row, differences marked
+        for (na, va), (nb, vb) in zip(rows_a, rows_b):
+            if y > h - 50:
                 break
-            _put(img, name, x, y, 0.75, WHITE, 2)
-            y += 30
-            for line in _wrap(value, w - 2 * x - 20, 0.6)[:2]:
-                if y > bottom:
+            differ = (na, va) != (nb, vb)
+            if differ:
+                page.rect((20, y - 6, w - 20, y + 34), fill=ORANGE_TINT, radius=4)
+                page.rect((20, y - 6, 26, y + 34), fill=ORANGE)
+            for x, text in ((xs[0], na), (xs[1], nb)):
+                shown = page.wrap(text, col - 30, 19)[0] if text else "-"
+                page.check(x, y + 3, 16)
+                page.text(x + 28, y, shown, 19, "Medium" if differ else "Regular")
+            y += 44
+    else:  # different families: each its own list
+        for x, rows in ((xs[0], rows_a), (xs[1], rows_b)):
+            yy = y
+            if not rows:
+                page.text(x, yy, "Produktdaten folgen.", 19, fill=MUTED)
+            for label, _ in rows:
+                if yy > h - 50:
                     break
-                _put(img, line, x + 20, y, 0.6, GREY, 1)
-                y += 26
-            y += 8
-
-    def _render_compare(self, img, a, b):
-        (art_a, info_a), (art_b, info_b) = a, b
-        h, w = img.shape[:2]
-        col = (w - 3 * 20) // 2
-        xs = (20, 40 + col)
-        _put(img, "Vergleich", 20, 46, 1.1, WHITE, 2)
-        y0 = 96
-        heights = []
-        for x, art, info in ((xs[0], art_a, info_a), (xs[1], art_b, info_b)):
-            y = y0
-            for line in _wrap(info.get("name") or art, col, 0.9, 2)[:2]:
-                _put(img, line, x, y, 0.9, YELLOW, 2)
-                y += 34
-            _put(img, art, x, y, 0.6, GREY, 1)
-            heights.append(y + 20)
-        y = max(heights)
-        cv2.line(img, (20, y), (w - 20, y), GREY, 1)
-        y += 34
-        rows_a, rows_b = _option_lines(info_a), _option_lines(info_b)
-        aligned = len(rows_a) == len(rows_b)
-        if aligned:  # same option layout: row by row, differences highlighted
-            for (na, va), (nb, vb) in zip(rows_a, rows_b):
-                if y > h - 20:
-                    break
-                differ = (na, va) != (nb, vb)
-                color = CYAN if differ else WHITE
-                if differ:
-                    cv2.rectangle(img, (14, y - 24), (w - 14, y + 8), (70, 60, 40, 255), -1)
-                for x, text in ((xs[0], na), (xs[1], nb)):
-                    _put(img, _wrap(text, col, 0.65)[0] if text else "-", x, y, 0.65, color,
-                         2 if differ else 1)
-                y += 34
-        else:        # different families: each its own list
-            for x, rows in ((xs[0], rows_a), (xs[1], rows_b)):
-                yy = y
-                for name, _ in rows:
-                    if yy > h - 20:
-                        break
-                    _put(img, _wrap(name, col, 0.65)[0], x, yy, 0.65, WHITE, 1)
-                    yy += 30
+                page.check(x, yy + 3, 16)
+                page.text(x + 28, yy, page.wrap(label, col - 30, 19)[0], 19)
+                yy += 40
