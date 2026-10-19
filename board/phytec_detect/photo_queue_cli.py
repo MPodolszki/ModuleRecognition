@@ -5,9 +5,10 @@
 
 products.csv is the project's list (Artikelnummer;Bezeichnung, deployed
 next to the captures). Each product without a finished phytec-photo run
-(capture/<Artikelnummer>/DONE) is announced on the monitor and photographed
-through the ISP, one after the other -- new rows in the list are all it
-takes. Stopping the queue stops the current product; run it again to go on
+(capture/<Artikelnummer>/DONE) is photographed through the ISP, one after
+the other -- new rows in the list are all it takes. Between two products
+the monitor shows which one is next and waits, as long as it takes, until
+someone lays it in the middle: nobody has to sit in front of it. Stopping the queue stops the current product; run it again to go on
 (that product starts over in its folder).
 """
 
@@ -45,6 +46,7 @@ def main(argv=None):
         print("all products of the list are photographed", flush=True)
         return 0
     print("to photograph: " + ", ".join(f"{a} ({n})" for a, n in todo), flush=True)
+    previous = ""
     for article, name in todo:
         print(f"next: {article} {name}", flush=True)
         folder = os.path.join(args.out, article)
@@ -53,8 +55,10 @@ def main(argv=None):
             os.makedirs(old, exist_ok=True)
             for name_ in os.listdir(folder):
                 os.replace(os.path.join(folder, name_), os.path.join(old, name_))
-        rc = photo_cli.main(["--article", article, "--name", name, "--intro", "6"]
+        rc = photo_cli.main(["--article", article, "--name", name, "--intro", "4",
+                             "--wait-start", "--previous", previous]
                             + ([] if args.raw else ["--isp"]))
+        previous = name or article
         if rc != 0:
             print("stopped", flush=True)
             return rc

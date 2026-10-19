@@ -187,6 +187,11 @@ def main(argv=None):
     parser.add_argument("--intro", type=float, default=0.0,
                         help="seconds to announce the product before the first shot "
                              "(phytec-photo-queue)")
+    parser.add_argument("--wait-start", action="store_true",
+                        help="announce the product until someone lays it in the middle "
+                             "(phytec-photo-queue: no need to sit in front of it)")
+    parser.add_argument("--previous", default="",
+                        help="product finished before this one (shown while waiting)")
     parser.add_argument("--isp", action="store_true",
                         help="through the ISP in its current mode (as phytec-detect --isp); "
                              "--aspect/--crop-y do not apply")
@@ -210,6 +215,8 @@ def main(argv=None):
     stop = threading.Event()
     for signum in (signal.SIGINT, signal.SIGTERM):
         signal.signal(signum, lambda *_: stop.set())
+    snap = threading.Event()  # kill -USR1: save the screen to /tmp/phytec-photo.png
+    signal.signal(signal.SIGUSR1, lambda *_: snap.set())
 
     screen = None
     step = -2              # -2: empty table, -1: reference in the middle, 0..: plan
@@ -258,6 +265,10 @@ def main(argv=None):
                     if now < intro_until else None
             elif step == -1:
                 lines = ["Produkt (Vorderseite) in die Mitte legen"]
+                if args.wait_start:
+                    banner = f"BEREIT: {args.name or args.article} - zum Start in die Mitte legen"
+                    if args.previous:
+                        lines.append(f"Fertig: {args.previous}")
                 target = ((w / 2, h / 2), None, 0)
                 fire = rect is not None and \
                     math.hypot(rect[0][0] - w / 2, rect[0][1] - h / 2) < 0.12 * w
@@ -357,17 +368,23 @@ def main(argv=None):
                         cv2.FONT_HERSHEY_SIMPLEX, 0.8, (160, 160, 160, 255), 2, cv2.LINE_AA)
             for i, line in enumerate(lines):
                 text(view, line, 82 + 34 * i, 0.85)
-            if banner and (step >= 0 or step == -2):
+            if banner:
                 vh, vw = view.shape[:2]
-                cv2.rectangle(view, (0, vh // 2 - 70), (vw, vh // 2 + 70), (0, 0, 200, 255), -1)
+                # waiting for the start: green and above the middle, where the
+                # product goes; otherwise red across the middle
+                by, bcol = (vh // 4, (0, 140, 0, 255)) if step == -1 else (vh // 2, (0, 0, 200, 255))
+                cv2.rectangle(view, (0, by - 70), (vw, by + 70), bcol, -1)
                 fs = 1.6
                 while cv2.getTextSize(banner, cv2.FONT_HERSHEY_SIMPLEX, fs, 4)[0][0] > vw - 80:
                     fs -= 0.1
                 tw = cv2.getTextSize(banner, cv2.FONT_HERSHEY_SIMPLEX, fs, 4)[0][0]
-                cv2.putText(view, banner, ((vw - tw) // 2, vh // 2 + 20), cv2.FONT_HERSHEY_SIMPLEX,
+                cv2.putText(view, banner, ((vw - tw) // 2, by + 20), cv2.FONT_HERSHEY_SIMPLEX,
                             fs, (255, 255, 255, 255), 4, cv2.LINE_AA)
             if now < flash_until:
                 view[:] = 255
+            if snap.is_set():
+                snap.clear()
+                cv2.imwrite("/tmp/phytec-photo.png", view[..., :3])
             if screen is None:
                 screen = Screen(view.shape[1], view.shape[0])
             screen.show(view)
