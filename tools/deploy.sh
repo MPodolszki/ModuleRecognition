@@ -50,5 +50,4 @@ $SSH "cat > /etc/systemd/system/phytec-camera-retry.service && systemctl daemon-
     && systemctl enable -q phytec-camera-retry" < "$ROOT/board/systemd/phytec-camera-retry.service"
 
 # Product list for phytec-photo-queue (Artikelnummer;Bezeichnung).
-$SSH "cat > /var/lib/phytec-detect/products.csv && chown weston:weston /var/lib/phytec-detect/products.csv" \
-    < "$ROOT/dataset/products/products.csv"
+"$ROOT/tools/sync_products.sh" "$BOARD" --once >/dev/null

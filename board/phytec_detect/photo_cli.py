@@ -32,7 +32,7 @@ import time
 import cv2
 import numpy as np
 
-from .camera import Camera, Screen, die, to_bgrx
+from .camera import Camera, Screen, die, screen_size, to_bgrx
 
 VIEW_W = 1296
 POSITIONS = [  # (name, x, y) as fractions of the frame
@@ -165,6 +165,77 @@ def save(out_dir, name, gray, rect, meta):
                   f, indent=1)
 
 
+LIST_W = 440  # product list on the right (--list-csv)
+
+
+def read_products(path):
+    """products.csv (Artikelnummer;Bezeichnung) -> [(article, name)]."""
+    rows = []
+    try:
+        with open(path, encoding="utf-8-sig") as f:
+            for line in f:
+                parts = [p.strip() for p in line.strip().split(";")]
+                if parts[0] and parts[0].lower() != "artikelnummer":
+                    rows.append((parts[0], parts[1] if len(parts) > 1 else ""))
+    except OSError:
+        pass
+    return rows
+
+
+class ProductList:
+    """The product list beside the camera picture, re-read every few seconds
+    (products.csv may change while the queue runs): done, current, to do."""
+
+    def __init__(self, csv, capture, current, every=5.0):
+        self.csv, self.capture, self.current, self.every = csv, capture, current, every
+        self.rows, self.done, self._t = [], set(), -1e9
+        self._out = None  # screen buffer, list drawn into it on refresh only
+
+    def _draw_list(self):
+        out, sw, sh = self._out, self._out.shape[1], self._out.shape[0]
+        out[:, sw - LIST_W:] = 0
+        x, font = sw - LIST_W + 20, cv2.FONT_HERSHEY_SIMPLEX
+        cv2.putText(out, "Produkte", (x, 50), font, 1.1, (255, 255, 255, 255), 2, cv2.LINE_AA)
+        cv2.putText(out, f"{len(self.done)} von {len(self.rows)} fotografiert", (x, 85), font,
+                    0.65, (200, 200, 200, 255), 1, cv2.LINE_AA)
+        line_h = max(24, min(40, (sh - 130) // max(1, len(self.rows))))
+        y = 130
+        for article, name in self.rows:
+            if article == self.current:
+                mark, color = ">", (0, 230, 255, 255)
+            elif article in self.done:
+                mark, color = "+", (0, 200, 0, 255)
+            else:
+                mark, color = "-", (200, 200, 200, 255)
+            text = f"{mark} {name or article}"
+            fs = 0.7
+            while cv2.getTextSize(text, font, fs, 2)[0][0] > LIST_W - 30 and fs > 0.4:
+                fs -= 0.05
+            cv2.putText(out, text, (x, y), font, fs, color, 2, cv2.LINE_AA)
+            y += line_h
+            if y > sh - 10:
+                break
+
+    def compose(self, view, size):
+        """Camera picture scaled into the left part of a size (w, h) screen,
+        the list in the right part."""
+        sw, sh = size
+        if self._out is None:
+            self._out = np.zeros((sh, sw, 4), np.uint8)
+        if time.monotonic() - self._t >= self.every:
+            self._t = time.monotonic()
+            self.rows = read_products(self.csv)
+            self.done = {a for a, _ in self.rows
+                         if os.path.exists(os.path.join(self.capture, a, "DONE"))}
+            self._draw_list()
+        vw = sw - LIST_W
+        vh = view.shape[0] * vw // view.shape[1]
+        y0 = (sh - vh) // 2
+        cv2.resize(view, (vw, vh), dst=self._out[y0:y0 + vh, :vw],
+                   interpolation=cv2.INTER_LINEAR)
+        return self._out
+
+
 def _aspect(t):
     if not t:
         return None
@@ -192,6 +263,9 @@ def main(argv=None):
                              "(phytec-photo-queue: no need to sit in front of it)")
     parser.add_argument("--previous", default="",
                         help="product finished before this one (shown while waiting)")
+    parser.add_argument("--list-csv", default=None,
+                        help="show this products.csv on the right, with what is done "
+                             "(phytec-photo-queue)")
     parser.add_argument("--isp", action="store_true",
                         help="through the ISP in its current mode (as phytec-detect --isp); "
                              "--aspect/--crop-y do not apply")
@@ -238,6 +312,7 @@ def main(argv=None):
     flash_until, countdown_at = 0.0, None
     shot = done
     intro_until = time.monotonic() + args.intro
+    plist = ProductList(args.list_csv, args.out, args.article) if args.list_csv else None
     finished = False
     try:
         while not stop.is_set() and step < len(plan):
@@ -382,6 +457,8 @@ def main(argv=None):
                             fs, (255, 255, 255, 255), 4, cv2.LINE_AA)
             if now < flash_until:
                 view[:] = 255
+            if plist is not None:
+                view = plist.compose(view, screen_size())
             if snap.is_set():
                 snap.clear()
                 cv2.imwrite("/tmp/phytec-photo.png", view[..., :3])
