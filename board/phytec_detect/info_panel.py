@@ -39,11 +39,11 @@ def _option_lines(info):
 
 def _draw_qr(img, link, size=260, margin=28):
     """QR code for `link` in the bottom right corner (white, with its quiet
-    zone), 'Mehr Infos' above it; returns the top edge of the block."""
+    zone), 'Mehr Infos' above it; returns (top edge of the block, QR size)."""
     try:
         code = cv2.QRCodeEncoder.create().encode(link)
     except cv2.error:
-        return img.shape[0]
+        return img.shape[0], 0
     n = code.shape[0]
     cell = max(1, size // (n + 8))  # 4 modules quiet zone each side
     qr = cv2.resize(code, (n * cell, n * cell), interpolation=cv2.INTER_NEAREST)
@@ -56,10 +56,10 @@ def _draw_qr(img, link, size=260, margin=28):
     img[y0:y0 + q, x0:x0 + q, 3] = 255
     (tw, _), _ = cv2.getTextSize("Mehr Infos", cv2.FONT_HERSHEY_SIMPLEX, 0.8, 2)
     _put(img, "Mehr Infos", x0 + (q - tw) // 2, y0 - 14, 0.8, WHITE, 2)
-    return y0 - 40
+    return y0 - 40, q
 
 
-def _draw_chart(img, path, qr, height=300, margin=28, gap=24):
+def _draw_chart(img, path, qr_size, height=300, margin=28, gap=24):
     """Product chart (e.g. the comparison spider) at the bottom, left of
     the QR code; returns its top edge (the panel's height if unreadable)."""
     chart = cv2.imread(path, cv2.IMREAD_UNCHANGED)
@@ -70,7 +70,7 @@ def _draw_chart(img, path, qr, height=300, margin=28, gap=24):
         chart = cv2.cvtColor(chart, cv2.COLOR_GRAY2BGRA)
     elif chart.shape[2] == 3:
         chart = cv2.cvtColor(chart, cv2.COLOR_BGR2BGRA)
-    right = w - margin - (height + gap if qr else 0)  # QR block is ~height wide
+    right = w - margin - (qr_size + gap if qr_size else 0)
     max_w = right - margin
     scale = min(height / chart.shape[0], max_w / chart.shape[1])
     chart = cv2.resize(chart, None, fx=scale, fy=scale,
@@ -164,11 +164,13 @@ class InfoPanel:
         h, w = img.shape[:2]
         x, y = 28, 60
         bottom = h - 20  # option lines stop here (above the QR code, if any)
+        qr_size = 0
         if info.get("link"):
-            bottom = _draw_qr(img, info["link"]) - 20
-        if info.get("chart"):
-            bottom = min(bottom, _draw_chart(img, info["chart"],
-                                             qr=bool(info.get("link"))) - 20)
+            top, qr_size = _draw_qr(img, info["link"])
+            bottom = top - 20
+        if info.get("chart"):  # as high as the QR code, bottom-aligned with it
+            bottom = min(bottom, _draw_chart(img, info["chart"], qr_size,
+                                             height=qr_size or 300) - 20)
         for line in _wrap(info.get("name") or art, w - 2 * x, 1.3, 3):
             _put(img, line, x, y, 1.3, YELLOW, 3)
             y += 48
