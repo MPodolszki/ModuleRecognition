@@ -116,8 +116,8 @@ def iou(a, b):
 def check(onnx_path, tflite_path, nc, image):
     import onnxruntime as ort
 
-    rgb, _ = letterbox(cv2.imread(str(image)), 640)
     sess = ort.InferenceSession(str(onnx_path), providers=["CPUExecutionProvider"])
+    rgb, _ = letterbox(cv2.imread(str(image)), sess.get_inputs()[0].shape[2])
     blob = rgb.transpose(2, 0, 1)[None].astype(np.float32) / 255.0
     ref = decode([m.transpose(0, 2, 3, 1) for m in sess.run(None, {sess.get_inputs()[0].name: blob})],
                  nc, conf=0.25)

@@ -122,8 +122,11 @@ def main():
     runner = ClientRunner(hw_arch=args.hw_arch)
 
     print(f"== parse {onnx_path.name} (YOLO26{size}, {args.profile})")
+    import onnx
+    dims = onnx.load(str(onnx_path)).graph.input[0].type.tensor_type.shape.dim
+    imgsz = [d.dim_value for d in dims][2:] or [640, 640]
     runner.translate_onnx_model(str(onnx_path), name,
-                                net_input_shapes={"images": [1, 3, 640, 640]})
+                                net_input_shapes={"images": [1, 3, *imgsz]})
 
     script = model_script(args.profile, size, args.opt_level, calib_size, args.batch)
     print("== model script\n" + script)

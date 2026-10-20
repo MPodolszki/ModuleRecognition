@@ -14,14 +14,16 @@ shift 2; [ $# -gt 0 ] && shift
 NAME="$(basename "$(dirname "$(dirname "$WEIGHTS")")")"
 OUT="$ROOT/models/$NAME"
 export YOLO_AUTOINSTALL=false
+IMGSZ="${IMGSZ:-640}"   # network input (square), as trained: IMGSZ=960 tools/build_model.sh ...
+CALIB="$OUT/calib_$IMGSZ.npy"
 
 cd "$ROOT"
-uv run export/cut_onnx.py "$WEIGHTS" --name "$NAME"
+uv run export/cut_onnx.py "$WEIGHTS" --name "$NAME" --imgsz "$IMGSZ"
 uv run tools/product_info.py "$OUT" >/dev/null   # products.json for the info panel
-uv run export/make_calib.py "$CALIB_SRC" -o "$OUT/calib_640.npy" -n 512
-(cd export/npu && uv run to_tflite.py "$OUT/$NAME.onnx" "$OUT/calib_640.npy" \
+uv run export/make_calib.py "$CALIB_SRC" -o "$CALIB" -n 512 --imgsz "$IMGSZ"
+(cd export/npu && uv run to_tflite.py "$OUT/$NAME.onnx" "$CALIB" \
     --check-image "$(find "$CALIB_SRC" -name '*.jpg' | sort | head -1)") 2>&1 \
     | grep -vE '^[EWI]0000|^\s*$'
-export/hailo/run.sh "$OUT/$NAME.onnx" "$OUT/calib_640.npy" --profile "$PROFILE" "$@" 2>&1 \
+export/hailo/run.sh "$OUT/$NAME.onnx" "$CALIB" --profile "$PROFILE" "$@" 2>&1 \
     | grep -E '^==|calib\[|Error|error|context_[0-9] utilization|Successful'
 ls -la "$OUT"

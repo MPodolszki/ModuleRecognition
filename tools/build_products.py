@@ -244,6 +244,28 @@ def main():
             cv2.imwrite(str(out / f"check_{art}.jpg"), np.vstack(rows))
         print(f"{art}: {len(cutouts[cid])} photos labelled")
 
+    # scenes with several products (phytec-scenes + tools/label_scenes.py):
+    # real look-alikes side by side, weighted like the setup pictures
+    scene_dir = products / "_scenes"
+    n_scene = 0
+    for k, box_path in enumerate(sorted(scene_dir.glob("*.boxes.json")) if scene_dir.exists() else []):
+        import json
+        jpg = box_path.with_name(box_path.name[:-len(".boxes.json")] + ".jpg")
+        labelled = [b for b in json.loads(box_path.read_text()) if b[0] in classes]
+        if not jpg.exists() or not labelled:
+            continue
+        img = read_image(jpg)
+        scale = REAL_SIZE / max(img.shape[:2])
+        small = cv2.resize(img, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+        boxes = [(classes.index(a), x0 * scale, y0 * scale, x1 * scale, y1 * scale)
+                 for a, x0, y0, x1, y1 in labelled]
+        split = "val" if k % 5 == 4 else "train"
+        for c in range(args.setup_repeat if split == "train" else 1):
+            write(out, split, f"scene_{jpg.stem}" + (f"_r{c}" if c else ""), to_out(small, gray), boxes)
+            n_scene += 1
+    if n_scene:
+        print(f"scenes: {n_scene} pictures (with copies)")
+
     usable = [c for c in cutouts if cutouts[c]]
     if not usable:
         sys.exit("no product could be segmented")
