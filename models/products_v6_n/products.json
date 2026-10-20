@@ -204,7 +204,44 @@
   "name": "phyCORE-AM64x",
   "summary": [],
   "options": [],
-  "category": "System on Module"
+  "links": [
+   [
+    "Zum Produkt",
+    "https://www.phytec.de/produkte/system-on-modules/phycore-am64x/"
+   ],
+   [
+    "Rapid Development Kit",
+    "https://www.phytec.de/produkte/development-kits/phycore-am64x-rapid-development-kit/"
+   ]
+  ],
+  "link": "https://www.phytec.de/produkte/development-kits/phycore-am64x-rapid-development-kit/",
+  "description": "Headless System on Module mit TI AM64x für industrielle Kommunikation, Steuerungen und Smart Manufacturing: Linux auf Cortex-A53, Echtzeit auf bis zu vier Cortex-R5F.",
+  "highlights": [
+   "Bis zu 2× Cortex-A53 (1 GHz) für Linux",
+   "Bis zu 4× Cortex-R5F (800 MHz) für Echtzeit",
+   "Isolierte Cortex-M4F MCU für Sicherheit und Schutz",
+   "4× PRU-ICSSG Industrial Ethernet ohne Lizenzkosten",
+   "2× Gigabit-Ethernet und 2× CAN FD",
+   "Bis zu 2 GB DDR4 mit Inline-ECC, eMMC bis 128 GB",
+   "ePWM, eCAP und eQEP Unterstützung",
+   "Samtec 2×140 Pins, +3,3 V / 2 A Ausgang am Modul"
+  ],
+  "facts": [
+   [
+    "Kerne",
+    "2× A53, 4× R5F, M4F"
+   ],
+   [
+    "Größe in mm",
+    "50 × 37"
+   ],
+   [
+    "Temperatur",
+    "-40 °C / +85 °C"
+   ]
+  ],
+  "category": "System on Module",
+  "spoken": "a m vierundsechzig x"
  },
  "PFL-A-02-23237E0.A5": {
   "name": "phyFLEX-i.MX6 Quad",

@@ -13,44 +13,44 @@ Bezeichnung: phyCORE-AM64x
 Kategorie: System on Module
 
 # [3] orangefarbenes NEU neben der Kategorie: ja / nein
-Neu:
+Neu: nein
 
 # [4] Artikelnummer PCM-072-42F2DE11I.A1 -- kommt aus dem Ordnernamen, nicht eintragen
 
 # [5] 1-2 Sätze unter der Artikelnummer, höchstens 3 Zeilen (ca. 270 Zeichen)
-Kurzbeschreibung:
+Kurzbeschreibung: Headless System on Module mit TI AM64x für industrielle Kommunikation, Steuerungen und Smart Manufacturing: Linux auf Cortex-A53, Echtzeit auf bis zu vier Cortex-R5F.
 
 # [6] Kennzahl 1, kurz (ca. 16 Zeichen), z. B. 4 × A53 + M7
-Kerne:
+Kerne: 2× A53, 4× R5F, M4F
 # [7] Kennzahl 2, z. B. 40 × 37 × 6
-Größe in mm:
+Größe in mm: 50 × 37
 # [8] Kennzahl 3, z. B. -40 °C / +85 °C
-Temperatur:
+Temperatur: -40 °C / +85 °C
 # [9] Kennzahl 4, z. B. 2035
 Verfügbar bis:
 
 # [10] Liste mit Häkchen: bis zu 8 Zeilen "Highlight:", je ca. 55 Zeichen
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
+Highlight: Bis zu 2× Cortex-A53 (1 GHz) für Linux
+Highlight: Bis zu 4× Cortex-R5F (800 MHz) für Echtzeit
+Highlight: Isolierte Cortex-M4F MCU für Sicherheit und Schutz
+Highlight: 4× PRU-ICSSG Industrial Ethernet ohne Lizenzkosten
+Highlight: 2× Gigabit-Ethernet und 2× CAN FD
+Highlight: Bis zu 2 GB DDR4 mit Inline-ECC, eMMC bis 128 GB
+Highlight: ePWM, eCAP und eQEP Unterstützung
+Highlight: Samtec 2×140 Pins, +3,3 V / 2 A Ausgang am Modul
 
 # [11] Bild "Im Vergleich" unten links, Datei in diesem Ordner (z. B. chart.png)
 Diagramm-Datei:
 
 # [12] QR-Code "Zum Produkt" -- Produktseite auf phytec.de
-Link Produktseite:
+Link Produktseite: https://www.phytec.de/produkte/system-on-modules/phycore-am64x/
 
 # [13] QR-Code ganz rechts -- Entwicklungskit
-Link Kit:
-Kit-Bezeichnung:
+Link Kit: https://www.phytec.de/produkte/development-kits/phycore-am64x-rapid-development-kit/
+Kit-Bezeichnung: Rapid Development Kit
 
 # nicht angezeigt -- wie man den Namen spricht
-Aussprache (Sprachsuche):
+Aussprache (Sprachsuche): a m vierundsechzig x
 
 # nicht angezeigt -- nur für euch
-Bemerkung:
+Bemerkung: von phytec.de übernommen, 20.10.; Verfügbar bis und Bauhöhe stehen nicht auf der Seite

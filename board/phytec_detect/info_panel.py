@@ -335,6 +335,10 @@ def _bottom_band(page, info, margin=32):
     codes = [(label, _qr(url, size)) for label, url in links]
     codes = [(label, q) for label, q in codes if q is not None]
     block = max([q.shape[0] for _, q in codes], default=236)
+    codes = [(label, cv2.copyMakeBorder(q, (block - q.shape[0]) // 2, (block - q.shape[0] + 1) // 2,
+                                        (block - q.shape[0]) // 2, (block - q.shape[0] + 1) // 2,
+                                        cv2.BORDER_CONSTANT, value=255))
+             for label, q in codes]  # same white square for each, longer links = finer code
     top = page.h - margin - block - 70  # room for the labels above
     page.rect((0, top - 24, page.w, page.h), fill=BAND)
     page.draw.line([(0, top - 24), (page.w, top - 24)], fill=RULE, width=1)
