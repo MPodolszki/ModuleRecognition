@@ -198,3 +198,53 @@ def draw(image, dets, labels, quads=None):
         cv2.putText(image, text, (p1[0] + 4, y_text - base - 2), font, fscale,
                     (0, 0, 0) + ((255,) if image.shape[2] == 4 else ()), thick, cv2.LINE_AA)
     return image
+
+
+class Smoother:
+    """Steadier detections for the screen. The INT8 accelerator's scores
+    jump from frame to frame (0.6 / 0.95 / missed on a module the float
+    model rates 0.92 every time); per spot on the table this keeps a
+    running score per class, shows the best class, and holds a module a
+    few frames when it drops out."""
+
+    def __init__(self, alpha=0.4, hold=4, iou=0.3):
+        self.alpha, self.hold, self.iou = alpha, hold, iou
+        self.spots = []  # [box(4), {class: score}, frames since seen]
+
+    @staticmethod
+    def _iou(a, b):
+        iw = min(a[2], b[2]) - max(a[0], b[0])
+        ih = min(a[3], b[3]) - max(a[1], b[1])
+        if iw <= 0 or ih <= 0:
+            return 0.0
+        inter = iw * ih
+        return inter / ((a[2] - a[0]) * (a[3] - a[1]) + (b[2] - b[0]) * (b[3] - b[1]) - inter)
+
+    def __call__(self, dets, conf):
+        used, spots = set(), []
+        for x0, y0, x1, y1, score, cls in dets:
+            box = np.array([x0, y0, x1, y1], np.float32)
+            best, best_iou = None, self.iou
+            for i, spot in enumerate(self.spots):
+                if i not in used:
+                    v = self._iou(box, spot[0])
+                    if v > best_iou:
+                        best, best_iou = i, v
+            scores = {} if best is None else self.spots[best][1]
+            if best is not None:
+                used.add(best)
+            scores = {c: (1 - self.alpha) * s for c, s in scores.items()}
+            scores[int(cls)] = scores.get(int(cls), 0.0) + self.alpha * float(score)
+            if best is None:  # new spot: start from the raw score
+                scores = {int(cls): float(score)}
+            spots.append([box, scores, 0])
+        for i, spot in enumerate(self.spots):  # dropped out: hold a few frames
+            if i not in used and spot[2] < self.hold:
+                spots.append([spot[0], {c: s * 0.9 for c, s in spot[1].items()}, spot[2] + 1])
+        self.spots = spots
+        out = []
+        for box, scores, _ in spots:
+            cls, score = max(scores.items(), key=lambda kv: kv[1])
+            if score >= conf:
+                out.append([*box, score, cls])
+        return np.array(out, np.float32).reshape(-1, 6)

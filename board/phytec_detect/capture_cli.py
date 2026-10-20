@@ -41,6 +41,8 @@ def main(argv=None):
     parser.add_argument("-n", "--count", type=int, default=0,
                         help="stop after this many pictures (0 = until Ctrl+C)")
     parser.add_argument("--no-display", action="store_true")
+    parser.add_argument("--isp", action="store_true",
+                        help="through the ISP in its current mode, as phytec-detect --isp")
     parser.add_argument("--source", default="csi1", help="csi1, csi2 or a video file")
     parser.add_argument("--aspect", default=None,
                         help="read a full-width band of this aspect from the detection "
@@ -54,7 +56,7 @@ def main(argv=None):
     index = len(existing)
 
     try:
-        cam = Camera(args.source, aspect=_aspect(args.aspect), crop_y=args.crop_y)
+        cam = (Camera(args.source, isp=True) if args.isp else Camera(args.source, aspect=_aspect(args.aspect), crop_y=args.crop_y))
     except RuntimeError as error:
         die(str(error))
 

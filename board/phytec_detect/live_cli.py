@@ -39,7 +39,7 @@ from .camera import (Camera, OverlayScreen, Screen, die, find_sensor, isp_size, 
                      screen_size, to_bgrx)
 from .detector import Detector
 from .info_panel import InfoPanel
-from .postprocess import draw, module_quad
+from .postprocess import Smoother, draw, module_quad
 from .search import SearchState
 from .tiling import Tiler, find_image_circle
 from .tracking import TableTracker
@@ -113,6 +113,10 @@ class Worker:
     def __init__(self, detector, source, tiler_factory):
         self.detector, self.source, self._tiler_factory = detector, source, tiler_factory
         self.tracker = TableTracker()
+        # The accelerator reports down to 0.2, the smoother decides what is
+        # shown (at the demo's threshold): a dip below it is not a dropout.
+        self.smoother, self.show_conf = Smoother(), detector.conf
+        detector.conf = min(detector.conf, 0.2)
         self.tiler = None
         self.result = None  # (frame, detections, sequence number, lifted, turned outlines)
         self.fps = 0.0
@@ -171,6 +175,8 @@ class Worker:
             except Exception as error:  # e.g. HailoRTTimeout: let main() exit
                 self.error = error
                 return
+            if self.smoother is not None:
+                dets = self.smoother(dets, self.show_conf)
             now = time.perf_counter()
             self._done = (self._done + [now])[-10:]
             if len(self._done) > 1:
