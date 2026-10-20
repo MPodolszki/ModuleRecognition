@@ -14,8 +14,9 @@ import os
 
 import numpy as np
 
-BACKENDS = ("hailo", "npu", "cpu", "fp32")
+BACKENDS = ("hailo", "npu", "cpu", "fp32", "remote")
 NAMES = {"hailo": "Hailo-8", "npu": "i.MX8MP NPU", "cpu": "i.MX8MP CPU (INT8)",
+         "remote": "LAN (phytec_detect.remote)",
          "fp32": "CPU FP32 (reference)"}
 
 VX_DELEGATE = "/usr/lib/libvx_delegate.so"

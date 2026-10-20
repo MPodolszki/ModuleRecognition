@@ -426,14 +426,22 @@ def quads_to_view(quads, det_cam, view_cam, plane):
     return pts.reshape(-1, 4, 2).astype(np.float32)
 
 
-def _bar_text(worker):
+def _backend_text(worker):
     det = worker.detector
-    tiles = f"{len(worker.tiler.tiles)} tiles, " if worker.tiler and len(worker.tiler.tiles) > 1 else ""
-    n = det.nc  # classes of the running model(s) = products it was trained on
-    # (no ms: with two frames in flight the time from start to result is
-    # latency, not what a frame costs)
-    return (f"{NAMES[det.backend_name]}  \u00b7  {worker.fps:4.1f} fps  \u00b7  "
-            f"{tiles}{n} Produkt{'e' if n != 1 else ''} trainiert")
+    name = getattr(det, "display_name", None) or NAMES[det.backend_name]
+    tiles = f", {len(worker.tiler.tiles)} tiles" if worker.tiler and len(worker.tiler.tiles) > 1 else ""
+    net = f" + {det.ms('net'):.0f} ms LAN" if "net" in det.times else ""
+    # (no ms per frame otherwise: with two frames in flight the time from
+    # start to result is latency, not what a frame costs)
+    return f"{name}  {worker.fps:4.1f} fps{net}{tiles}"
+
+
+def _bar_text(workers):
+    """Header text: every backend with its speed, then the class count."""
+    workers = workers if isinstance(workers, (list, tuple)) else [workers]
+    n = workers[0].detector.nc  # classes of the running model(s) = products it was trained on
+    return "  |  ".join(_backend_text(w) for w in workers) + \
+        f"  \u00b7  {n} Produkt{'e' if n != 1 else ''} trainiert"
 
 
 def _aspect(text):
@@ -479,6 +487,9 @@ def main(argv=None):
                              "Hailo-8, from this microphone (default: Jabra)")
     parser.add_argument("--axis-boxes", action="store_true",
                         help="plain axis-aligned boxes instead of frames turned like the module")
+    parser.add_argument("--remote", metavar="HOST[:PORT]",
+                        help="for -b remote: the board running "
+                             "'python3 -m phytec_detect.remote serve' (its accelerator, our camera)")
     parser.add_argument("--isp-width", type=int, default=0,
                         help="with --isp: the ISP scales the detection picture to this width, "
                              "e.g. 960 (~52 ms less CPU per frame, own calibration "
@@ -562,7 +573,13 @@ def main(argv=None):
             sources.append(view_source)
         for name in backends:
             print(f"loading {NAMES[name]} ...", flush=True)
-            det = Detector(name, model_dirs, conf=args.conf, hef=args.hef)
+            if name == "remote":
+                from .remote import RemoteDetector
+                if not args.remote:
+                    raise ValueError("-b remote needs --remote host[:port]")
+                det = RemoteDetector(args.remote, conf=args.conf)
+            else:
+                det = Detector(name, model_dirs, conf=args.conf, hef=args.hef)
             print(f"  {', '.join(det.paths)} ({det.load_s:.1f} s)", flush=True)
             workers.append(Worker(det, det_source, tiler_factory))
     except (FileNotFoundError, RuntimeError, ValueError) as error:
@@ -688,6 +705,8 @@ def main(argv=None):
             keep_from = panel.static_from(canvas.shape[1]) \
                 if panel is not None and base is None and len(workers) == 1 else None
             for i, worker in enumerate(workers):
+                if view_geo is not None and i > 0:
+                    continue  # one live picture: frames of the first backend only
                 half = canvas[:, i * w_:(i + 1) * w_] if keep_from is None \
                     else canvas[:, :keep_from]
                 half[:] = 0 if base is None else base  # transparent layer, or the picture
@@ -752,8 +771,11 @@ def main(argv=None):
                                     ("nicht auf dem Tisch" if wanted else "unbekanntes Produkt")),
                                  accent=style.ORANGE)
                 else:
-                    style.header(half, _bar_text(worker))
-                    sig.append(_bar_text(worker))
+                    # one picture, one set of frames (the first backend's):
+                    # the others are compared in the header
+                    text = _bar_text(workers if view_geo is not None else worker)
+                    style.header(half, text)
+                    sig.append(text)
             t_ = tick("lifted + header", t_)
             if panel is not None:
                 primary = workers[0].result
