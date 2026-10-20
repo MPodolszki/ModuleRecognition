@@ -113,7 +113,7 @@ class InfoPanel:
     def __init__(self, products, labels, fraction=0.5, slide_s=0.35, show_s=30.0):
         self.products, self.labels = products, labels
         self.fraction, self.slide_s, self.show_s = fraction, slide_s, show_s
-        self._seen_key, self._seen_since = (), 0.0
+        self._first, self._seen = {}, {}  # class -> first / last time seen lifted
         self._key = ()            # classes shown (or being slid out)
         self._image = None        # rendered panel for _key
         self._pos = 0.0           # 0 = hidden, 1 = fully in
@@ -126,14 +126,20 @@ class InfoPanel:
 
     def update(self, lifted_classes):
         """Classes of the lifted products, the one lifted first first.
-        A panel slides out by itself after `show_s` seconds (a product taken
-        away for good would keep it open) and comes back only when the
-        lifted products change."""
-        key = tuple(dict.fromkeys(lifted_classes))[:2]  # unique, max two
+        Each product is shown for `show_s` seconds from when it was lifted
+        (a product taken away for good would keep the panel open), counted
+        per product: the list flickering -- two look-alikes swapping class,
+        a second product lifted -- does not start the time again. A product
+        missing from the list for 2 s and lifted again counts as new."""
         now = time.monotonic()
-        if key != self._seen_key:            # something new lifted (or put back)
-            self._seen_key, self._seen_since = key, now
-        if key and now - self._seen_since < self.show_s:
+        lifted = list(dict.fromkeys(lifted_classes))
+        for c in lifted:
+            self._first.setdefault(c, now)
+            self._seen[c] = now
+        for c in [c for c, t in self._seen.items() if now - t > 2.0]:
+            del self._first[c], self._seen[c]
+        key = tuple(c for c in lifted if now - self._first[c] < self.show_s)[:2]
+        if key:
             self._target = 1.0
             if key != self._key:
                 self._key, self._image = key, None

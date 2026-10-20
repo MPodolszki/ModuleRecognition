@@ -15,7 +15,9 @@ product as picked up:
           changes with rotation: a square turned 45 degrees has a 2x box).
 
 A taken product stays in the list until it comes back: detected again at
-its spot, or another product of the same class settling down anywhere.
+its spot, or another product of the same class settling down anywhere --
+or a product of another class settling where the taken one was last seen
+(look-alikes like AM62x and AM62x DSC swap class when put down).
 Short detection dropouts do nothing, because the spot is not empty then.
 """
 
@@ -236,7 +238,7 @@ class TableTracker:
             t.rest_area = t.area if t.rest_area is None else 0.8 * t.rest_area + 0.2 * t.area
             if now - t.still_since >= REST_S:
                 if t.rest_box is None and not t.put_down:
-                    self._put_back(t.cls)
+                    self._put_back(t.cls, t.box)
                 t.put_down = False
                 if t.rest_box is None or t.ring is None or _iou(t.rest_box, t.box) < 0.9:
                     t.ring = table_ring(gray, t.box)  # the table as it is around it
@@ -260,10 +262,16 @@ class TableTracker:
         else:
             t._votes = 0
 
-    def _put_back(self, cls):
-        """A product of class `cls` settled on the table: if one of that
-        class was taken, it has been put back."""
+    def _put_back(self, cls, box):
+        """A product of class `cls` settled on the table at `box`: if one of
+        that class was taken, it has been put back. Otherwise a taken one
+        last seen right there (within its size) is the same product,
+        recognised as a look-alike now."""
         taken = [t for t in self.tracks if t.taken and t.cls == cls]
+        if not taken:
+            centre = (box[:2] + box[2:4]) / 2
+            taken = [t for t in self.tracks if t.taken and np.linalg.norm(
+                t.centre - centre) < max(t.box[2] - t.box[0], t.box[3] - t.box[1], 1.0)]
         if taken:
             self.tracks.remove(min(taken, key=lambda t: t.picked_at))
 
