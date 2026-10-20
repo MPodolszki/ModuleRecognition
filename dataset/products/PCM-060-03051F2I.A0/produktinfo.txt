@@ -7,50 +7,50 @@
 # Aufs Board:  uv run tools/product_info.py models/<modell> und tools/deploy.sh
 
 # [1] Titel (groß) und letzter Teil im Kopfbalken
-Bezeichnung: phyCORE-Am335x
+Bezeichnung: phyCORE-AM335x
 
 # [2] graue Zeile über dem Titel und Kopfbalken, z. B. System on Module, Development Kit
 Kategorie: System on Module
 
 # [3] orangefarbenes NEU neben der Kategorie: ja / nein
-Neu:
+Neu: nein
 
 # [4] Artikelnummer PCM-060-03051F2I.A0 -- kommt aus dem Ordnernamen, nicht eintragen
 
 # [5] 1-2 Sätze unter der Artikelnummer, höchstens 3 Zeilen (ca. 270 Zeichen)
-Kurzbeschreibung:
+Kurzbeschreibung: Das phyCORE-AM335x Modul ist eine kostengünstige und robuste Lösung in maschinennahen Anwendungen.
 
 # [6] Kennzahl 1, kurz (ca. 16 Zeichen), z. B. 4 × A53 + M7
-Kerne:
+Kerne: 1× A8 + 2× PRU
 # [7] Kennzahl 2, z. B. 40 × 37 × 6
-Größe in mm:
+Größe in mm: 50 × 40
 # [8] Kennzahl 3, z. B. -40 °C / +85 °C
-Temperatur:
+Temperatur: -40 °C / +85 °C
 # [9] Kennzahl 4, z. B. 2035
 Verfügbar bis:
 
 # [10] Liste mit Häkchen: bis zu 8 Zeilen "Highlight:", je ca. 55 Zeichen
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
+Highlight: TI AM3359/8/7/6/4/2
+Highlight: Cortex-A8 bis 1 GHz + 2× PRU Rechenkern
+Highlight: Löt- oder Stecktechnologie
+Highlight: Echtzeit-Ethernet-Protokolle
+Highlight: SGX530 Grafik-Einheit für 2D oder 3D
+Highlight: Optional bis zu 64 GB eMMC
+Highlight: Yocto/Linux BSP mit Preempt-RT
+Highlight: RAUC Update-Mechanismus integriert
 
 # [11] Bild "Im Vergleich" unten links, Datei in diesem Ordner (z. B. chart.png)
 Diagramm-Datei:
 
 # [12] QR-Code "Zum Produkt" -- Produktseite auf phytec.de
-Link Produktseite:
+Link Produktseite: https://www.phytec.de/produkte/system-on-modules/phycore-am335x/
 
 # [13] QR-Code ganz rechts -- Entwicklungskit
-Link Kit:
-Kit-Bezeichnung:
+Link Kit: https://www.phytec.de/produkte/development-kits/phyboard-wega-kit/
+Kit-Bezeichnung: phyBOARD-Wega Kit
 
 # nicht angezeigt -- wie man den Namen spricht
-Aussprache (Sprachsuche):
+Aussprache (Sprachsuche): a m drei drei fünf x
 
 # nicht angezeigt -- nur für euch
-Bemerkung:
+Bemerkung: Quelle phytec.de Produkt- und Kitseite, Stand 20.10.2026. Status "AVAILABLE (REDUCED MAINTENANCE)", kein Jahr. Seite nennt 0/+70 °C und -40/+85 °C, Industriebereich eingetragen (nicht verifiziert, ob "I" in der Artikelnummer das bedeutet). Wega-Kit hat einen aufgelöteten phyCORE-AM3354 (DSC).

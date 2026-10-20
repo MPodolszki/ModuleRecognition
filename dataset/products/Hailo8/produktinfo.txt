@@ -10,47 +10,47 @@
 Bezeichnung: Hailo-8 M.2
 
 # [2] graue Zeile über dem Titel und Kopfbalken, z. B. System on Module, Development Kit
-Kategorie:
+Kategorie: KI-Beschleuniger
 
 # [3] orangefarbenes NEU neben der Kategorie: ja / nein
-Neu:
+Neu: ja
 
 # [4] Artikelnummer Hailo8 -- kommt aus dem Ordnernamen, nicht eintragen
 
 # [5] 1-2 Sätze unter der Artikelnummer, höchstens 3 Zeilen (ca. 270 Zeichen)
-Kurzbeschreibung:
+Kurzbeschreibung: Erweitert die NPU-Leistung Ihres PHYTEC-Boards um bis zu 26 TOPS – für größere KI-Modelle direkt am Edge.
 
 # [6] Kennzahl 1, kurz (ca. 16 Zeichen), z. B. 4 × A53 + M7
-Kerne:
+Kerne: 26 TOPS
 # [7] Kennzahl 2, z. B. 40 × 37 × 6
-Größe in mm:
+Größe in mm: 22 × 30
 # [8] Kennzahl 3, z. B. -40 °C / +85 °C
-Temperatur:
+Temperatur: -40 °C / +85 °C
 # [9] Kennzahl 4, z. B. 2035
 Verfügbar bis:
 
 # [10] Liste mit Häkchen: bis zu 8 Zeilen "Highlight:", je ca. 55 Zeichen
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
+Highlight: Hailo-8 Beschleuniger mit 26 TOPS
+Highlight: M.2 Key-A+E Einsteckkarte
+Highlight: Sehr leistungseffizient (3 TOPS/W)
+Highlight: PCIe Gen 3.0, 2 Lanes
+Highlight: TensorFlow, Keras, ONNX und PyTorch
+Highlight: Bereits integriert in ausgewählte PHYTEC-BSPs
+Highlight: Passt z. B. auf Libra (FPSC) und phyBOARD-Pollux
+Highlight: CE- und FCC-zertifiziert
 
 # [11] Bild "Im Vergleich" unten links, Datei in diesem Ordner (z. B. chart.png)
 Diagramm-Datei:
 
 # [12] QR-Code "Zum Produkt" -- Produktseite auf phytec.de
-Link Produktseite:
+Link Produktseite: https://www.phytec.de/produkte/zubehoer/hailo-8-m2-ki-beschleunigungsmodul/
 
 # [13] QR-Code ganz rechts -- Entwicklungskit
-Link Kit:
-Kit-Bezeichnung:
+Link Kit: https://www.phytec.de/produkte/development-kits/phyboard-pollux-ki-kit/
+Kit-Bezeichnung: phyBOARD-Pollux KI-Kit
 
 # nicht angezeigt -- wie man den Namen spricht
-Aussprache (Sprachsuche):
+Aussprache (Sprachsuche): hailo acht
 
 # nicht angezeigt -- nur für euch
-Bemerkung:
+Bemerkung: Quelle phytec.de Produktseite (KPAD-070-HAILO.A0, Label NEW) und Pollux-KI-Kit-Seite, Stand 20.10.2026.

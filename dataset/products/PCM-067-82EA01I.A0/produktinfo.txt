@@ -13,44 +13,44 @@ Bezeichnung: phyCORE-AM65x
 Kategorie: System on Module
 
 # [3] orangefarbenes NEU neben der Kategorie: ja / nein
-Neu:
+Neu: nein
 
 # [4] Artikelnummer PCM-067-82EA01I.A0 -- kommt aus dem Ordnernamen, nicht eintragen
 
 # [5] 1-2 Sätze unter der Artikelnummer, höchstens 3 Zeilen (ca. 270 Zeichen)
-Kurzbeschreibung:
+Kurzbeschreibung: Für sicherheitskritische Applikationen, Time Sensitive Networking und hohe Anforderungen an Grafikperformance.
 
 # [6] Kennzahl 1, kurz (ca. 16 Zeichen), z. B. 4 × A53 + M7
-Kerne:
+Kerne: 4× A53 + 2× R5F
 # [7] Kennzahl 2, z. B. 40 × 37 × 6
-Größe in mm:
+Größe in mm: 65 × 55
 # [8] Kennzahl 3, z. B. -40 °C / +85 °C
-Temperatur:
+Temperatur: -40 °C / +85 °C
 # [9] Kennzahl 4, z. B. 2035
 Verfügbar bis:
 
 # [10] Liste mit Häkchen: bis zu 8 Zeilen "Highlight:", je ca. 55 Zeichen
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
+Highlight: 4× Cortex-A53 + Dual-Cortex-R5F-Subsystem
+Highlight: 3D-Grafik via PowerVR SGX544
+Highlight: Bis zu 6 Gigabit Industrial-Comm.-Schnittstellen
+Highlight: Wi-Fi onboard
+Highlight: 3× Audio McASP
+Highlight: MIPI DSI und LVDS
+Highlight: PCIe 3.0, USB 3.0 Dual Role
+Highlight: DDR4 RAM mit separatem DDR4 ECC
 
 # [11] Bild "Im Vergleich" unten links, Datei in diesem Ordner (z. B. chart.png)
 Diagramm-Datei:
 
 # [12] QR-Code "Zum Produkt" -- Produktseite auf phytec.de
-Link Produktseite:
+Link Produktseite: https://www.phytec.de/produkte/system-on-modules/phycore-am65x/
 
 # [13] QR-Code ganz rechts -- Entwicklungskit
 Link Kit:
 Kit-Bezeichnung:
 
 # nicht angezeigt -- wie man den Namen spricht
-Aussprache (Sprachsuche):
+Aussprache (Sprachsuche): a m fünfundsechzig x
 
 # nicht angezeigt -- nur für euch
-Bemerkung:
+Bemerkung: Quelle phytec.de Produktseite, Status "AVAILABLE (REDUCED MAINTENANCE)", Stand 20.10.2026. Keine Kitseite auf phytec.de (Kit KPCM-067 laut phytec.com, URL nicht gefunden).

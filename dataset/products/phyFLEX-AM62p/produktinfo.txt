@@ -7,50 +7,50 @@
 # Aufs Board:  uv run tools/product_info.py models/<modell> und tools/deploy.sh
 
 # [1] Titel (groß) und letzter Teil im Kopfbalken
-Bezeichnung: phyFLEX-AM62p
+Bezeichnung: phyFLEX-AM62Px FPSC
 
 # [2] graue Zeile über dem Titel und Kopfbalken, z. B. System on Module, Development Kit
 Kategorie: System on Module
 
 # [3] orangefarbenes NEU neben der Kategorie: ja / nein
-Neu:
+Neu: ja
 
 # [4] Artikelnummer phyFLEX-AM62p -- kommt aus dem Ordnernamen, nicht eintragen
 
 # [5] 1-2 Sätze unter der Artikelnummer, höchstens 3 Zeilen (ca. 270 Zeichen)
-Kurzbeschreibung:
+Kurzbeschreibung: Das phyFLEX-AM62Px-Modul erweitert die phyFLEX-Produktfamilie von Phytec um den leistungsstarken AM62P-Prozessor.
 
 # [6] Kennzahl 1, kurz (ca. 16 Zeichen), z. B. 4 × A53 + M7
-Kerne:
+Kerne: 4× A53, 2× R5F
 # [7] Kennzahl 2, z. B. 40 × 37 × 6
-Größe in mm:
+Größe in mm: 40 × 37
 # [8] Kennzahl 3, z. B. -40 °C / +85 °C
-Temperatur:
+Temperatur: -40 °C / +85 °C
 # [9] Kennzahl 4, z. B. 2035
-Verfügbar bis:
+Verfügbar bis: 2035+
 
 # [10] Liste mit Häkchen: bis zu 8 Zeilen "Highlight:", je ca. 55 Zeichen
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
+Highlight: Bis zu 4× Arm Cortex-A53 mit bis zu 1,4 GHz
+Highlight: 2× Arm Cortex-R5F (800 MHz)
+Highlight: 2D/3D GPU mit bis zu 50 GFLOPS
+Highlight: 3 Displays: MIPI, DPI, LVDS
+Highlight: H.264/H.265 Encoder/Decoder bis 300 MPixel
+Highlight: 2× 1 Gbit Ethernet (TSN), 3× CAN-FD, 2× USB 2.0
+Highlight: 32-Bit LPDDR4 RAM bis zu 3733 MHz
+Highlight: Secure Boot, HSM, TEE, Krypto-Beschleunigung
 
 # [11] Bild "Im Vergleich" unten links, Datei in diesem Ordner (z. B. chart.png)
 Diagramm-Datei:
 
 # [12] QR-Code "Zum Produkt" -- Produktseite auf phytec.de
-Link Produktseite:
+Link Produktseite: https://www.phytec.de/produkte/system-on-modules/phyflex-am62px-fpsc/
 
 # [13] QR-Code ganz rechts -- Entwicklungskit
 Link Kit:
 Kit-Bezeichnung:
 
 # nicht angezeigt -- wie man den Namen spricht
-Aussprache (Sprachsuche):
+Aussprache (Sprachsuche): phyflex a m zweiundsechzig p x
 
 # nicht angezeigt -- nur für euch
-Bemerkung:
+Bemerkung: Quelle phytec.de Produktseite, Stand 20.10.2026. "Neu" unsicher (nur englischer New-Tag). Longevity "2035+". Kein AM62Px-Kit auf phytec.de gelistet. Root-Artikelnummer laut phytec.com PFL-G-006.

@@ -7,50 +7,50 @@
 # Aufs Board:  uv run tools/product_info.py models/<modell> und tools/deploy.sh
 
 # [1] Titel (groß) und letzter Teil im Kopfbalken
-Bezeichnung: NXP-Ara240
+Bezeichnung: NXP Ara240 M.2
 
 # [2] graue Zeile über dem Titel und Kopfbalken, z. B. System on Module, Development Kit
-Kategorie:
+Kategorie: KI-Beschleuniger
 
 # [3] orangefarbenes NEU neben der Kategorie: ja / nein
-Neu:
+Neu: nein
 
 # [4] Artikelnummer NXP-Ara240 -- kommt aus dem Ordnernamen, nicht eintragen
 
 # [5] 1-2 Sätze unter der Artikelnummer, höchstens 3 Zeilen (ca. 270 Zeichen)
-Kurzbeschreibung:
+Kurzbeschreibung: Erweitert die NPU-Leistung Ihres PHYTEC-Boards um bis zu 40 eTOPS – für größere KI-Modelle direkt am Edge.
 
 # [6] Kennzahl 1, kurz (ca. 16 Zeichen), z. B. 4 × A53 + M7
-Kerne:
+Kerne: 40 eTOPS
 # [7] Kennzahl 2, z. B. 40 × 37 × 6
-Größe in mm:
+Größe in mm: 22 × 80
 # [8] Kennzahl 3, z. B. -40 °C / +85 °C
 Temperatur:
 # [9] Kennzahl 4, z. B. 2035
 Verfügbar bis:
 
 # [10] Liste mit Häkchen: bis zu 8 Zeilen "Highlight:", je ca. 55 Zeichen
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
+Highlight: Ara240 Beschleuniger mit 40 eTOPS
+Highlight: M.2 Key M Einsteckkarte
+Highlight: 2× 8 GB RAM direkt am Ara-Chip angebunden
+Highlight: Bereits integriert in ausgewählte PHYTEC-BSPs
+Highlight: Kompatibel mit vielen PHYTEC-Boards (M.2)
+Highlight: Generative KI, LLMs und VLMs am Edge
+Highlight: TensorFlow, PyTorch, ONNX
 Highlight:
 
 # [11] Bild "Im Vergleich" unten links, Datei in diesem Ordner (z. B. chart.png)
 Diagramm-Datei:
 
 # [12] QR-Code "Zum Produkt" -- Produktseite auf phytec.de
-Link Produktseite:
+Link Produktseite: https://www.phytec.de/produkte/zubehoer/ara240-ki-beschleunigungsmodul/
 
 # [13] QR-Code ganz rechts -- Entwicklungskit
-Link Kit:
-Kit-Bezeichnung:
+Link Kit: https://www.phytec.de/produkte/development-kits/phyboard-pollux-ki-kit/
+Kit-Bezeichnung: phyBOARD-Pollux KI-Kit
 
 # nicht angezeigt -- wie man den Namen spricht
-Aussprache (Sprachsuche):
+Aussprache (Sprachsuche): ara zweihundertvierzig
 
 # nicht angezeigt -- nur für euch
-Bemerkung:
+Bemerkung: Quelle phytec.de Produktseite (KPAD-070-ARA.A0, "READY FOR PROJECT START") und nxp.com/products/ARA240 (LLM/VLM, Frameworks), Stand 20.10.2026. Temperatur nicht angegeben.

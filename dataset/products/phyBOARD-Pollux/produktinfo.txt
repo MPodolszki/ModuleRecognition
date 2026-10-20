@@ -13,44 +13,44 @@ Bezeichnung: phyBOARD-Pollux
 Kategorie: Development Kit
 
 # [3] orangefarbenes NEU neben der Kategorie: ja / nein
-Neu:
+Neu: nein
 
 # [4] Artikelnummer phyBOARD-Pollux -- kommt aus dem Ordnernamen, nicht eintragen
 
 # [5] 1-2 Sätze unter der Artikelnummer, höchstens 3 Zeilen (ca. 270 Zeichen)
-Kurzbeschreibung:
+Kurzbeschreibung: Entwicklungsplattform zum phyCORE-i.MX 8M Plus Modul – auch als industrieller Single Board Computer einsetzbar.
 
 # [6] Kennzahl 1, kurz (ca. 16 Zeichen), z. B. 4 × A53 + M7
-Kerne:
+Kerne: 4× A53 + M7
 # [7] Kennzahl 2, z. B. 40 × 37 × 6
-Größe in mm:
+Größe in mm: 160 × 77
 # [8] Kennzahl 3, z. B. -40 °C / +85 °C
-Temperatur:
+Temperatur: -40 °C / +85 °C
 # [9] Kennzahl 4, z. B. 2035
 Verfügbar bis:
 
 # [10] Liste mit Häkchen: bis zu 8 Zeilen "Highlight:", je ca. 55 Zeichen
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
+Highlight: i.MX 8M Plus Quad mit 4× 1,6 GHz
+Highlight: Neural Network Accelerator bis 2,3 TOPS
+Highlight: Onboard Image Signal Processor
+Highlight: 2× MIPI CSI-2
+Highlight: Ethernet mit TSN
+Highlight: RS-232/RS-485 umschaltbar, ein Connector
+Highlight: Stromverbrauch des Moduls messbar
+Highlight: Security Features, integrierter RAUC-Client
 
 # [11] Bild "Im Vergleich" unten links, Datei in diesem Ordner (z. B. chart.png)
 Diagramm-Datei:
 
 # [12] QR-Code "Zum Produkt" -- Produktseite auf phytec.de
-Link Produktseite:
+Link Produktseite: https://www.phytec.de/produkte/development-kits/phyboard-pollux-kit/
 
 # [13] QR-Code ganz rechts -- Entwicklungskit
-Link Kit:
-Kit-Bezeichnung:
+Link Kit: https://www.phytec.de/produkte/development-kits/phyboard-pollux-ki-kit/
+Kit-Bezeichnung: Pollux KI-Kit
 
 # nicht angezeigt -- wie man den Namen spricht
-Aussprache (Sprachsuche):
+Aussprache (Sprachsuche): fei board pollux
 
 # nicht angezeigt -- nur für euch
-Bemerkung:
+Bemerkung: Quelle phytec.de Kitseite und KI-Kit-Seite (Add-ons Hailo-8 oder Ara240), Stand 20.10.2026. -40/+85 °C gilt laut Seite nur für das SOM; die SBC-Seite nennt 4× 1,8 GHz und -20/+85 °C.

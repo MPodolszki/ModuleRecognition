@@ -15,6 +15,25 @@ zeigen, wo das Feld erscheint, siehe **`Info-Fenster_Aufbau.pdf`**:
 
 Muster mit allen Feldern: `PCM-070-0F3243I.A3/produktinfo.txt`.
 
+## Für das Marketing
+
+- Datei mit einem normalen Texteditor öffnen (Windows-Editor, TextEdit,
+  VS Code), **nicht** mit Word. Speichern als UTF-8 (Standard).
+- Nur den Text **hinter** dem Doppelpunkt ändern. Der Feldname vorne bleibt.
+  Groß/klein beim Feldnamen ist egal.
+- Lange Texte dürfen umbrechen, auch mit Enter. Eine Folgezeile ohne
+  `Feld:` gehört zum Feld darüber.
+- Highlights: eine Zeile `Highlight: …` pro Punkt, höchstens 8. Leere
+  `Highlight:`-Zeilen werden ignoriert.
+- Zeilen mit `#` sind Hinweise und werden nicht angezeigt. Die `Bemerkung:`
+  wird ebenfalls nicht angezeigt; dort steht, woher die Angaben kommen und
+  was noch offen ist.
+- Ob alles passt, zeigt das PDF. `uv run tools/render_panel.py` meldet
+  außerdem, was nicht ins Fenster passt (z. B. „nur 7 von 8 Highlights
+  passen“ oder „Kerne zu breit“).
+- Die ersten Inhalte (Stand 20.10.2026) wurden von phytec.de übernommen
+  und gekürzt -- bitte gegenlesen.
+
 | Nr. | Feld | Wo |
 |---|---|---|
 | 1 | Bezeichnung | Titel, Kopfbalken |

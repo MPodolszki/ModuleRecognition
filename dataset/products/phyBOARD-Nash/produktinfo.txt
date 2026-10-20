@@ -13,44 +13,44 @@ Bezeichnung: phyBOARD-Nash
 Kategorie: Development Kit
 
 # [3] orangefarbenes NEU neben der Kategorie: ja / nein
-Neu:
+Neu: nein
 
 # [4] Artikelnummer phyBOARD-Nash -- kommt aus dem Ordnernamen, nicht eintragen
 
 # [5] 1-2 Sätze unter der Artikelnummer, höchstens 3 Zeilen (ca. 270 Zeichen)
-Kurzbeschreibung:
+Kurzbeschreibung: Referenzplattform für die schnelle Applikationsentwicklung mit dem phyCORE-i.MX 93 Modul.
 
 # [6] Kennzahl 1, kurz (ca. 16 Zeichen), z. B. 4 × A53 + M7
-Kerne:
+Kerne: 2× A55 + M33
 # [7] Kennzahl 2, z. B. 40 × 37 × 6
-Größe in mm:
+Größe in mm: 160 × 77
 # [8] Kennzahl 3, z. B. -40 °C / +85 °C
-Temperatur:
+Temperatur: -40 °C / +85 °C
 # [9] Kennzahl 4, z. B. 2035
 Verfügbar bis:
 
 # [10] Liste mit Häkchen: bis zu 8 Zeilen "Highlight:", je ca. 55 Zeichen
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
+Highlight: 2× Cortex-A55 bis 1,7 GHz
+Highlight: Echtzeit-MCU Cortex-M33 (250 MHz)
+Highlight: Arm Ethos-U65 microNPU
+Highlight: 720p60 LVDS-Display, MIPI CSI-2 Kameras
+Highlight: 2× Ethernet (TSN), 2× CAN FD, 8 UARTs
+Highlight: Kostenoptimiert durch Lötmodul-Technologie
+Highlight: Langzeitgepflegtes Yocto Linux mit Security
+Highlight: EdgeLock Secure Enclave
 
 # [11] Bild "Im Vergleich" unten links, Datei in diesem Ordner (z. B. chart.png)
 Diagramm-Datei:
 
 # [12] QR-Code "Zum Produkt" -- Produktseite auf phytec.de
-Link Produktseite:
+Link Produktseite: https://www.phytec.de/produkte/development-kits/phyboard-nash/
 
 # [13] QR-Code ganz rechts -- Entwicklungskit
-Link Kit:
-Kit-Bezeichnung:
+Link Kit: https://www.phytec.de/produkte/development-kits/phyboard-nash-imaging-kit/
+Kit-Bezeichnung: Nash Imaging Kit
 
 # nicht angezeigt -- wie man den Namen spricht
-Aussprache (Sprachsuche):
+Aussprache (Sprachsuche): fei board näsch
 
 # nicht angezeigt -- nur für euch
-Bemerkung:
+Bemerkung: Quelle phytec.de Kitseite (phyBOARD-Nash i.MX 93 Rapid Development Kit) und Imaging-Kit-Seite, Stand 20.10.2026. Ethernet widersprüchlich (Bullets 2× TSN, Tabelle 1× 10/100 + 1× RGMII).

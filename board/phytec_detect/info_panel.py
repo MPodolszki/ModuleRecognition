@@ -15,6 +15,7 @@ screen frame just blends the cached picture in at the current offset.
 """
 
 import os
+import re
 import time
 
 import cv2
@@ -198,6 +199,7 @@ class Page:
         self._fonts = {}
         self.pastes = []  # (numpy BGR(A) image, x, y): QR code, chart
         self.marks = []   # (field, box): where each field landed, for tools/render_panel.py
+        self.overflow = []  # (field, text) that did not fit
         try:
             from PIL import Image, ImageDraw
         except ImportError:  # no Pillow on the board: OpenCV's own font
@@ -331,7 +333,7 @@ def _bottom_band(page, info, margin=32):
     chart_path = info.get("chart")
     if not links and not chart_path:
         return page.h
-    size = 236 if len(links) <= 1 else 200
+    size = 200  # same band height with one or two codes
     codes = [(label, _qr(url, size)) for label, url in links]
     codes = [(label, q) for label, q in codes if q is not None]
     block = max([q.shape[0] for _, q in codes], default=236)
@@ -374,8 +376,10 @@ def _bottom_band(page, info, margin=32):
 
 def _render_single(page, art, info):
     name = info.get("name") or art
-    _header(page, ["Produkte", info.get("category") and info["category"] + "s"
-                   if info.get("category", "").endswith("Module") else _family(name), name])
+    category = info.get("category", "")
+    section = category + "s" if category.endswith(("Module", "Kit")) else category or \
+        (_family(name) if _family(name) != "Produkte" else "")
+    _header(page, [part for part in ("Produkte", section, name) if part])
     x, w = 32, page.w
     bottom = _bottom_band(page, info) - 16
     y = 92
@@ -395,11 +399,15 @@ def _render_single(page, art, info):
         y += 58
     page.mark("Bezeichnung", (x, y_title, x + max(page.width(l, 46, "Bold") for l in
                                                    page.wrap(name, w - 2 * x, 46, "Bold")), y - 4))
-    page.text(x, y + 2, f"Artikelnummer {art}", 20, fill=MUTED)
-    page.mark("Artikelnummer", (x, y, x + page.width(f"Artikelnummer {art}", 20), y + 28))
+    if re.match(r"^[A-Z]{2,5}-[A-Z0-9]", art):  # not a placeholder folder name
+        page.text(x, y + 2, f"Artikelnummer {art}", 20, fill=MUTED)
+        page.mark("Artikelnummer", (x, y, x + page.width(f"Artikelnummer {art}", 20), y + 28))
     y += 40
     y_desc = y
-    for line in page.wrap(info.get("description", ""), w - 2 * x, 19)[:3]:
+    desc = page.wrap(info.get("description", ""), w - 2 * x, 19)
+    if len(desc) > 3:
+        page.overflow.append(("Kurzbeschreibung", f"{len(desc)} Zeilen, nur 3 passen"))
+    for line in desc[:3]:
         page.text(x, y, line, 19, fill=INK)
         y += 26
     if y > y_desc:
@@ -413,6 +421,8 @@ def _render_single(page, art, info):
             fx = x + i * cw
             if i:
                 page.draw.line([(fx - 10, y + 12), (fx - 10, y + 70)], fill=RULE, width=1)
+            if page.width(value, 22, "Medium") > cw - 20:
+                page.overflow.append((label, f"zu breit: {value}"))
             page.text(fx, y + 14, label, 16, fill=MUTED)
             page.text(fx, y + 38, value, 22, "Medium", fill=PETROL)
             page.mark(label, (fx, y + 10, fx + cw - 20, y + 70))
@@ -426,11 +436,15 @@ def _render_single(page, art, info):
     y_high = y
     if not _option_lines(info):
         page.text(x, y, "Produktdaten folgen.", 20, fill=MUTED)
-    for label, value in _option_lines(info):
+    for k, (label, value) in enumerate(_option_lines(info)):
         lines = page.wrap(value, w - 2 * x - 34, 17) if value else []
         need = 28 + 24 * min(len(lines), 1)
         if y + need > bottom:
+            if info.get("highlights"):
+                page.overflow.append(("Highlight", f"nur {k} von {len(info['highlights'])} passen"))
             break
+        if info.get("highlights") and page.width(label, 21, "Medium") > w - 2 * x - 34:
+            page.overflow.append(("Highlight", f"zu breit: {label}"))
         page.check(x, y + 3)
         page.text(x + 34, y, label, 21, "Medium")
         y += 28

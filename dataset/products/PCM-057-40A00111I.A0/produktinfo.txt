@@ -13,44 +13,44 @@ Bezeichnung: phyCORE-AM57x
 Kategorie: System on Module
 
 # [3] orangefarbenes NEU neben der Kategorie: ja / nein
-Neu:
+Neu: nein
 
 # [4] Artikelnummer PCM-057-40A00111I.A0 -- kommt aus dem Ordnernamen, nicht eintragen
 
 # [5] 1-2 Sätze unter der Artikelnummer, höchstens 3 Zeilen (ca. 270 Zeichen)
-Kurzbeschreibung:
+Kurzbeschreibung: Das phyCORE-AM57x System on Module unterstützt den Arm Cortex-A15 Prozessor von Texas Instruments.
 
 # [6] Kennzahl 1, kurz (ca. 16 Zeichen), z. B. 4 × A53 + M7
-Kerne:
+Kerne: 2× A15, 2× C66x, M4
 # [7] Kennzahl 2, z. B. 40 × 37 × 6
-Größe in mm:
+Größe in mm: 55 × 45
 # [8] Kennzahl 3, z. B. -40 °C / +85 °C
-Temperatur:
+Temperatur: -40 °C / +85 °C
 # [9] Kennzahl 4, z. B. 2035
 Verfügbar bis:
 
 # [10] Liste mit Häkchen: bis zu 8 Zeilen "Highlight:", je ca. 55 Zeichen
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
+Highlight: Dual/Single-Core Arm Cortex-A15
+Highlight: PRU-ICSS für Industrial Ethernet
+Highlight: Embedded Vision Engine für KI
+Highlight: Dual C66x DSP
+Highlight: 2D/3D Hochleistungsgrafik
+Highlight: Advanced Video Accelerator mit 1080p
+Highlight: 2× Gigabit Ethernet, 6× Audio McASP
+Highlight: 24-bit Parallel + HDMI
 
 # [11] Bild "Im Vergleich" unten links, Datei in diesem Ordner (z. B. chart.png)
 Diagramm-Datei:
 
 # [12] QR-Code "Zum Produkt" -- Produktseite auf phytec.de
-Link Produktseite:
+Link Produktseite: https://www.phytec.de/produkte/system-on-modules/phycore-am57x/
 
 # [13] QR-Code ganz rechts -- Entwicklungskit
-Link Kit:
-Kit-Bezeichnung:
+Link Kit: https://www.phytec.de/produkte/development-kits/phycore-am57x-rapid-development-kit/
+Kit-Bezeichnung: phyCORE-AM57x Kit
 
 # nicht angezeigt -- wie man den Namen spricht
-Aussprache (Sprachsuche):
+Aussprache (Sprachsuche): a m siebenundfünfzig x
 
 # nicht angezeigt -- nur für euch
-Bemerkung:
+Bemerkung: Quelle phytec.de Produkt- und Kitseite (Kit mit AM5728), Stand 20.10.2026. Kein Jahr. EVE nur bei AM57x9. Kit nicht mehr in der Kit-Übersicht gelistet.

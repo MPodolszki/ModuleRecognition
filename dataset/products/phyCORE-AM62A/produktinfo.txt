@@ -7,34 +7,34 @@
 # Aufs Board:  uv run tools/product_info.py models/<modell> und tools/deploy.sh
 
 # [1] Titel (groß) und letzter Teil im Kopfbalken
-Bezeichnung: phyCORE-AM62A
+Bezeichnung: phyCORE-AM62Ax
 
 # [2] graue Zeile über dem Titel und Kopfbalken, z. B. System on Module, Development Kit
 Kategorie: System on Module
 
 # [3] orangefarbenes NEU neben der Kategorie: ja / nein
-Neu:
+Neu: nein
 
 # [4] Artikelnummer phyCORE-AM62A -- kommt aus dem Ordnernamen, nicht eintragen
 
 # [5] 1-2 Sätze unter der Artikelnummer, höchstens 3 Zeilen (ca. 270 Zeichen)
-Kurzbeschreibung:
+Kurzbeschreibung: Low Power Edge Computing Modul für Machine-Vision- und Deep-Learning-Algorithmen.
 
 # [6] Kennzahl 1, kurz (ca. 16 Zeichen), z. B. 4 × A53 + M7
-Kerne:
+Kerne: 4× A53, 2× R5F, C7x
 # [7] Kennzahl 2, z. B. 40 × 37 × 6
-Größe in mm:
+Größe in mm: 40 × 40 × 4,5
 # [8] Kennzahl 3, z. B. -40 °C / +85 °C
-Temperatur:
+Temperatur: -40 °C / +85 °C
 # [9] Kennzahl 4, z. B. 2035
 Verfügbar bis:
 
 # [10] Liste mit Häkchen: bis zu 8 Zeilen "Highlight:", je ca. 55 Zeichen
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
+Highlight: Single-/Dual-/Quad-Core Cortex-A53 bis 1,4 GHz
+Highlight: Cortex-R5F bis 800 MHz für Echtzeit
+Highlight: Vision Accelerator mit ISP (5 MP@60 fps)
+Highlight: 1× C7 Deep Learning Accelerator (DLA)
+Highlight: 2 TOPS KI-Leistung (C7x256v)
 Highlight:
 Highlight:
 Highlight:
@@ -43,14 +43,14 @@ Highlight:
 Diagramm-Datei:
 
 # [12] QR-Code "Zum Produkt" -- Produktseite auf phytec.de
-Link Produktseite:
+Link Produktseite: https://www.phytec.de/produkte/system-on-modules/phycore-am62ax/
 
 # [13] QR-Code ganz rechts -- Entwicklungskit
 Link Kit:
 Kit-Bezeichnung:
 
 # nicht angezeigt -- wie man den Namen spricht
-Aussprache (Sprachsuche):
+Aussprache (Sprachsuche): a m zweiundsechzig a x
 
 # nicht angezeigt -- nur für euch
-Bemerkung:
+Bemerkung: Quelle phytec.de Produktseite, Stand 20.10.2026. Größe widersprüchlich (Kopf 40 × 40 × 4,5, Tabelle 40,8 × 40,8 × 5). Kit phyBOARD-Lyra AM62Ax (KPB-07524) nur über "Angebot anfordern", keine eigene Kitseite -- Link Kit leer.

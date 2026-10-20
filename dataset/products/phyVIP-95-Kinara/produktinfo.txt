@@ -7,50 +7,50 @@
 # Aufs Board:  uv run tools/product_info.py models/<modell> und tools/deploy.sh
 
 # [1] Titel (groß) und letzter Teil im Kopfbalken
-Bezeichnung: phyVIP-i.MX95-Ara240
+Bezeichnung: phyVIP i.MX 95
 
 # [2] graue Zeile über dem Titel und Kopfbalken, z. B. System on Module, Development Kit
-Kategorie: Development Kit
+Kategorie: Vision-Plattform
 
 # [3] orangefarbenes NEU neben der Kategorie: ja / nein
-Neu:
+Neu: ja
 
 # [4] Artikelnummer phyVIP-95-Kinara -- kommt aus dem Ordnernamen, nicht eintragen
 
 # [5] 1-2 Sätze unter der Artikelnummer, höchstens 3 Zeilen (ca. 270 Zeichen)
-Kurzbeschreibung:
+Kurzbeschreibung: Modulare Vision Integration Platform für maßgeschneiderte Embedded-Vision-Systeme – optional mit NXP Ara240 DNPU bis 40 TOPS.
 
 # [6] Kennzahl 1, kurz (ca. 16 Zeichen), z. B. 4 × A53 + M7
-Kerne:
+Kerne: 6× A55 + M33 + M7
 # [7] Kennzahl 2, z. B. 40 × 37 × 6
-Größe in mm:
+Größe in mm: 60 × 73 / 83
 # [8] Kennzahl 3, z. B. -40 °C / +85 °C
-Temperatur:
+Temperatur: -40 °C / +85 °C
 # [9] Kennzahl 4, z. B. 2035
-Verfügbar bis:
+Verfügbar bis: 2036
 
 # [10] Liste mit Häkchen: bis zu 8 Zeilen "Highlight:", je ca. 55 Zeichen
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
+Highlight: Modulares Plattformkonzept mit i.MX 95
+Highlight: Hexa-Core Cortex-A55 mit 2 GHz
+Highlight: Cortex-M33 (333 MHz) + Cortex-M7 (800 MHz)
+Highlight: eIQ Neutron NPU 2 TOPS, opt. Ara240 bis 40 TOPS
+Highlight: Zusätzliche Mali-G310 V2 GPU
+Highlight: 2× phyCAM-M MIPI-CSI-2 Kameraeingänge
+Highlight: 12–36 V Weitbereichsversorgung, passiv kühlbar
+Highlight: GbE, CAN FD, USB, RS485, WLAN/BT, TPM
 
 # [11] Bild "Im Vergleich" unten links, Datei in diesem Ordner (z. B. chart.png)
 Diagramm-Datei:
 
 # [12] QR-Code "Zum Produkt" -- Produktseite auf phytec.de
-Link Produktseite:
+Link Produktseite: https://www.phytec.de/produkte/embedded-vision/phyvip-vision-integration-platform-imx-95/
 
 # [13] QR-Code ganz rechts -- Entwicklungskit
 Link Kit:
 Kit-Bezeichnung:
 
 # nicht angezeigt -- wie man den Namen spricht
-Aussprache (Sprachsuche):
+Aussprache (Sprachsuche): fei vip i m x fünfundneunzig
 
 # nicht angezeigt -- nur für euch
-Bemerkung:
+Bemerkung: Quelle phytec.de Produktseite (Label New, Longevity 2036), Stand 20.10.2026. Größe 60 × 73 bzw. 60 × 83 je nach KI-Ausstattung. Keine eigene phyVIP-Kitseite gefunden.

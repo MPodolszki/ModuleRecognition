@@ -55,20 +55,55 @@ FIELDS = [
 ]
 
 
-def read_info_file(path):
-    """produktinfo.txt -> the same dict as a produktinfos.csv row."""
-    row, highlights = {}, []
-    for line in path.read_text(encoding="utf-8-sig").splitlines():
-        if not line.strip() or line.lstrip().startswith("#") or ":" not in line:
+KEYS = {field.lower(): field for _, field, _ in FIELDS if field != "Artikelnummer"}
+KEYS.update({"neu (ja/nein)": "Neu", "artikelnummer": None})
+# what fits on the panel (characters, roughly); render_panel.py warns above it
+# (render_panel.py also measures what really fits)
+LIMITS = {"Bezeichnung": 30, "Kategorie": 30, "Kurzbeschreibung": 270, "Kit-Bezeichnung": 24}
+
+
+def read_info_file(path, problems=None):
+    """produktinfo.txt -> the same dict as a produktinfos.csv row. Forgiving,
+    since people edit it by hand: field names in any case, "Highlight 3:"
+    as well as "Highlight:", and a line that is no "Feld:" (a value wrapped
+    by the editor) continues the field above. Anything odd goes to
+    `problems` (a list) if given."""
+    row, highlights, last = {}, [], None
+    for n, line in enumerate(path.read_text(encoding="utf-8-sig").splitlines(), 1):
+        text = line.strip()
+        if not text or text.startswith("#"):
+            last = None if not text else last
             continue
-        key, value = (part.strip() for part in line.split(":", 1))
-        if key.lower().startswith("highlight"):
-            if value:
-                highlights.append(value)
-        elif key == "Neu":
-            row["Neu (ja/nein)"] = value
+        key, sep, value = text.partition(":")
+        key = key.strip().lower()
+        field = "Highlight" if key.startswith("highlight") and key[9:].strip(" 0123456789") == "" \
+            else KEYS.get(key, "?")
+        if not sep or field == "?":
+            if last is None:
+                if problems is not None:
+                    problems.append(f"Zeile {n} unbekannt: {text[:40]}")
+                continue
+            if last == "Highlight":
+                highlights[-1] = f"{highlights[-1]} {text}".strip()
+            else:
+                row[last] = f"{row.get(last, '')} {text}".strip()
+            continue
+        value = value.strip()
+        last = field
+        if field is None:     # Artikelnummer: the folder name counts
+            continue
+        if field == "Highlight":
+            highlights.append(value)
         else:
-            row[key] = value
+            row["Neu (ja/nein)" if field == "Neu" else field] = value
+    highlights = [h for h in highlights if h]
+    if problems is not None:
+        if len(highlights) > 8:
+            problems.append(f"{len(highlights)} Highlights, nur 8 werden gezeigt")
+        for field, limit in LIMITS.items():
+            for value in highlights if field == "Highlight" else [row.get(field, "")]:
+                if len(value) > limit:
+                    problems.append(f"{field} zu lang ({len(value)} > {limit}): {value[:30]}…")
     for i, h in enumerate(highlights[:8]):
         row[f"Highlight {i + 1}"] = h
     return row

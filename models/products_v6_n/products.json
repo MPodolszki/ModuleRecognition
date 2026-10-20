@@ -244,144 +244,991 @@
   "spoken": "a m vierundsechzig x"
  },
  "PFL-A-02-23237E0.A5": {
-  "name": "phyFLEX-i.MX6 Quad",
+  "name": "phyFLEX-i.MX 6 Quad",
   "summary": [],
   "options": [],
-  "category": "System on Module"
+  "facts": [
+   [
+    "Kerne",
+    "4× Cortex-A9"
+   ]
+  ],
+  "category": "System on Module",
+  "spoken": "fei flex i m x sechs quad"
  },
  "PCL-071-5432DE11I.A0": {
   "name": "phyCORE-AM62x DSC",
   "summary": [],
   "options": [],
-  "category": "System on Module"
+  "links": [
+   [
+    "Zum Produkt",
+    "https://www.phytec.de/produkte/system-on-modules/phycore-am62x/"
+   ],
+   [
+    "phyBOARD-Lyra Kit",
+    "https://www.phytec.de/produkte/development-kits/phyboard-lyra-rapid-development-kit/"
+   ]
+  ],
+  "link": "https://www.phytec.de/produkte/development-kits/phyboard-lyra-rapid-development-kit/",
+  "description": "Nachfolger der phyCORE-AM335x-Familie – besonders geeignet für Industrial HMI, Robotersteuerung, medizinische Geräte oder Gebäudeautomatisierung.",
+  "highlights": [
+   "Lötmodul (DSC), 270 Pins, 0,8 mm Raster",
+   "Bis zu 4× Cortex-A53 mit bis zu 1,4 GHz",
+   "Isolierter Cortex-M4F (400 MHz), Safety/Security",
+   "Dual-Display: 24-Bit RGB + 2× OLDI/LVDS",
+   "Wählbare GPU mit bis zu 8 GFLOPS",
+   "1× MIPI CSI-2 Kameraschnittstelle",
+   "2× Gigabit-Ethernet, 3× CAN FD, 2× USB 2.0",
+   "Stromsparmodi: Deep Sleep, Standby, MCU-only"
+  ],
+  "facts": [
+   [
+    "Kerne",
+    "4× A53, M4F, R5F"
+   ],
+   [
+    "Größe in mm",
+    "40,8 × 40,8 × 2,84"
+   ],
+   [
+    "Temperatur",
+    "-40 °C / +85 °C"
+   ]
+  ],
+  "category": "System on Module",
+  "new": true,
+  "spoken": "a m zweiundsechzig x d s c"
  },
  "PCL-063-23500CI.A0": {
-  "name": "phyCORE-i.MX6UL",
+  "name": "phyCORE-i.MX 6UL/ULL",
   "summary": [],
   "options": [],
-  "category": "System on Module"
+  "links": [
+   [
+    "Zum Produkt",
+    "https://www.phytec.de/produkte/system-on-modules/phycore-imx-6-ul-ull/"
+   ],
+   [
+    "phyBOARD-Segin Kit",
+    "https://www.phytec.de/produkte/development-kits/phyboard-segin-kit/"
+   ]
+  ],
+  "link": "https://www.phytec.de/produkte/development-kits/phyboard-segin-kit/",
+  "description": "Industrietaugliches Embedded-SOM mit vollständiger Linux-Implementierung auf Basis des NXP i.MX 6UL/ULL – klein, energie- und kosteneffizient.",
+  "highlights": [
+   "Energie- und kosteneffizient",
+   "Lötmodul im kleinen Formfaktor",
+   "Komplett maschinell produzierbar",
+   "Lieferbar als Rollenware à 175 Stück",
+   "1× paralleler Kamera-Eingang",
+   "Industrieller Temperaturbereich verfügbar",
+   "Langzeitverfügbarkeit von 15 Jahren"
+  ],
+  "facts": [
+   [
+    "Kerne",
+    "1× Cortex-A7"
+   ],
+   [
+    "Größe in mm",
+    "36 × 36 × 3"
+   ],
+   [
+    "Temperatur",
+    "-40 °C / +85 °C"
+   ]
+  ],
+  "category": "System on Module",
+  "spoken": "i m x sechs u l"
  },
  "PCM-067-82EA01I.A0": {
   "name": "phyCORE-AM65x",
   "summary": [],
   "options": [],
-  "category": "System on Module"
+  "links": [
+   [
+    "Zum Produkt",
+    "https://www.phytec.de/produkte/system-on-modules/phycore-am65x/"
+   ]
+  ],
+  "link": "https://www.phytec.de/produkte/system-on-modules/phycore-am65x/",
+  "description": "Für sicherheitskritische Applikationen, Time Sensitive Networking und hohe Anforderungen an Grafikperformance.",
+  "highlights": [
+   "4× Cortex-A53 + Dual-Cortex-R5F-Subsystem",
+   "3D-Grafik via PowerVR SGX544",
+   "Bis zu 6 Gigabit Industrial-Comm.-Schnittstellen",
+   "Wi-Fi onboard",
+   "3× Audio McASP",
+   "MIPI DSI und LVDS",
+   "PCIe 3.0, USB 3.0 Dual Role",
+   "DDR4 RAM mit separatem DDR4 ECC"
+  ],
+  "facts": [
+   [
+    "Kerne",
+    "4× A53 + 2× R5F"
+   ],
+   [
+    "Größe in mm",
+    "65 × 55"
+   ],
+   [
+    "Temperatur",
+    "-40 °C / +85 °C"
+   ]
+  ],
+  "category": "System on Module",
+  "spoken": "a m fünfundsechzig x"
  },
  "PCM-058-33230C0I.A0": {
-  "name": "phyCORE-i.MX6 Quad",
+  "name": "phyCORE-i.MX 6",
   "summary": [],
   "options": [],
-  "category": "System on Module"
+  "links": [
+   [
+    "Zum Produkt",
+    "https://www.phytec.de/produkte/system-on-modules/phycore-imx-6/"
+   ],
+   [
+    "phyBOARD-Mira Kit",
+    "https://www.phytec.de/produkte/development-kits/phyboard-mira-kit/"
+   ]
+  ],
+  "link": "https://www.phytec.de/produkte/development-kits/phyboard-mira-kit/",
+  "description": "Das phyCORE-i.MX 6 eignet sich für zahlreiche industrielle Anwendungen. Langzeitverfügbar und vielfach bewährt.",
+  "highlights": [
+   "Skalierbar: i.MX 6Solo bis 6Quad, 1,2 GHz",
+   "Flexibel durch Löt- oder Stecktechnologie",
+   "Sprachsteuerungsengine",
+   "MIPI CSI + paralleles Kamerainterface",
+   "SATA",
+   "LVDS, Parallel 24-Bit, HDMI"
+  ],
+  "facts": [
+   [
+    "Kerne",
+    "4× Cortex-A9"
+   ],
+   [
+    "Größe in mm",
+    "50 × 40"
+   ],
+   [
+    "Temperatur",
+    "-40 °C / +85 °C"
+   ]
+  ],
+  "category": "System on Module",
+  "spoken": "fei kor i m x sechs quad"
  },
  "PCM-071-5432DE11I.A0": {
   "name": "phyCORE-AM62x",
   "summary": [],
   "options": [],
-  "category": "System on Module"
+  "links": [
+   [
+    "Zum Produkt",
+    "https://www.phytec.de/produkte/system-on-modules/phycore-am62x/"
+   ],
+   [
+    "phyBOARD-Lyra Kit",
+    "https://www.phytec.de/produkte/development-kits/phyboard-lyra-rapid-development-kit/"
+   ]
+  ],
+  "link": "https://www.phytec.de/produkte/development-kits/phyboard-lyra-rapid-development-kit/",
+  "description": "Nachfolger der phyCORE-AM335x-Familie – besonders geeignet für Industrial HMI, Robotersteuerung, medizinische Geräte oder Gebäudeautomatisierung.",
+  "highlights": [
+   "Samtec-Steckverbinder 2× 120-polig, 0,5 mm",
+   "Bis zu 4× Cortex-A53 mit bis zu 1,4 GHz",
+   "Isolierter Cortex-M4F (400 MHz), Safety/Security",
+   "Dual-Display: 24-Bit RGB + 2× OLDI/LVDS",
+   "Wählbare GPU mit bis zu 8 GFLOPS",
+   "1× MIPI CSI-2 Kameraschnittstelle",
+   "2× Gigabit-Ethernet, 3× CAN FD, 2× USB 2.0",
+   "Stromsparmodi: Deep Sleep, Standby, MCU-only"
+  ],
+  "facts": [
+   [
+    "Kerne",
+    "4× A53, M4F, R5F"
+   ],
+   [
+    "Größe in mm",
+    "43 × 32 × 7,6"
+   ],
+   [
+    "Temperatur",
+    "-40 °C / +85 °C"
+   ]
+  ],
+  "category": "System on Module",
+  "new": true,
+  "spoken": "a m zweiundsechzig x"
  },
  "PCM-061-2111111C.A0": {
-  "name": "phyCORE-i.MX7",
+  "name": "phyCORE-i.MX 7",
   "summary": [],
   "options": [],
-  "category": "System on Module"
+  "links": [
+   [
+    "Zum Produkt",
+    "https://www.phytec.de/produkte/system-on-modules/phycore-imx-7/"
+   ],
+   [
+    "phyBOARD-Zeta Kit",
+    "https://www.phytec.de/produkte/development-kits/phyboard-zeta-kit/"
+   ]
+  ],
+  "link": "https://www.phytec.de/produkte/development-kits/phyboard-zeta-kit/",
+  "description": "Dieses Modul ist ideal geeignet für Applikationen mit kritischen Stromverbrauchsanforderungen.",
+  "highlights": [
+   "i.MX 7Solo/Dual bis zu 2× 1 GHz",
+   "Cortex-M4 für Echtzeitanwendungen",
+   "eMMC oder SLC NAND",
+   "2× Gigabit Ethernet",
+   "MIPI DSI und Parallel 24-bit",
+   "MIPI CSI"
+  ],
+  "facts": [
+   [
+    "Kerne",
+    "1–2× A7 + M4"
+   ],
+   [
+    "Größe in mm",
+    "50 × 41"
+   ],
+   [
+    "Temperatur",
+    "-40 °C / +85 °C"
+   ]
+  ],
+  "category": "System on Module",
+  "spoken": "i m x sieben"
  },
  "PCM-060-03051F2I.A0": {
-  "name": "phyCORE-Am335x",
+  "name": "phyCORE-AM335x",
   "summary": [],
   "options": [],
-  "category": "System on Module"
+  "links": [
+   [
+    "Zum Produkt",
+    "https://www.phytec.de/produkte/system-on-modules/phycore-am335x/"
+   ],
+   [
+    "phyBOARD-Wega Kit",
+    "https://www.phytec.de/produkte/development-kits/phyboard-wega-kit/"
+   ]
+  ],
+  "link": "https://www.phytec.de/produkte/development-kits/phyboard-wega-kit/",
+  "description": "Das phyCORE-AM335x Modul ist eine kostengünstige und robuste Lösung in maschinennahen Anwendungen.",
+  "highlights": [
+   "TI AM3359/8/7/6/4/2",
+   "Cortex-A8 bis 1 GHz + 2× PRU Rechenkern",
+   "Löt- oder Stecktechnologie",
+   "Echtzeit-Ethernet-Protokolle",
+   "SGX530 Grafik-Einheit für 2D oder 3D",
+   "Optional bis zu 64 GB eMMC",
+   "Yocto/Linux BSP mit Preempt-RT",
+   "RAUC Update-Mechanismus integriert"
+  ],
+  "facts": [
+   [
+    "Kerne",
+    "1× A8 + 2× PRU"
+   ],
+   [
+    "Größe in mm",
+    "50 × 40"
+   ],
+   [
+    "Temperatur",
+    "-40 °C / +85 °C"
+   ]
+  ],
+  "category": "System on Module",
+  "spoken": "a m drei drei fünf x"
  },
  "PCM-057-40A00111I.A0": {
   "name": "phyCORE-AM57x",
   "summary": [],
   "options": [],
-  "category": "System on Module"
+  "links": [
+   [
+    "Zum Produkt",
+    "https://www.phytec.de/produkte/system-on-modules/phycore-am57x/"
+   ],
+   [
+    "phyCORE-AM57x Kit",
+    "https://www.phytec.de/produkte/development-kits/phycore-am57x-rapid-development-kit/"
+   ]
+  ],
+  "link": "https://www.phytec.de/produkte/development-kits/phycore-am57x-rapid-development-kit/",
+  "description": "Das phyCORE-AM57x System on Module unterstützt den Arm Cortex-A15 Prozessor von Texas Instruments.",
+  "highlights": [
+   "Dual/Single-Core Arm Cortex-A15",
+   "PRU-ICSS für Industrial Ethernet",
+   "Embedded Vision Engine für KI",
+   "Dual C66x DSP",
+   "2D/3D Hochleistungsgrafik",
+   "Advanced Video Accelerator mit 1080p",
+   "2× Gigabit Ethernet, 6× Audio McASP",
+   "24-bit Parallel + HDMI"
+  ],
+  "facts": [
+   [
+    "Kerne",
+    "2× A15, 2× C66x, M4"
+   ],
+   [
+    "Größe in mm",
+    "55 × 45"
+   ],
+   [
+    "Temperatur",
+    "-40 °C / +85 °C"
+   ]
+  ],
+  "category": "System on Module",
+  "spoken": "a m siebenundfünfzig x"
  },
  "libra-imx95": {
-  "name": "phyBOARD-Libra",
+  "name": "phyFLEX-i.MX 95 Kit",
   "summary": [],
   "options": [],
-  "category": "Development Kit"
+  "links": [
+   [
+    "Zum Produkt",
+    "https://www.phytec.de/produkte/development-kits/phyflex-imx-95-kit/"
+   ]
+  ],
+  "link": "https://www.phytec.de/produkte/development-kits/phyflex-imx-95-kit/",
+  "description": "Entwicklungskit aus phyFLEX-i.MX 95 FPSC-Modul und Libra-Board für schnelle Prototypen – für autonome Fahrzeuge, Robotik und anspruchsvolle Industrieanwendungen.",
+  "highlights": [
+   "FPSC-Entwicklungsplattform für den i.MX 95",
+   "Dedizierte NPU für KI (2 TOP/s)",
+   "ISP und mehrere MIPI-CSI-Kameras",
+   "Ethernet und WLAN/BT für Cloud-Anbindung",
+   "Pinkompatibel zu i.MX 8M Plus und AM62Lx FPSC",
+   "Yocto Linux mit integriertem Update-System"
+  ],
+  "facts": [
+   [
+    "Kerne",
+    "6× A55 + M7 + M33"
+   ],
+   [
+    "Größe in mm",
+    "230 × 140"
+   ],
+   [
+    "Temperatur",
+    "-40 °C / +85 °C"
+   ]
+  ],
+  "category": "Development Kit",
+  "new": true,
+  "spoken": "libra i m x fünfundneunzig"
  },
  "Hailo10": {
-  "name": "Hailo-10 M.2",
+  "name": "Hailo-10H M.2",
   "summary": [],
-  "options": []
+  "options": [],
+  "links": [
+   [
+    "Zum Produkt",
+    "https://hailo.ai/products/ai-accelerators/hailo-10h-m-2-generative-ai-acceleration-module/"
+   ]
+  ],
+  "link": "https://hailo.ai/products/ai-accelerators/hailo-10h-m-2-generative-ai-acceleration-module/",
+  "description": "M.2-Modul mit Hailo-10H für Vision- und generative KI-Modelle; passt in bestehende PCs und Edge-Geräte.",
+  "highlights": [
+   "Hailo-10H mit 40 TOPS (INT4) / 20 TOPS (INT8)",
+   "Vision- und generative KI-Modelle am Edge",
+   "Zweite Generation der Hailo-KI-Beschleuniger",
+   "M.2 Key M, Bauformen 2242 und 2280",
+   "Industrietauglich: -40 °C bis +85 °C",
+   "Typische Leistungsaufnahme 2,5 W"
+  ],
+  "facts": [
+   [
+    "Kerne",
+    "40 TOPS (INT4)"
+   ],
+   [
+    "Größe in mm",
+    "22 × 42 / 22 × 80"
+   ],
+   [
+    "Temperatur",
+    "-40 °C / +85 °C"
+   ]
+  ],
+  "category": "KI-Beschleuniger",
+  "spoken": "hailo zehn h"
  },
  "Hailo8": {
   "name": "Hailo-8 M.2",
   "summary": [],
-  "options": []
+  "options": [],
+  "links": [
+   [
+    "Zum Produkt",
+    "https://www.phytec.de/produkte/zubehoer/hailo-8-m2-ki-beschleunigungsmodul/"
+   ],
+   [
+    "phyBOARD-Pollux KI-Kit",
+    "https://www.phytec.de/produkte/development-kits/phyboard-pollux-ki-kit/"
+   ]
+  ],
+  "link": "https://www.phytec.de/produkte/development-kits/phyboard-pollux-ki-kit/",
+  "description": "Erweitert die NPU-Leistung Ihres PHYTEC-Boards um bis zu 26 TOPS – für größere KI-Modelle direkt am Edge.",
+  "highlights": [
+   "Hailo-8 Beschleuniger mit 26 TOPS",
+   "M.2 Key-A+E Einsteckkarte",
+   "Sehr leistungseffizient (3 TOPS/W)",
+   "PCIe Gen 3.0, 2 Lanes",
+   "TensorFlow, Keras, ONNX und PyTorch",
+   "Bereits integriert in ausgewählte PHYTEC-BSPs",
+   "Passt z. B. auf Libra (FPSC) und phyBOARD-Pollux",
+   "CE- und FCC-zertifiziert"
+  ],
+  "facts": [
+   [
+    "Kerne",
+    "26 TOPS"
+   ],
+   [
+    "Größe in mm",
+    "22 × 30"
+   ],
+   [
+    "Temperatur",
+    "-40 °C / +85 °C"
+   ]
+  ],
+  "category": "KI-Beschleuniger",
+  "new": true,
+  "spoken": "hailo acht"
  },
  "phyVIP-95-Kinara": {
-  "name": "phyVIP-i.MX95-Ara240",
+  "name": "phyVIP i.MX 95",
   "summary": [],
   "options": [],
-  "category": "Development Kit"
+  "links": [
+   [
+    "Zum Produkt",
+    "https://www.phytec.de/produkte/embedded-vision/phyvip-vision-integration-platform-imx-95/"
+   ]
+  ],
+  "link": "https://www.phytec.de/produkte/embedded-vision/phyvip-vision-integration-platform-imx-95/",
+  "description": "Modulare Vision Integration Platform für maßgeschneiderte Embedded-Vision-Systeme – optional mit NXP Ara240 DNPU bis 40 TOPS.",
+  "highlights": [
+   "Modulares Plattformkonzept mit i.MX 95",
+   "Hexa-Core Cortex-A55 mit 2 GHz",
+   "Cortex-M33 (333 MHz) + Cortex-M7 (800 MHz)",
+   "eIQ Neutron NPU 2 TOPS, opt. Ara240 bis 40 TOPS",
+   "Zusätzliche Mali-G310 V2 GPU",
+   "2× phyCAM-M MIPI-CSI-2 Kameraeingänge",
+   "12–36 V Weitbereichsversorgung, passiv kühlbar",
+   "GbE, CAN FD, USB, RS485, WLAN/BT, TPM"
+  ],
+  "facts": [
+   [
+    "Kerne",
+    "6× A55 + M33 + M7"
+   ],
+   [
+    "Größe in mm",
+    "60 × 73 / 83"
+   ],
+   [
+    "Temperatur",
+    "-40 °C / +85 °C"
+   ],
+   [
+    "Verfügbar bis",
+    "2036"
+   ]
+  ],
+  "category": "Vision-Plattform",
+  "new": true,
+  "spoken": "fei vip i m x fünfundneunzig"
  },
  "phyBOARD-Polis": {
   "name": "phyBOARD-Polis",
   "summary": [],
   "options": [],
-  "category": "Development Kit"
+  "links": [
+   [
+    "Zum Produkt",
+    "https://www.phytec.de/produkte/single-board-computer/phyboard-polis-imx8m-mini/"
+   ],
+   [
+    "phyBOARD-Polis Kit",
+    "https://www.phytec.de/produkte/development-kits/phyboard-polis-kit/"
+   ]
+  ],
+  "link": "https://www.phytec.de/produkte/development-kits/phyboard-polis-kit/",
+  "description": "Entwicklungsplattform für das phyCORE-i.MX 8M Mini/Nano oder industrietauglicher Einplatinencomputer; Referenzdesign für parallele Software- und Baseboard-Entwicklung.",
+  "highlights": [
+   "Quad-Core Cortex-A53 bis 1,8 GHz + Cortex-M4",
+   "1080p-Videokodierung und -dekodierung",
+   "2D- und 3D-Grafik",
+   "MIPI-DSI oder LVDS, 1× MIPI CSI-2 Kamera",
+   "Gigabit-Ethernet, WLAN und BLE 4.2",
+   "USB, RS-232/RS-485, miniPCIe, microSD",
+   "Integrierter TPM-Chip, optional CAN FD",
+   "Linux (Yocto) und Android"
+  ],
+  "facts": [
+   [
+    "Kerne",
+    "4× A53 + M4"
+   ],
+   [
+    "Größe in mm",
+    "100 × 100"
+   ],
+   [
+    "Temperatur",
+    "-40 °C / +85 °C"
+   ]
+  ],
+  "category": "Single Board Computer",
+  "spoken": "fei board polis"
  },
  "NXP-Ara240": {
-  "name": "NXP-Ara240",
+  "name": "NXP Ara240 M.2",
   "summary": [],
-  "options": []
+  "options": [],
+  "links": [
+   [
+    "Zum Produkt",
+    "https://www.phytec.de/produkte/zubehoer/ara240-ki-beschleunigungsmodul/"
+   ],
+   [
+    "phyBOARD-Pollux KI-Kit",
+    "https://www.phytec.de/produkte/development-kits/phyboard-pollux-ki-kit/"
+   ]
+  ],
+  "link": "https://www.phytec.de/produkte/development-kits/phyboard-pollux-ki-kit/",
+  "description": "Erweitert die NPU-Leistung Ihres PHYTEC-Boards um bis zu 40 eTOPS – für größere KI-Modelle direkt am Edge.",
+  "highlights": [
+   "Ara240 Beschleuniger mit 40 eTOPS",
+   "M.2 Key M Einsteckkarte",
+   "2× 8 GB RAM direkt am Ara-Chip angebunden",
+   "Bereits integriert in ausgewählte PHYTEC-BSPs",
+   "Kompatibel mit vielen PHYTEC-Boards (M.2)",
+   "Generative KI, LLMs und VLMs am Edge",
+   "TensorFlow, PyTorch, ONNX"
+  ],
+  "facts": [
+   [
+    "Kerne",
+    "40 eTOPS"
+   ],
+   [
+    "Größe in mm",
+    "22 × 80"
+   ]
+  ],
+  "category": "KI-Beschleuniger",
+  "spoken": "ara zweihundertvierzig"
  },
  "phyBOARD-Nash": {
   "name": "phyBOARD-Nash",
   "summary": [],
   "options": [],
-  "category": "Development Kit"
+  "links": [
+   [
+    "Zum Produkt",
+    "https://www.phytec.de/produkte/development-kits/phyboard-nash/"
+   ],
+   [
+    "Nash Imaging Kit",
+    "https://www.phytec.de/produkte/development-kits/phyboard-nash-imaging-kit/"
+   ]
+  ],
+  "link": "https://www.phytec.de/produkte/development-kits/phyboard-nash-imaging-kit/",
+  "description": "Referenzplattform für die schnelle Applikationsentwicklung mit dem phyCORE-i.MX 93 Modul.",
+  "highlights": [
+   "2× Cortex-A55 bis 1,7 GHz",
+   "Echtzeit-MCU Cortex-M33 (250 MHz)",
+   "Arm Ethos-U65 microNPU",
+   "720p60 LVDS-Display, MIPI CSI-2 Kameras",
+   "2× Ethernet (TSN), 2× CAN FD, 8 UARTs",
+   "Kostenoptimiert durch Lötmodul-Technologie",
+   "Langzeitgepflegtes Yocto Linux mit Security",
+   "EdgeLock Secure Enclave"
+  ],
+  "facts": [
+   [
+    "Kerne",
+    "2× A55 + M33"
+   ],
+   [
+    "Größe in mm",
+    "160 × 77"
+   ],
+   [
+    "Temperatur",
+    "-40 °C / +85 °C"
+   ]
+  ],
+  "category": "Development Kit",
+  "spoken": "fei board näsch"
  },
  "phyBOARD-Pollux": {
   "name": "phyBOARD-Pollux",
   "summary": [],
   "options": [],
-  "category": "Development Kit"
+  "links": [
+   [
+    "Zum Produkt",
+    "https://www.phytec.de/produkte/development-kits/phyboard-pollux-kit/"
+   ],
+   [
+    "Pollux KI-Kit",
+    "https://www.phytec.de/produkte/development-kits/phyboard-pollux-ki-kit/"
+   ]
+  ],
+  "link": "https://www.phytec.de/produkte/development-kits/phyboard-pollux-ki-kit/",
+  "description": "Entwicklungsplattform zum phyCORE-i.MX 8M Plus Modul – auch als industrieller Single Board Computer einsetzbar.",
+  "highlights": [
+   "i.MX 8M Plus Quad mit 4× 1,6 GHz",
+   "Neural Network Accelerator bis 2,3 TOPS",
+   "Onboard Image Signal Processor",
+   "2× MIPI CSI-2",
+   "Ethernet mit TSN",
+   "RS-232/RS-485 umschaltbar, ein Connector",
+   "Stromverbrauch des Moduls messbar",
+   "Security Features, integrierter RAUC-Client"
+  ],
+  "facts": [
+   [
+    "Kerne",
+    "4× A53 + M7"
+   ],
+   [
+    "Größe in mm",
+    "160 × 77"
+   ],
+   [
+    "Temperatur",
+    "-40 °C / +85 °C"
+   ]
+  ],
+  "category": "Development Kit",
+  "spoken": "fei board pollux"
  },
  "fpsc-imx95": {
-  "name": "phyFLEX-i.MX95",
+  "name": "phyFLEX-i.MX 95x FPSC",
   "summary": [],
   "options": [],
-  "category": "System on Module"
+  "links": [
+   [
+    "Zum Produkt",
+    "https://www.phytec.de/produkte/system-on-modules/phyflex-imx-95x-fpsc/"
+   ],
+   [
+    "phyFLEX-i.MX 95 Kit",
+    "https://www.phytec.de/produkte/development-kits/phyflex-imx-95-kit/"
+   ]
+  ],
+  "link": "https://www.phytec.de/produkte/development-kits/phyflex-imx-95-kit/",
+  "description": "System on Module mit NXP i.MX 95: bis zu sechs Cortex-A55-Kerne plus Cortex-M7 und M33, eIQ Neutron NPU und integrierter ISP für hochauflösende Multi-Kamera-Systeme.",
+  "highlights": [
+   "Quad-/Hexa-Core Arm Cortex-A55 + M7 + M33",
+   "eIQ Neutron NPU mit bis zu 2 TOP/s",
+   "LPDDR5-Speicher bis 5,8 GB/s",
+   "Integrierter ISP mit 500 MP/s",
+   "Zwei 4-Lane-MIPI-CSI-Schnittstellen",
+   "FPSC: pinkompatibel zu phyFLEX-Gamma Größe M"
+  ],
+  "facts": [
+   [
+    "Kerne",
+    "6× A55, M7, M33"
+   ],
+   [
+    "Größe in mm",
+    "45 × 48 × 3"
+   ],
+   [
+    "Temperatur",
+    "-40 °C / +85 °C"
+   ],
+   [
+    "Verfügbar bis",
+    "2041+"
+   ]
+  ],
+  "category": "System on Module",
+  "new": true,
+  "spoken": "fei flex i m x fünfundneunzig"
  },
  "phyCORE-AM68x": {
-  "name": "phyCORE-AM68x",
+  "name": "phyCORE-AM68x/TDA4x",
   "summary": [],
   "options": [],
-  "category": "System on Module"
+  "links": [
+   [
+    "Zum Produkt",
+    "https://www.phytec.de/produkte/system-on-modules/phycore-am68x-tda4x/"
+   ],
+   [
+    "phyBOARD-Izar Kit",
+    "https://www.phytec.de/produkte/development-kits/phyboard-izar/"
+   ]
+  ],
+  "link": "https://www.phytec.de/produkte/development-kits/phyboard-izar/",
+  "description": "Systemintegration, Skalierbarkeit und Kostenersparnis: vereint Deep-Learning-Beschleuniger, Vektoreinheiten und Mikroprozessoren.",
+  "highlights": [
+   "2 Kamera-Interfaces, bis zu 8 Kameras",
+   "Interner ISP für Bild-Vorverarbeitung",
+   "CAN FD und Gigabit Ethernet mit TSN",
+   "3 Displays: MIPI-DSI, LVDS, DP",
+   "Bis zu 2 Displays gleichzeitig",
+   "50 GFLOPS Grafikleistung",
+   "2 DSP-Einheiten für Signalverarbeitung und KI",
+   "Unterstützt TIs Konzept für funkt. Sicherheit"
+  ],
+  "facts": [
+   [
+    "Kerne",
+    "2× A72, R5F, 2× C7x"
+   ],
+   [
+    "Größe in mm",
+    "59 × 53 × 8,3"
+   ],
+   [
+    "Temperatur",
+    "-40 °C / +85 °C"
+   ]
+  ],
+  "category": "System on Module",
+  "new": true,
+  "spoken": "a m achtundsechzig x"
  },
  "fpsc-imx8mp": {
-  "name": "phyFLEX-i.MX8M Plus",
+  "name": "phyFLEX-i.MX 8M Plus FPSC",
   "summary": [],
   "options": [],
-  "category": "System on Module"
+  "links": [
+   [
+    "Zum Produkt",
+    "https://www.phytec.de/produkte/system-on-modules/phyflex-imx-8m-plus-fpsc/"
+   ],
+   [
+    "phyFLEX 8M Plus Kit",
+    "https://www.phytec.de/produkte/development-kits/phyflex-imx-8m-plus-kit/"
+   ]
+  ],
+  "link": "https://www.phytec.de/produkte/development-kits/phyflex-imx-8m-plus-kit/",
+  "description": "System on Module auf Basis des NXP i.MX 8M Plus mit bis zu vier Cortex-A53-Kernen und Cortex-M7 für Echtzeitaufgaben; dank FPSC pinkompatibel zu anderen phyFLEX-Modulen.",
+  "highlights": [
+   "NPU mit 2,3 TOPS und Tensilica-DSP für KI",
+   "Bis zu 8 GB LPDDR4 und 64 GB eMMC",
+   "2× Gigabit-Ethernet mit TSN",
+   "USB 3.0, PCIe 3.0 und CAN FD",
+   "Displays: LVDS, HDMI und MIPI",
+   "Kameras bis 12 MP, H.265-Codec 1080p60",
+   "Yocto-Linux und Android, Secure Boot"
+  ],
+  "facts": [
+   [
+    "Kerne",
+    "4× A53 + M7"
+   ],
+   [
+    "Größe in mm",
+    "40 × 37 × 3"
+   ],
+   [
+    "Temperatur",
+    "-40 °C / +85 °C"
+   ],
+   [
+    "Verfügbar bis",
+    "2035"
+   ]
+  ],
+  "category": "System on Module",
+  "new": true,
+  "spoken": "fei flex i m x acht m plus"
  },
  "phyFLEX-i.MX93": {
-  "name": "phyFLEX-i.MX93",
+  "name": "phyFLEX-i.MX 91/93 FPSC",
   "summary": [],
   "options": [],
-  "category": "System on Module"
+  "links": [
+   [
+    "Zum Produkt",
+    "https://www.phytec.de/produkte/system-on-modules/phyflex-imx-91/93-fpsc/"
+   ],
+   [
+    "phyFLEX-i.MX 93 Kit",
+    "https://www.phytec.de/produkte/development-kits/phyflex-imx-93-kit/"
+   ]
+  ],
+  "link": "https://www.phytec.de/produkte/development-kits/phyflex-imx-93-kit/",
+  "description": "Robustes FTGA-Lötmodul der NXP i.MX-9-Familie, wahlweise mit i.MX 91 oder i.MX 93 bestückt – für die Serienfertigung mit optimierter Stückliste.",
+  "highlights": [
+   "1× oder 2× Cortex-A55 bis 1,7 GHz",
+   "i.MX 93: Cortex-M33 und Ethos-U65 microNPU",
+   "i.MX 93: 2. Ethernet, MIPI DSI, optional LVDS",
+   "Displays bis 1920×1200p60",
+   "FPSC: pinkompatibel zu phyFLEX-Gamma",
+   "Upgrades ohne Baseboard-Redesign",
+   "Yocto-Linux-BSP und securiPHY-Distro"
+  ],
+  "facts": [
+   [
+    "Kerne",
+    "1–2× A55 + M33"
+   ],
+   [
+    "Größe in mm",
+    "37 × 40 × 3"
+   ],
+   [
+    "Temperatur",
+    "-40 °C / +85 °C"
+   ],
+   [
+    "Verfügbar bis",
+    "2036"
+   ]
+  ],
+  "category": "System on Module",
+  "new": true,
+  "spoken": "fei flex i m x dreiundneunzig"
  },
  "phyFLEX-STM32MP2": {
-  "name": "phyFLEX-STM32MP2",
+  "name": "phyFLEX-STM32MP2x FPSC",
   "summary": [],
   "options": [],
-  "category": "System on Module"
+  "links": [
+   [
+    "Zum Produkt",
+    "https://www.phytec.de/produkte/system-on-modules/phyflex-stm32mp2x-fpsc/"
+   ],
+   [
+    "phyFLEX-STM32MP2 Kit",
+    "https://www.phytec.de/produkte/development-kits/phyflex-stm32mp2x-fpsc-kit/"
+   ]
+  ],
+  "link": "https://www.phytec.de/produkte/development-kits/phyflex-stm32mp2x-fpsc-kit/",
+  "description": "Kostengünstiges, leistungsstarkes und cybersicheres System on Module für Maschinensteuerung, IoT-Gateways und Predictive Maintenance; typisch unter 5 W.",
+  "highlights": [
+   "1× oder 2× Cortex-A35 bis 1,5 GHz, M33 mit 400 MHz",
+   "NPU mit bis zu 1,35 TOPS",
+   "MIPI CSI-2 Kamera mit ISP, 3D-GPU",
+   "LVDS, MIPI-DSI, RGB für Full-HD-Grafik",
+   "PCIe und USB 3.2 Gen 1",
+   "Bis zu 3× Gigabit-Ethernet, 3× CAN FD",
+   "SESIP3-Vorzertifizierung, Secure Boot",
+   "Yocto-basiertes OpenSTLinux"
+  ],
+  "facts": [
+   [
+    "Kerne",
+    "2× A35 + M33 + M0+"
+   ],
+   [
+    "Größe in mm",
+    "37 × 40 × 3"
+   ],
+   [
+    "Temperatur",
+    "-40 °C / +85 °C"
+   ]
+  ],
+  "category": "System on Module",
+  "new": true,
+  "spoken": "fei flex s t m zweiunddreißig m p zwei"
  },
  "phyCORE-AM62A": {
-  "name": "phyCORE-AM62A",
+  "name": "phyCORE-AM62Ax",
   "summary": [],
   "options": [],
-  "category": "System on Module"
+  "links": [
+   [
+    "Zum Produkt",
+    "https://www.phytec.de/produkte/system-on-modules/phycore-am62ax/"
+   ]
+  ],
+  "link": "https://www.phytec.de/produkte/system-on-modules/phycore-am62ax/",
+  "description": "Low Power Edge Computing Modul für Machine-Vision- und Deep-Learning-Algorithmen.",
+  "highlights": [
+   "Single-/Dual-/Quad-Core Cortex-A53 bis 1,4 GHz",
+   "Cortex-R5F bis 800 MHz für Echtzeit",
+   "Vision Accelerator mit ISP (5 MP@60 fps)",
+   "1× C7 Deep Learning Accelerator (DLA)",
+   "2 TOPS KI-Leistung (C7x256v)"
+  ],
+  "facts": [
+   [
+    "Kerne",
+    "4× A53, 2× R5F, C7x"
+   ],
+   [
+    "Größe in mm",
+    "40 × 40 × 4,5"
+   ],
+   [
+    "Temperatur",
+    "-40 °C / +85 °C"
+   ]
+  ],
+  "category": "System on Module",
+  "spoken": "a m zweiundsechzig a x"
  },
  "phyFLEX-AM62p": {
-  "name": "phyFLEX-AM62p",
+  "name": "phyFLEX-AM62Px FPSC",
   "summary": [],
   "options": [],
-  "category": "System on Module"
+  "links": [
+   [
+    "Zum Produkt",
+    "https://www.phytec.de/produkte/system-on-modules/phyflex-am62px-fpsc/"
+   ]
+  ],
+  "link": "https://www.phytec.de/produkte/system-on-modules/phyflex-am62px-fpsc/",
+  "description": "Das phyFLEX-AM62Px-Modul erweitert die phyFLEX-Produktfamilie von Phytec um den leistungsstarken AM62P-Prozessor.",
+  "highlights": [
+   "Bis zu 4× Arm Cortex-A53 mit bis zu 1,4 GHz",
+   "2× Arm Cortex-R5F (800 MHz)",
+   "2D/3D GPU mit bis zu 50 GFLOPS",
+   "3 Displays: MIPI, DPI, LVDS",
+   "H.264/H.265 Encoder/Decoder bis 300 MPixel",
+   "2× 1 Gbit Ethernet (TSN), 3× CAN-FD, 2× USB 2.0",
+   "32-Bit LPDDR4 RAM bis zu 3733 MHz",
+   "Secure Boot, HSM, TEE, Krypto-Beschleunigung"
+  ],
+  "facts": [
+   [
+    "Kerne",
+    "4× A53, 2× R5F"
+   ],
+   [
+    "Größe in mm",
+    "40 × 37"
+   ],
+   [
+    "Temperatur",
+    "-40 °C / +85 °C"
+   ],
+   [
+    "Verfügbar bis",
+    "2035+"
+   ]
+  ],
+  "category": "System on Module",
+  "new": true,
+  "spoken": "phyflex a m zweiundsechzig p x"
  }
 }

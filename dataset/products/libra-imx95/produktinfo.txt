@@ -7,35 +7,35 @@
 # Aufs Board:  uv run tools/product_info.py models/<modell> und tools/deploy.sh
 
 # [1] Titel (groß) und letzter Teil im Kopfbalken
-Bezeichnung: phyBOARD-Libra
+Bezeichnung: phyFLEX-i.MX 95 Kit
 
 # [2] graue Zeile über dem Titel und Kopfbalken, z. B. System on Module, Development Kit
 Kategorie: Development Kit
 
 # [3] orangefarbenes NEU neben der Kategorie: ja / nein
-Neu:
+Neu: ja
 
 # [4] Artikelnummer libra-imx95 -- kommt aus dem Ordnernamen, nicht eintragen
 
 # [5] 1-2 Sätze unter der Artikelnummer, höchstens 3 Zeilen (ca. 270 Zeichen)
-Kurzbeschreibung:
+Kurzbeschreibung: Entwicklungskit aus phyFLEX-i.MX 95 FPSC-Modul und Libra-Board für schnelle Prototypen – für autonome Fahrzeuge, Robotik und anspruchsvolle Industrieanwendungen.
 
 # [6] Kennzahl 1, kurz (ca. 16 Zeichen), z. B. 4 × A53 + M7
-Kerne:
+Kerne: 6× A55 + M7 + M33
 # [7] Kennzahl 2, z. B. 40 × 37 × 6
-Größe in mm:
+Größe in mm: 230 × 140
 # [8] Kennzahl 3, z. B. -40 °C / +85 °C
-Temperatur:
+Temperatur: -40 °C / +85 °C
 # [9] Kennzahl 4, z. B. 2035
 Verfügbar bis:
 
 # [10] Liste mit Häkchen: bis zu 8 Zeilen "Highlight:", je ca. 55 Zeichen
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
+Highlight: FPSC-Entwicklungsplattform für den i.MX 95
+Highlight: Dedizierte NPU für KI (2 TOP/s)
+Highlight: ISP und mehrere MIPI-CSI-Kameras
+Highlight: Ethernet und WLAN/BT für Cloud-Anbindung
+Highlight: Pinkompatibel zu i.MX 8M Plus und AM62Lx FPSC
+Highlight: Yocto Linux mit integriertem Update-System
 Highlight:
 Highlight:
 
@@ -43,14 +43,14 @@ Highlight:
 Diagramm-Datei:
 
 # [12] QR-Code "Zum Produkt" -- Produktseite auf phytec.de
-Link Produktseite:
+Link Produktseite: https://www.phytec.de/produkte/development-kits/phyflex-imx-95-kit/
 
 # [13] QR-Code ganz rechts -- Entwicklungskit
 Link Kit:
 Kit-Bezeichnung:
 
 # nicht angezeigt -- wie man den Namen spricht
-Aussprache (Sprachsuche):
+Aussprache (Sprachsuche): libra i m x fünfundneunzig
 
 # nicht angezeigt -- nur für euch
-Bemerkung:
+Bemerkung: Quelle phytec.de Kitseite (KPD-05032, voller Name "phyFLEX-i.MX 95 Libra Rapid Development Kit"), Stand 20.10.2026. Keine Seite "phyBOARD-Libra" -- das Board heißt "Libra FPSC Development Board". Größe 230 × 140 ohne Höhe, vermutlich das Board. Produkt ist selbst das Kit, daher nur ein QR-Code.

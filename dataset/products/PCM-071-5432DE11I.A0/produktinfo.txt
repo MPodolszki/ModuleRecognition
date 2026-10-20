@@ -13,44 +13,44 @@ Bezeichnung: phyCORE-AM62x
 Kategorie: System on Module
 
 # [3] orangefarbenes NEU neben der Kategorie: ja / nein
-Neu:
+Neu: ja
 
 # [4] Artikelnummer PCM-071-5432DE11I.A0 -- kommt aus dem Ordnernamen, nicht eintragen
 
 # [5] 1-2 Sätze unter der Artikelnummer, höchstens 3 Zeilen (ca. 270 Zeichen)
-Kurzbeschreibung:
+Kurzbeschreibung: Nachfolger der phyCORE-AM335x-Familie – besonders geeignet für Industrial HMI, Robotersteuerung, medizinische Geräte oder Gebäudeautomatisierung.
 
 # [6] Kennzahl 1, kurz (ca. 16 Zeichen), z. B. 4 × A53 + M7
-Kerne:
+Kerne: 4× A53, M4F, R5F
 # [7] Kennzahl 2, z. B. 40 × 37 × 6
-Größe in mm:
+Größe in mm: 43 × 32 × 7,6
 # [8] Kennzahl 3, z. B. -40 °C / +85 °C
-Temperatur:
+Temperatur: -40 °C / +85 °C
 # [9] Kennzahl 4, z. B. 2035
 Verfügbar bis:
 
 # [10] Liste mit Häkchen: bis zu 8 Zeilen "Highlight:", je ca. 55 Zeichen
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
+Highlight: Samtec-Steckverbinder 2× 120-polig, 0,5 mm
+Highlight: Bis zu 4× Cortex-A53 mit bis zu 1,4 GHz
+Highlight: Isolierter Cortex-M4F (400 MHz), Safety/Security
+Highlight: Dual-Display: 24-Bit RGB + 2× OLDI/LVDS
+Highlight: Wählbare GPU mit bis zu 8 GFLOPS
+Highlight: 1× MIPI CSI-2 Kameraschnittstelle
+Highlight: 2× Gigabit-Ethernet, 3× CAN FD, 2× USB 2.0
+Highlight: Stromsparmodi: Deep Sleep, Standby, MCU-only
 
 # [11] Bild "Im Vergleich" unten links, Datei in diesem Ordner (z. B. chart.png)
 Diagramm-Datei:
 
 # [12] QR-Code "Zum Produkt" -- Produktseite auf phytec.de
-Link Produktseite:
+Link Produktseite: https://www.phytec.de/produkte/system-on-modules/phycore-am62x/
 
 # [13] QR-Code ganz rechts -- Entwicklungskit
-Link Kit:
-Kit-Bezeichnung:
+Link Kit: https://www.phytec.de/produkte/development-kits/phyboard-lyra-rapid-development-kit/
+Kit-Bezeichnung: phyBOARD-Lyra Kit
 
 # nicht angezeigt -- wie man den Namen spricht
-Aussprache (Sprachsuche):
+Aussprache (Sprachsuche): a m zweiundsechzig x
 
 # nicht angezeigt -- nur für euch
-Bemerkung:
+Bemerkung: Quelle phytec.de Produktseite (PCM-071 = Steckmodul, Label NEW), Stand 20.10.2026. Lyra-Kit KPB-07124-002 enthält die Steckvariante. "4×" = Vollausbau.

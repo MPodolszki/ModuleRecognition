@@ -7,13 +7,13 @@
 # Aufs Board:  uv run tools/product_info.py models/<modell> und tools/deploy.sh
 
 # [1] Titel (groß) und letzter Teil im Kopfbalken
-Bezeichnung: phyFLEX-i.MX6 Quad
+Bezeichnung: phyFLEX-i.MX 6 Quad
 
 # [2] graue Zeile über dem Titel und Kopfbalken, z. B. System on Module, Development Kit
 Kategorie: System on Module
 
 # [3] orangefarbenes NEU neben der Kategorie: ja / nein
-Neu:
+Neu: nein
 
 # [4] Artikelnummer PFL-A-02-23237E0.A5 -- kommt aus dem Ordnernamen, nicht eintragen
 
@@ -21,7 +21,7 @@ Neu:
 Kurzbeschreibung:
 
 # [6] Kennzahl 1, kurz (ca. 16 Zeichen), z. B. 4 × A53 + M7
-Kerne:
+Kerne: 4× Cortex-A9
 # [7] Kennzahl 2, z. B. 40 × 37 × 6
 Größe in mm:
 # [8] Kennzahl 3, z. B. -40 °C / +85 °C
@@ -50,7 +50,7 @@ Link Kit:
 Kit-Bezeichnung:
 
 # nicht angezeigt -- wie man den Namen spricht
-Aussprache (Sprachsuche):
+Aussprache (Sprachsuche): fei flex i m x sechs quad
 
 # nicht angezeigt -- nur für euch
-Bemerkung:
+Bemerkung: Keine Produktseite mehr auf phytec.de/phytec.com (404), vermutlich abgekündigt. Laut Suchtreffern (nicht verifiziert): 1,2 GHz Cortex-A9, Solo/Dual/Quad, -40…+85 °C. Kerne aus "Quad" abgeleitet. Stand 20.10.2026 -- bitte vom Marketing ergänzen oder Produkt weglassen.

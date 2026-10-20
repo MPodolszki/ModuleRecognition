@@ -10,47 +10,47 @@
 Bezeichnung: phyBOARD-Polis
 
 # [2] graue Zeile über dem Titel und Kopfbalken, z. B. System on Module, Development Kit
-Kategorie: Development Kit
+Kategorie: Single Board Computer
 
 # [3] orangefarbenes NEU neben der Kategorie: ja / nein
-Neu:
+Neu: nein
 
 # [4] Artikelnummer phyBOARD-Polis -- kommt aus dem Ordnernamen, nicht eintragen
 
 # [5] 1-2 Sätze unter der Artikelnummer, höchstens 3 Zeilen (ca. 270 Zeichen)
-Kurzbeschreibung:
+Kurzbeschreibung: Entwicklungsplattform für das phyCORE-i.MX 8M Mini/Nano oder industrietauglicher Einplatinencomputer; Referenzdesign für parallele Software- und Baseboard-Entwicklung.
 
 # [6] Kennzahl 1, kurz (ca. 16 Zeichen), z. B. 4 × A53 + M7
-Kerne:
+Kerne: 4× A53 + M4
 # [7] Kennzahl 2, z. B. 40 × 37 × 6
-Größe in mm:
+Größe in mm: 100 × 100
 # [8] Kennzahl 3, z. B. -40 °C / +85 °C
-Temperatur:
+Temperatur: -40 °C / +85 °C
 # [9] Kennzahl 4, z. B. 2035
 Verfügbar bis:
 
 # [10] Liste mit Häkchen: bis zu 8 Zeilen "Highlight:", je ca. 55 Zeichen
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
+Highlight: Quad-Core Cortex-A53 bis 1,8 GHz + Cortex-M4
+Highlight: 1080p-Videokodierung und -dekodierung
+Highlight: 2D- und 3D-Grafik
+Highlight: MIPI-DSI oder LVDS, 1× MIPI CSI-2 Kamera
+Highlight: Gigabit-Ethernet, WLAN und BLE 4.2
+Highlight: USB, RS-232/RS-485, miniPCIe, microSD
+Highlight: Integrierter TPM-Chip, optional CAN FD
+Highlight: Linux (Yocto) und Android
 
 # [11] Bild "Im Vergleich" unten links, Datei in diesem Ordner (z. B. chart.png)
 Diagramm-Datei:
 
 # [12] QR-Code "Zum Produkt" -- Produktseite auf phytec.de
-Link Produktseite:
+Link Produktseite: https://www.phytec.de/produkte/single-board-computer/phyboard-polis-imx8m-mini/
 
 # [13] QR-Code ganz rechts -- Entwicklungskit
-Link Kit:
-Kit-Bezeichnung:
+Link Kit: https://www.phytec.de/produkte/development-kits/phyboard-polis-kit/
+Kit-Bezeichnung: phyBOARD-Polis Kit
 
 # nicht angezeigt -- wie man den Namen spricht
-Aussprache (Sprachsuche):
+Aussprache (Sprachsuche): fei board polis
 
 # nicht angezeigt -- nur für euch
-Bemerkung:
+Bemerkung: Quelle phytec.de SBC- und Kitseite (KPB-02820-001), Stand 20.10.2026. Takt widersprüchlich (1,8 GHz Highlights / 1,6 GHz Technische Daten, je nach Temperaturklasse). Es gibt auch ein phyBOARD-Polis Imaging Kit.

@@ -7,50 +7,50 @@
 # Aufs Board:  uv run tools/product_info.py models/<modell> und tools/deploy.sh
 
 # [1] Titel (groß) und letzter Teil im Kopfbalken
-Bezeichnung: phyFLEX-STM32MP2
+Bezeichnung: phyFLEX-STM32MP2x FPSC
 
 # [2] graue Zeile über dem Titel und Kopfbalken, z. B. System on Module, Development Kit
 Kategorie: System on Module
 
 # [3] orangefarbenes NEU neben der Kategorie: ja / nein
-Neu:
+Neu: ja
 
 # [4] Artikelnummer phyFLEX-STM32MP2 -- kommt aus dem Ordnernamen, nicht eintragen
 
 # [5] 1-2 Sätze unter der Artikelnummer, höchstens 3 Zeilen (ca. 270 Zeichen)
-Kurzbeschreibung:
+Kurzbeschreibung: Kostengünstiges, leistungsstarkes und cybersicheres System on Module für Maschinensteuerung, IoT-Gateways und Predictive Maintenance; typisch unter 5 W.
 
 # [6] Kennzahl 1, kurz (ca. 16 Zeichen), z. B. 4 × A53 + M7
-Kerne:
+Kerne: 2× A35 + M33 + M0+
 # [7] Kennzahl 2, z. B. 40 × 37 × 6
-Größe in mm:
+Größe in mm: 37 × 40 × 3
 # [8] Kennzahl 3, z. B. -40 °C / +85 °C
-Temperatur:
+Temperatur: -40 °C / +85 °C
 # [9] Kennzahl 4, z. B. 2035
 Verfügbar bis:
 
 # [10] Liste mit Häkchen: bis zu 8 Zeilen "Highlight:", je ca. 55 Zeichen
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
+Highlight: 1× oder 2× Cortex-A35 bis 1,5 GHz, M33 mit 400 MHz
+Highlight: NPU mit bis zu 1,35 TOPS
+Highlight: MIPI CSI-2 Kamera mit ISP, 3D-GPU
+Highlight: LVDS, MIPI-DSI, RGB für Full-HD-Grafik
+Highlight: PCIe und USB 3.2 Gen 1
+Highlight: Bis zu 3× Gigabit-Ethernet, 3× CAN FD
+Highlight: SESIP3-Vorzertifizierung, Secure Boot
+Highlight: Yocto-basiertes OpenSTLinux
 
 # [11] Bild "Im Vergleich" unten links, Datei in diesem Ordner (z. B. chart.png)
 Diagramm-Datei:
 
 # [12] QR-Code "Zum Produkt" -- Produktseite auf phytec.de
-Link Produktseite:
+Link Produktseite: https://www.phytec.de/produkte/system-on-modules/phyflex-stm32mp2x-fpsc/
 
 # [13] QR-Code ganz rechts -- Entwicklungskit
-Link Kit:
-Kit-Bezeichnung:
+Link Kit: https://www.phytec.de/produkte/development-kits/phyflex-stm32mp2x-fpsc-kit/
+Kit-Bezeichnung: phyFLEX-STM32MP2 Kit
 
 # nicht angezeigt -- wie man den Namen spricht
-Aussprache (Sprachsuche):
+Aussprache (Sprachsuche): fei flex s t m zweiunddreißig m p zwei
 
 # nicht angezeigt -- nur für euch
-Bemerkung:
+Bemerkung: Quelle phytec.de Produkt- und Kitseite, Stand 20.10.2026. Kein Endjahr, nur "10 Jahre Langzeitverfügbarkeit, von ST jährlich verlängert". Texte aus englischer Zusammenfassung übersetzt -- bitte gegenlesen.

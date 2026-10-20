@@ -7,35 +7,35 @@
 # Aufs Board:  uv run tools/product_info.py models/<modell> und tools/deploy.sh
 
 # [1] Titel (groß) und letzter Teil im Kopfbalken
-Bezeichnung: Hailo-10 M.2
+Bezeichnung: Hailo-10H M.2
 
 # [2] graue Zeile über dem Titel und Kopfbalken, z. B. System on Module, Development Kit
-Kategorie:
+Kategorie: KI-Beschleuniger
 
 # [3] orangefarbenes NEU neben der Kategorie: ja / nein
-Neu:
+Neu: nein
 
 # [4] Artikelnummer Hailo10 -- kommt aus dem Ordnernamen, nicht eintragen
 
 # [5] 1-2 Sätze unter der Artikelnummer, höchstens 3 Zeilen (ca. 270 Zeichen)
-Kurzbeschreibung:
+Kurzbeschreibung: M.2-Modul mit Hailo-10H für Vision- und generative KI-Modelle; passt in bestehende PCs und Edge-Geräte.
 
 # [6] Kennzahl 1, kurz (ca. 16 Zeichen), z. B. 4 × A53 + M7
-Kerne:
+Kerne: 40 TOPS (INT4)
 # [7] Kennzahl 2, z. B. 40 × 37 × 6
-Größe in mm:
+Größe in mm: 22 × 42 / 22 × 80
 # [8] Kennzahl 3, z. B. -40 °C / +85 °C
-Temperatur:
+Temperatur: -40 °C / +85 °C
 # [9] Kennzahl 4, z. B. 2035
 Verfügbar bis:
 
 # [10] Liste mit Häkchen: bis zu 8 Zeilen "Highlight:", je ca. 55 Zeichen
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
-Highlight:
+Highlight: Hailo-10H mit 40 TOPS (INT4) / 20 TOPS (INT8)
+Highlight: Vision- und generative KI-Modelle am Edge
+Highlight: Zweite Generation der Hailo-KI-Beschleuniger
+Highlight: M.2 Key M, Bauformen 2242 und 2280
+Highlight: Industrietauglich: -40 °C bis +85 °C
+Highlight: Typische Leistungsaufnahme 2,5 W
 Highlight:
 Highlight:
 
@@ -43,14 +43,14 @@ Highlight:
 Diagramm-Datei:
 
 # [12] QR-Code "Zum Produkt" -- Produktseite auf phytec.de
-Link Produktseite:
+Link Produktseite: https://hailo.ai/products/ai-accelerators/hailo-10h-m-2-generative-ai-acceleration-module/
 
 # [13] QR-Code ganz rechts -- Entwicklungskit
 Link Kit:
 Kit-Bezeichnung:
 
 # nicht angezeigt -- wie man den Namen spricht
-Aussprache (Sprachsuche):
+Aussprache (Sprachsuche): hailo zehn h
 
 # nicht angezeigt -- nur für euch
-Bemerkung:
+Bemerkung: Quelle Herstellerseite hailo.ai (englisch, übersetzt), Stand 20.10.2026. Auf phytec.de keine Seite für Hailo-10H, daher kein Kit-Link und QR führt zu hailo.ai.

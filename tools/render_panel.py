@@ -30,7 +30,7 @@ sys.path.insert(0, str(ROOT / "board"))
 sys.path.insert(0, str(ROOT / "tools"))
 
 from phytec_detect import info_panel  # noqa: E402
-from product_info import FIELDS, INFO_FILE, build, product_list  # noqa: E402
+from product_info import FIELDS, INFO_FILE, build, product_list, read_info_file  # noqa: E402
 
 SCREEN_W, SCREEN_H = 1920, 1080
 PANEL_W = SCREEN_W // 2          # InfoPanel fraction 0.5
@@ -48,9 +48,11 @@ def font(size, weight="Regular"):
 
 
 def render(art, info):
-    """(panel as PIL RGB, marks) for one product."""
+    """(panel as PIL RGB, marks) for one product; prints what did not fit."""
     page = info_panel.Page(PANEL_W, SCREEN_H)
     info_panel._render_single(page, art, info)
+    for field, problem in page.overflow:
+        print(f"{art}: {field} passt nicht -- {problem}")
     bgr = page.image()[..., :3]
     return Image.fromarray(cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)), page.marks
 
@@ -189,6 +191,11 @@ def main():
         example, marks = render(args.example, infos[args.example])
         pages = [layout_page(example, marks), monitor_page(example)]
         for art in arts:
+            problems = []
+            if (products / art / INFO_FILE).exists():
+                read_info_file(products / art / INFO_FILE, problems)
+            for problem in problems:
+                print(f"{art}: {problem}")
             panel, _ = render(art, infos[art])
             pages.append(product_page(art, panel, products / art / INFO_FILE))
     pages[0].save(out, save_all=True, append_images=pages[1:], resolution=150)
