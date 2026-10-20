@@ -116,7 +116,8 @@ def find_product(gray, min_frac=0.0015, max_frac=0.25):
             continue  # touches the border: table edge, monitor, arm
         (cx, cy), (rw, rh), ang = cv2.minAreaRect(c)
         fill = area / (rw * rh + 1e-9)
-        if fill < 0.6 or max(rw, rh) > 3 * min(rw, rh) or min(rw, rh) * s < 60:
+        # M.2 cards (22 x 80 mm) are long and narrow: up to 1:5, from 40 px wide
+        if fill < 0.6 or max(rw, rh) > 5 * min(rw, rh) or min(rw, rh) * s < 40:
             continue  # not a compact product: table seams, cables, shadows
         if best is None or area > best[0]:
             best = (area, ((cx * s, cy * s), (rw * s, rh * s), ang))
