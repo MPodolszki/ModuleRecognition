@@ -11,7 +11,8 @@ runs: the list is re-read before every product, and the monitor shows it on
 the right. Between two products the monitor shows which one is next and
 waits, as long as it takes, until someone lays it in the middle -- nobody
 has to stay at the table. With everything done the queue keeps watching
-the list (--once: it ends). Stopping the queue stops the current product;
+the list (--once: it ends). A product with capture/<Artikelnummer>/SKIP
+is left out. Stopping the queue stops the current product;
 run it again to go on where it stopped.
 """
 
@@ -38,7 +39,7 @@ def main(argv=None):
 
     def todo():  # re-read every time: the list may grow while the queue runs
         return [(a, n) for a, n in read_products(args.csv)
-                if not os.path.exists(os.path.join(args.out, a, "DONE"))]
+                if not any(os.path.exists(os.path.join(args.out, a, m)) for m in ("DONE", "SKIP"))]
 
     previous, waiting = "", False
     while True:

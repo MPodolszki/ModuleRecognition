@@ -214,6 +214,8 @@ class ProductList:
                 mark, color = ">", (0, 230, 255, 255)
             elif article in self.done:
                 mark, color = "+", (0, 200, 0, 255)
+            elif article in getattr(self, "skipped", ()):
+                mark, color = "x", (90, 90, 90, 255)
             else:
                 mark, color = "-", (200, 200, 200, 255)
             text = f"{mark} {name or article}"
@@ -236,6 +238,8 @@ class ProductList:
             self.rows = read_products(self.csv)
             self.done = {a for a, _ in self.rows
                          if os.path.exists(os.path.join(self.capture, a, "DONE"))}
+            self.skipped = {a for a, _ in self.rows
+                            if os.path.exists(os.path.join(self.capture, a, "SKIP"))}
             self._draw_list()
         vw = sw - LIST_W
         vh = view.shape[0] * vw // view.shape[1]
