@@ -1,6 +1,6 @@
 {
  "PCM-070-0F3243I.A3": {
-  "name": "phyCORE-i.MX8M Plus",
+  "name": "phyCORE-i.MX 8M Plus",
   "summary": [
    "Quad Core 1.6 GHz",
    "NPU",
@@ -156,14 +156,26 @@
     "Optionsnummer": "0"
    }
   ],
-  "link": "https://www.phytec.de/produkte/development-kits/phyboard-pollux-kit/#jetzt-bestellen/",
+  "links": [
+   [
+    "Zum Produkt",
+    "https://www.phytec.de/produkte/system-on-modules/phycore-imx-8m-plus-plugged/"
+   ],
+   [
+    "phyBOARD-Pollux Kit",
+    "https://www.phytec.de/produkte/development-kits/phyboard-pollux-kit/"
+   ]
+  ],
+  "link": "https://www.phytec.de/produkte/development-kits/phyboard-pollux-kit/",
+  "description": "Leistungsfähiges System on Module mit NXP i.MX 8M Plus: bis zu vier Cortex-A53, Cortex-M7 für Echtzeit, 2,3 TOPS NPU sowie DSP-, Grafik- und Bildsignalprozessoren für KI, Audio und Video am Netzwerkrand.",
   "highlights": [
    "i.MX 8M Plus CPU mit bis zu 4× 1,8 GHz Cortex-A53",
    "Cortex-M7 Real-time Kern und 800 MHz Tensilica DSP",
-   "NPU mit 2,3 TOPS für KI-Anwendungen und Vision",
+   "2,3 TOPS NPU für KI- und Bildverarbeitungs-Projekte",
    "Bis zu 8 GB LPDDR4 RAM, 64 GB eMMC & 256 MB SPI Flash",
-   "Dual 1-GbE mit TSN, USB 3.0, PCIe 3.0 & CAN FD",
-   "Display-, Kamera- & Audio-Interfaces"
+   "Dual 1-GbE mit TSN & zwei CAN FD Interfaces",
+   "Samtec-Steckverbinder mit 2×120 + 1×60 Pins",
+   "Display-, Kamera- & Audio-Anschlüsse: LVDS, MIPI, HDMI"
   ],
   "facts": [
    [
@@ -251,7 +263,8 @@
  "libra-imx95": {
   "name": "phyBOARD-Libra",
   "summary": [],
-  "options": []
+  "options": [],
+  "category": "Development Kit"
  },
  "Hailo10": {
   "name": "Hailo-10 M.2",
@@ -266,12 +279,14 @@
  "phyVIP-95-Kinara": {
   "name": "phyVIP-i.MX95-Ara240",
   "summary": [],
-  "options": []
+  "options": [],
+  "category": "Development Kit"
  },
  "phyBOARD-Polis": {
   "name": "phyBOARD-Polis",
   "summary": [],
-  "options": []
+  "options": [],
+  "category": "Development Kit"
  },
  "NXP-Ara240": {
   "name": "NXP-Ara240",
@@ -281,46 +296,55 @@
  "phyBOARD-Nash": {
   "name": "phyBOARD-Nash",
   "summary": [],
-  "options": []
+  "options": [],
+  "category": "Development Kit"
  },
  "phyBOARD-Pollux": {
   "name": "phyBOARD-Pollux",
   "summary": [],
-  "options": []
+  "options": [],
+  "category": "Development Kit"
  },
  "fpsc-imx95": {
   "name": "phyFLEX-i.MX95",
   "summary": [],
-  "options": []
+  "options": [],
+  "category": "System on Module"
  },
  "phyCORE-AM68x": {
   "name": "phyCORE-AM68x",
   "summary": [],
-  "options": []
+  "options": [],
+  "category": "System on Module"
  },
  "fpsc-imx8mp": {
   "name": "phyFLEX-i.MX8M Plus",
   "summary": [],
-  "options": []
+  "options": [],
+  "category": "System on Module"
  },
  "phyFLEX-i.MX93": {
   "name": "phyFLEX-i.MX93",
   "summary": [],
-  "options": []
+  "options": [],
+  "category": "System on Module"
  },
  "phyFLEX-STM32MP2": {
   "name": "phyFLEX-STM32MP2",
   "summary": [],
-  "options": []
+  "options": [],
+  "category": "System on Module"
  },
  "phyCORE-AM62A": {
   "name": "phyCORE-AM62A",
   "summary": [],
-  "options": []
+  "options": [],
+  "category": "System on Module"
  },
  "phyFLEX-AM62p": {
   "name": "phyFLEX-AM62p",
   "summary": [],
-  "options": []
+  "options": [],
+  "category": "System on Module"
  }
 }

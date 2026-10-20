@@ -307,43 +307,51 @@ def _family(name):
     return "System on Modules" if n.startswith(("phycore", "phyflex")) else "Produkte"
 
 
+def _qr(link, size):
+    try:
+        code = cv2.QRCodeEncoder.create().encode(link)
+    except cv2.error:
+        return None
+    n = code.shape[0]
+    cell = max(1, size // (n + 8))
+    qr = cv2.resize(code, (n * cell, n * cell), interpolation=cv2.INTER_NEAREST)
+    return cv2.copyMakeBorder(qr, 4 * cell, 4 * cell, 4 * cell, 4 * cell,
+                              cv2.BORDER_CONSTANT, value=255)
+
+
 def _bottom_band(page, info, margin=32):
-    """Grey band at the bottom: chart and QR code ('Mehr Infos' button
-    above it). Returns the band's top edge."""
-    link, chart_path = info.get("link"), info.get("chart")
-    if not link and not chart_path:
+    """Grey band at the bottom: chart, then one QR code per link (product
+    page, development kit), each under a petrol label like phytec.de's
+    buttons. Returns the band's top edge."""
+    links = info.get("links") or ([["Mehr Infos", info["link"]]] if info.get("link") else [])
+    chart_path = info.get("chart")
+    if not links and not chart_path:
         return page.h
-    q = 0
-    qr = None
-    if link:
-        try:
-            code = cv2.QRCodeEncoder.create().encode(link)
-            n = code.shape[0]
-            cell = max(1, 236 // (n + 8))
-            qr = cv2.resize(code, (n * cell, n * cell), interpolation=cv2.INTER_NEAREST)
-            qr = cv2.copyMakeBorder(qr, 4 * cell, 4 * cell, 4 * cell, 4 * cell,
-                                    cv2.BORDER_CONSTANT, value=255)
-            q = qr.shape[0]
-        except cv2.error:
-            qr = None
-    block = q or 236
-    top = page.h - margin - block - 70  # room for the button above
+    size = 236 if len(links) <= 1 else 200
+    codes = [(label, _qr(url, size)) for label, url in links]
+    codes = [(label, q) for label, q in codes if q is not None]
+    block = max([q.shape[0] for _, q in codes], default=236)
+    top = page.h - margin - block - 70  # room for the labels above
     page.rect((0, top - 24, page.w, page.h), fill=BAND)
     page.draw.line([(0, top - 24), (page.w, top - 24)], fill=RULE, width=1)
     y_img = page.h - margin - block
-    if qr is not None:
-        x0 = page.w - margin - q
-        page.pastes.append((qr, x0, y_img))
-        # petrol button like "Anfragen" on phytec.de
-        bw, bh = q, 48
-        page.rect((x0, y_img - bh - 16, x0 + bw, y_img - 16), fill=PETROL, radius=4)
-        label = "Mehr Infos  \u203a"
-        page.text(x0 + (bw - page.width(label, 20, "Medium")) / 2, y_img - bh - 3, label, 20,
-                  "Medium", fill=(255, 255, 255))
+    x = page.w - margin
+    for label, q in reversed(codes):  # right to left
+        x -= q.shape[0]
+        page.pastes.append((q, x, page.h - margin - q.shape[0]))
+        bw, bh = q.shape[0], 46
+        page.rect((x, y_img - bh - 16, x + bw, y_img - 16), fill=PETROL, radius=4)
+        fs = 19
+        while page.width(label + "  \u203a", fs, "Medium") > bw - 16 and fs > 12:
+            fs -= 1
+        text = label + "  \u203a"
+        page.text(x + (bw - page.width(text, fs, "Medium")) / 2, y_img - bh - 16 + (bh - fs) / 2 - 2,
+                  text, fs, "Medium", fill=(255, 255, 255))
+        x -= 20
     if chart_path:
         chart = cv2.imread(chart_path, cv2.IMREAD_UNCHANGED)
         if chart is not None:
-            right = page.w - margin - (q + 24 if q else 0)
+            right = x + 20 - 24 if codes else page.w - margin
             scale = min(block / chart.shape[0], (right - margin) / chart.shape[1])
             chart = cv2.resize(chart, None, fx=scale, fy=scale,
                                interpolation=cv2.INTER_AREA if scale < 1 else cv2.INTER_CUBIC)
@@ -372,7 +380,11 @@ def _render_single(page, art, info):
         page.text(x, y, line, 46, "Bold")
         y += 58
     page.text(x, y + 2, f"Artikelnummer {art}", 20, fill=MUTED)
-    y += 46
+    y += 40
+    for line in page.wrap(info.get("description", ""), w - 2 * x, 19)[:3]:
+        page.text(x, y, line, 19, fill=INK)
+        y += 26
+    y += 6
     facts = info.get("facts") or []
     if facts:  # key figures row, as under the title on phytec.de
         cw = (w - 2 * x) / len(facts)

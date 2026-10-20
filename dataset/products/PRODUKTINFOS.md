@@ -10,10 +10,13 @@ bleiben einfach leer.
 | Bezeichnung | Titel im Info-Panel | phyCORE-i.MX8M Plus |
 | Kategorie | graue Zeile über dem Titel, Brotkrumen | System on Module |
 | Neu (ja/nein) | orangefarbenes „NEU“ | ja |
+| Kurzbeschreibung | 1–2 Sätze unter der Artikelnummer (max. 3 Zeilen, ≈ 270 Zeichen) | Leistungsfähiges System on Module mit NXP i.MX 8M Plus … |
 | Kerne / Größe in mm / Temperatur / Verfügbar bis | Kennzahlen-Zeile unter dem Titel | 4 × A53 + M7 / 40 × 37 × 6 / -40 °C / +85 °C / 2035 |
 | Highlight 1–8 | Liste mit Häkchen, je eine kurze Zeile (≤ 55 Zeichen) | NPU mit 2,3 TOPS für KI-Anwendungen |
-| Link Mehr Infos | QR-Code unten rechts | https://www.phytec.de/... |
-| Diagramm-Datei | Bild im Produktordner, links neben dem QR-Code | chart.png |
+| Link Produktseite | QR-Code „Zum Produkt ›“ | https://www.phytec.de/produkte/system-on-modules/phycore-imx-8m-plus-plugged/ |
+| Link Kit | QR-Code ganz rechts (Entwicklungskit) | https://www.phytec.de/produkte/development-kits/phyboard-pollux-kit/ |
+| Kit-Bezeichnung | Beschriftung über dem Kit-QR-Code (leer: „Zum Kit“) | phyBOARD-Pollux Kit |
+| Diagramm-Datei | Bild im Produktordner, links neben den QR-Codes | chart.png |
 | Aussprache (Sprachsuche) | wie man den Namen spricht (für spätere Sprachsuche) | i m x acht m plus |
 | Bemerkung | nur für euch, wird nicht angezeigt | |
 

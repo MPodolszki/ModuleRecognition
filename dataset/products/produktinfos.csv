@@ -1,12 +1,27 @@
-﻿Artikelnummer;Bezeichnung;Kategorie;Neu (ja/nein);Kerne;Größe in mm;Temperatur;Verfügbar bis;Highlight 1;Highlight 2;Highlight 3;Highlight 4;Highlight 5;Highlight 6;Highlight 7;Highlight 8;Link Mehr Infos;Diagramm-Datei;Aussprache (Sprachsuche);Bemerkung
-PCM-070-0F3243I.A3;phyCORE-i.MX8M Plus;System on Module;ja;4 × A53 + M7;40 × 37 × 6;-40 °C / +85 °C;2035;i.MX 8M Plus CPU mit bis zu 4× 1,8 GHz Cortex-A53;Cortex-M7 Real-time Kern und 800 MHz Tensilica DSP;NPU mit 2,3 TOPS für KI-Anwendungen und Vision;Bis zu 8 GB LPDDR4 RAM, 64 GB eMMC & 256 MB SPI Flash;Dual 1-GbE mit TSN, USB 3.0, PCIe 3.0 & CAN FD;Display-, Kamera- & Audio-Interfaces;;;https://www.phytec.de/produkte/development-kits/phyboard-pollux-kit/#jetzt-bestellen/;chart.png;i m x acht m plus;Beispiel, von phytec.de übernommen (Soldered-Seite) - bitte prüfen
-PCM-072-42F2DE11I.A1;phyCORE-AM64x;System on Module;;;;;;;;;;;;;;;;;
-PFL-A-02-23237E0.A5;phyFLEX-i.MX6 Quad;System on Module;;;;;;;;;;;;;;;;;
-PCL-071-5432DE11I.A0;phyCORE-AM62x DSC;System on Module;;;;;;;;;;;;;;;;;
-PCL-063-23500CI.A0;phyCORE-i.MX6UL;System on Module;;;;;;;;;;;;;;;;;
-PCM-067-82EA01I.A0;phyCORE-AM65x;System on Module;;;;;;;;;;;;;;;;;
-PCM-058-33230C0I.A0;phyCORE-i.MX6 Quad;System on Module;;;;;;;;;;;;;;;;;
-PCM-071-5432DE11I.A0;phyCORE-AM62x;System on Module;;;;;;;;;;;;;;;;;
-PCM-061-2111111C.A0;phyCORE-i.MX7;System on Module;;;;;;;;;;;;;;;;;
-PCM-060-03051F2I.A0;phyCORE-Am335x;System on Module;;;;;;;;;;;;;;;;;
-PCM-057-40A00111I.A0;phyCORE-AM57x;System on Module;;;;;;;;;;;;;;;;;
+﻿Artikelnummer;Bezeichnung;Kategorie;Neu (ja/nein);Kurzbeschreibung;Kerne;Größe in mm;Temperatur;Verfügbar bis;Highlight 1;Highlight 2;Highlight 3;Highlight 4;Highlight 5;Highlight 6;Highlight 7;Highlight 8;Link Produktseite;Link Kit;Kit-Bezeichnung;Diagramm-Datei;Aussprache (Sprachsuche);Bemerkung
+PCM-070-0F3243I.A3;phyCORE-i.MX 8M Plus;System on Module;ja;Leistungsfähiges System on Module mit NXP i.MX 8M Plus: bis zu vier Cortex-A53, Cortex-M7 für Echtzeit, 2,3 TOPS NPU sowie DSP-, Grafik- und Bildsignalprozessoren für KI, Audio und Video am Netzwerkrand.;4 × A53 + M7;40 × 37 × 6;-40 °C / +85 °C;2035;i.MX 8M Plus CPU mit bis zu 4× 1,8 GHz Cortex-A53;Cortex-M7 Real-time Kern und 800 MHz Tensilica DSP;2,3 TOPS NPU für KI- und Bildverarbeitungs-Projekte;Bis zu 8 GB LPDDR4 RAM, 64 GB eMMC & 256 MB SPI Flash;Dual 1-GbE mit TSN & zwei CAN FD Interfaces;Samtec-Steckverbinder mit 2×120 + 1×60 Pins;Display-, Kamera- & Audio-Anschlüsse: LVDS, MIPI, HDMI;;https://www.phytec.de/produkte/system-on-modules/phycore-imx-8m-plus-plugged/;https://www.phytec.de/produkte/development-kits/phyboard-pollux-kit/;phyBOARD-Pollux Kit;chart.png;i m x acht m plus;von phytec.de (Plugged-Variante) übernommen, 20.10.
+PCM-072-42F2DE11I.A1;phyCORE-AM64x;System on Module;;;;;;;;;;;;;;;;;;;;
+PFL-A-02-23237E0.A5;phyFLEX-i.MX6 Quad;System on Module;;;;;;;;;;;;;;;;;;;;
+PCL-071-5432DE11I.A0;phyCORE-AM62x DSC;System on Module;;;;;;;;;;;;;;;;;;;;
+PCL-063-23500CI.A0;phyCORE-i.MX6UL;System on Module;;;;;;;;;;;;;;;;;;;;
+PCM-067-82EA01I.A0;phyCORE-AM65x;System on Module;;;;;;;;;;;;;;;;;;;;
+PCM-058-33230C0I.A0;phyCORE-i.MX6 Quad;System on Module;;;;;;;;;;;;;;;;;;;;
+PCM-071-5432DE11I.A0;phyCORE-AM62x;System on Module;;;;;;;;;;;;;;;;;;;;
+PCM-061-2111111C.A0;phyCORE-i.MX7;System on Module;;;;;;;;;;;;;;;;;;;;
+PCM-060-03051F2I.A0;phyCORE-Am335x;System on Module;;;;;;;;;;;;;;;;;;;;
+PCM-057-40A00111I.A0;phyCORE-AM57x;System on Module;;;;;;;;;;;;;;;;;;;;
+libra-imx95;phyBOARD-Libra;Development Kit;;;;;;;;;;;;;;;;;;;;
+Hailo10;Hailo-10 M.2;;;;;;;;;;;;;;;;;;;;;
+Hailo8;Hailo-8 M.2;;;;;;;;;;;;;;;;;;;;;
+phyVIP-95-Kinara;phyVIP-i.MX95-Ara240;Development Kit;;;;;;;;;;;;;;;;;;;;
+phyBOARD-Polis;phyBOARD-Polis;Development Kit;;;;;;;;;;;;;;;;;;;;
+NXP-Ara240;NXP-Ara240;;;;;;;;;;;;;;;;;;;;;
+phyBOARD-Nash;phyBOARD-Nash;Development Kit;;;;;;;;;;;;;;;;;;;;
+phyBOARD-Pollux;phyBOARD-Pollux;Development Kit;;;;;;;;;;;;;;;;;;;;
+fpsc-imx95;phyFLEX-i.MX95;System on Module;;;;;;;;;;;;;;;;;;;;
+phyCORE-AM68x;phyCORE-AM68x;System on Module;;;;;;;;;;;;;;;;;;;;
+fpsc-imx8mp;phyFLEX-i.MX8M Plus;System on Module;;;;;;;;;;;;;;;;;;;;
+phyFLEX-i.MX93;phyFLEX-i.MX93;System on Module;;;;;;;;;;;;;;;;;;;;
+phyFLEX-STM32MP2;phyFLEX-STM32MP2;System on Module;;;;;;;;;;;;;;;;;;;;
+phyCORE-AM62A;phyCORE-AM62A;System on Module;;;;;;;;;;;;;;;;;;;;
+phyFLEX-AM62p;phyFLEX-AM62p;System on Module;;;;;;;;;;;;;;;;;;;;

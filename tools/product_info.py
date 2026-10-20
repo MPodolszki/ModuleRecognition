@@ -12,8 +12,9 @@ Per class (article number, the model's label):
            (the panel shows it next to the QR code)
 
 produktinfos.csv (one row per product, filled in by hand) comes first:
-its highlights, key figures (cores, size, temperature, available until),
-category, "new" flag, link and chart file override the per-folder files.
+its short description, highlights, key figures (cores, size, temperature,
+available until), category, "new" flag, product page and kit links (QR
+codes) and chart file override the per-folder files.
 
     uv run tools/product_info.py models/products_v1_n
 """
@@ -86,9 +87,18 @@ def build(products_dir, labels, model_dir=None):
                      if l.strip()), "") if link_file.exists() else ""
         out[art] = {"name": names.get(art) or art, "summary": summary, "options": options}
         row = sheet.get(art, {})
-        link = row.get("Link Mehr Infos") or link
-        if link:
-            out[art]["link"] = link
+        # QR codes: product page and development kit (old sheets: "Link Mehr Infos")
+        links = []
+        if row.get("Link Produktseite"):
+            links.append(["Zum Produkt", row["Link Produktseite"]])
+        kit = row.get("Link Kit") or row.get("Link Mehr Infos") or link
+        if kit:
+            links.append([row.get("Kit-Bezeichnung") or "Zum Kit", kit])
+        if links:
+            out[art]["links"] = links
+            out[art]["link"] = links[-1][1]
+        if row.get("Kurzbeschreibung"):
+            out[art]["description"] = row["Kurzbeschreibung"]
         if row.get("Bezeichnung"):
             out[art]["name"] = row["Bezeichnung"]
         highlights = [row[k] for k in sorted(row) if k.startswith("Highlight") and row[k]]
