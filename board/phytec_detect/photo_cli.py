@@ -359,12 +359,14 @@ def main(argv=None):
             else:
                 p = plan[step]
                 tx, ty = p["x"] * w, p["y"] * h
-                if size is not None:  # a big board must still fit on the picture
+                if size is not None:  # a big board must fit, clear of the table edge
+                    # (the product finder misses products right at the edge)
                     a = math.radians(p["angle"])
-                    hx = (abs(math.cos(a)) * size[0] + abs(math.sin(a)) * size[1]) / 2 + 0.03 * w
-                    hy = (abs(math.sin(a)) * size[0] + abs(math.cos(a)) * size[1]) / 2 + 0.03 * h
+                    hx = (abs(math.cos(a)) * size[0] + abs(math.sin(a)) * size[1]) / 2 + 0.09 * w
+                    hy = (abs(math.sin(a)) * size[0] + abs(math.cos(a)) * size[1]) / 2 + 0.09 * h
+                    top = 160 * h / 1080  # the instruction bar covers the picture's top
                     tx = min(max(tx, hx), w - hx) if 2 * hx < w else w / 2
-                    ty = min(max(ty, hy), h - hy) if 2 * hy < h else h / 2
+                    ty = min(max(ty, hy + top), h - hy) if 2 * hy + top < h else (h + top) / 2
                 target = ((tx, ty), size, p["angle"])
                 prev = plan[step - 1] if step > 0 else {"side": "Vorderseite", "kind": "table"}
                 if p["side"] != prev["side"] and p["kind"] == "table" and flip_until is None:
