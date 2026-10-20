@@ -418,6 +418,10 @@ def main(argv=None):
                              "Hailo-8, from this microphone (default: Jabra)")
     parser.add_argument("--axis-boxes", action="store_true",
                         help="plain axis-aligned boxes instead of frames turned like the module")
+    parser.add_argument("--isp-width", type=int, default=960,
+                        help="with --isp: the ISP scales the detection picture to this width "
+                             "(0 = full ISP size; the model's input size is right for "
+                             "--tile-scale 0)")
     parser.add_argument("--zone", default="0.74,0.6,0.98,0.96",
                         help="drop zone x0,y0,x1,y1 as fractions of the screen (a product laid "
                              "there shows its info at once, with its live picture), 'off' = none")
@@ -431,7 +435,8 @@ def main(argv=None):
         die("at most two backends side by side")
 
     if args.isp and args.calib == DEFAULT_CALIB:
-        args.calib = DEFAULT_CALIB_ISP
+        from .calibrate_cli import isp_map_path
+        args.calib = isp_map_path(args.isp_width) if args.isp_width else DEFAULT_CALIB_ISP
     view_cam = args.view_cam
     if view_cam == "auto":
         view_cam = "csi2" if find_sensor(2) and args.detect_cam != "csi2" else "none"
@@ -477,7 +482,7 @@ def main(argv=None):
         t_screen = time.monotonic()
     try:
         if args.isp:
-            det_cam = Camera(args.detect_cam, isp=True)
+            det_cam = Camera(args.detect_cam, isp=True, isp_width=args.isp_width or None)
         else:
             det_cam = Camera(args.detect_cam, aspect=_aspect(args.aspect), crop_y=args.crop_y)
         det_source = FrameSource(det_cam, on_demand=True)

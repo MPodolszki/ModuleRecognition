@@ -172,7 +172,7 @@ class Camera:
     """
 
     def __init__(self, source="csi1", white_balance=True, auto_exposure=True, size=None,
-                 aspect=None, crop_y=0.5, crop=None, max_width=1920, isp=False):
+                 aspect=None, crop_y=0.5, crop=None, max_width=1920, isp=False, isp_width=None):
         """aspect: e.g. 16/9 -- read only a full-width band of that aspect
         from the sensor (fills a 16:9 screen, fewer pixels to detect on);
         crop_y places the band: 0 top, 0.5 centre, 1 bottom.
@@ -181,7 +181,11 @@ class Camera:
         resolution up to max_width, 2x2-binned above.
         isp: read through the i.MX8MP ISP (imx8-phycam-isp service) in the
         size of its current mode instead of raw through the ISI -- the ISP does exposure, denoise and sharpening
-        itself; aspect/crop are not applied then."""
+        itself; aspect/crop are not applied then.
+        isp_width: let the ISP's scaler shrink the mono picture to this width
+        (height to a multiple of 8, e.g. 960x544): it comes as NV12 -- the
+        GRAY8 output crops instead of scaling -- and its Y plane is the
+        picture, without any work on the CPU."""
         self.crop = None  # sensor window actually used, (x, y, w, h)
         self.scale = 1.0  # output pixels per sensor pixel
         self.is_camera = source in ("csi1", "csi2")
@@ -189,6 +193,7 @@ class Camera:
         self.sensor = None
         self._wb = self._ae = None
         self._yuy2 = False
+        self._nv12 = None  # (w, h) when the ISP scales the mono picture
         if not self.is_camera:
             self._cap = cv2.VideoCapture(source)
         else:
@@ -214,10 +219,20 @@ class Camera:
                 # converted here (~15 ms at 1920x1080): converting on the G2D
                 # while the screen uses it too gave ghost images in the demo.
                 fmt = "GRAY8" if mono else "YUY2"
+                out_w, out_h = sensor_w, sensor_h
+                if mono and isp_width and isp_width < sensor_w:
+                    fmt = "NV12"
+                    out_w = isp_width & ~15
+                    out_h = int(round(sensor_h * out_w / sensor_w / 8)) * 8
+                    self._nv12 = (out_w, out_h)
+                    # x and y scale differ a little (544 / 1080 vs 960 / 1920)
+                    self.scale = np.array([out_w / sensor_w, out_h / sensor_h])
                 self._cap = cv2.VideoCapture(
                     f"v4l2src device=/dev/video-isp-csi{csi} ! "
-                    f"video/x-raw,width={sensor_w},height={sensor_h},format={fmt} ! "
+                    f"video/x-raw,width={out_w},height={out_h},format={fmt} ! "
                     f"appsink drop=true max-buffers=1", cv2.CAP_GSTREAMER)
+                if self._nv12:
+                    self._cap.set(cv2.CAP_PROP_CONVERT_RGB, 0)
                 if not mono:
                     self._cap.set(cv2.CAP_PROP_CONVERT_RGB, 0)
                     self._yuy2 = True
@@ -278,6 +293,10 @@ class Camera:
         ok, raw = self._cap.read()
         if not ok:
             return False, None
+        if self._nv12:  # Y plane of the ISP-scaled NV12 picture
+            w, h = self._nv12
+            raw = raw.reshape(-1)[:w * h].reshape(h, w)
+            return True, raw
         if self.mono:
             if raw.ndim == 3:  # some OpenCV builds hand GRAY8 out as 3 channels
                 raw = raw[..., 0]

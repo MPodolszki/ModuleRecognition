@@ -38,6 +38,11 @@ ISP_MAP_PATH = os.path.join(CONF_DIR, "plane_map_isp.json")
 ISP_POINTS_PATH = os.path.join(CONF_DIR, "plane_points_isp.npz")
 
 
+def isp_map_path(isp_width=0):
+    """The ISP mapping for a detection width (0 = the ISP's full size)."""
+    return ISP_MAP_PATH.replace(".json", f"_w{isp_width}.json") if isp_width else ISP_MAP_PATH
+
+
 def grab(cam, n=12):
     """Let auto exposure / white balance settle, return the last frame."""
     frame = None
@@ -104,6 +109,10 @@ def main(argv=None):
     parser.add_argument("--reset", action="store_true", help="forget earlier placements")
     parser.add_argument("--isp", action="store_true",
                         help="both cameras through the ISP (for phytec-detect --isp)")
+    parser.add_argument("--isp-width", type=int, default=960,
+                        help="with --isp: detection picture scaled by the ISP to this width, "
+                             "as phytec-detect --isp-width (0 = full size); its own map file, "
+                             "the ISP's scaled output frames a slightly different window")
     parser.add_argument("--features", action="store_true",
                         help="no ArUco target: match what both cameras see on the table")
     parser.add_argument("--model", choices=("auto", "homography", "poly3"), default="auto",
@@ -113,10 +122,11 @@ def main(argv=None):
     os.makedirs(CONF_DIR, exist_ok=True)
     # Both cameras at their full field of view: the target is easier to find,
     # and the mapping is stored in sensor pixels, valid for any crop later.
-    det_cam = Camera(args.detect_cam, isp=args.isp)
+    width = args.isp_width if args.isp else 0
+    det_cam = Camera(args.detect_cam, isp=args.isp, isp_width=width or None)
     view_cam = Camera(args.view_cam, isp=args.isp)
-    map_path, points_path = (ISP_MAP_PATH, ISP_POINTS_PATH) if args.isp \
-        else (MAP_PATH, POINTS_PATH)
+    map_path, points_path = (isp_map_path(width), ISP_POINTS_PATH.replace(
+        ".npz", f"_w{width}.npz" if width else ".npz")) if args.isp else (MAP_PATH, POINTS_PATH)
 
     def gray(img):
         return img if img.ndim == 2 else cv2.cvtColor(img, cv2.COLOR_BGRA2GRAY)
