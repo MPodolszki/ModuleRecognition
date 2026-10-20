@@ -41,6 +41,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 from synth_dataset import (_overlap, color_jitter, cut_module, degrade,  # noqa: E402
                            find_module, random_background, rect_box)
+from isp960 import boxes_to_isp960, to_isp960  # noqa: E402
 
 EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".heic", ".heif"}
 REAL_SIZE = 1600      # long side of the real photos in the dataset
@@ -182,6 +183,10 @@ def main():
     parser.add_argument("--setup-repeat", type=int, default=5,
                         help="training copies of each demo-setup picture (vm017/, vm017_isp/ folders)")
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--isp960", action="store_true",
+                        help="also every ISP picture (1920x1080: photos, scenes, negatives) as "
+                             "the ISP delivers it at 960x544 (tools/isp960.py) -- so the model "
+                             "works with phytec-detect --isp-width 960 as well")
     args = parser.parse_args()
 
     random.seed(args.seed)
@@ -238,6 +243,13 @@ def main():
                 write(out, split, f"real_{art}_{path.stem}" + (f"_r{c}" if c else ""),
                       to_out(small, gray), [(cid, x0, y0, x1, y1)])
                 n_real[split] += 1
+            small960 = to_isp960(img) if args.isp960 else None
+            if small960 is not None:
+                boxes960 = boxes_to_isp960([(cid, *rect_box(rect, img.shape))])
+                for c in range(copies if boxes960 else 0):
+                    write(out, split, f"real960_{art}_{path.stem}" + (f"_r{c}" if c else ""),
+                          to_out(small960, gray), boxes960)
+                    n_real[split] += 1
             vis = small.copy()
             cv2.rectangle(vis, (int(x0), int(y0)), (int(x1), int(y1)), (0, 0, 255), 4)
             # zoom on the box, so a sloppy box is visible
@@ -270,6 +282,14 @@ def main():
         for c in range(args.setup_repeat if split == "train" else 1):
             write(out, split, f"scene_{jpg.stem}" + (f"_r{c}" if c else ""), to_out(small, gray), boxes)
             n_scene += 1
+        small960 = to_isp960(img) if args.isp960 else None
+        if small960 is not None:
+            boxes960 = boxes_to_isp960([(classes.index(a), x0, y0, x1, y1)
+                                        for a, x0, y0, x1, y1 in labelled])
+            for c in range(args.setup_repeat if split == "train" else 1):
+                write(out, split, f"scene960_{jpg.stem}" + (f"_r{c}" if c else ""),
+                      to_out(small960, gray), boxes960)
+                n_scene += 1
     if n_scene:
         print(f"scenes: {n_scene} pictures (with copies)")
 
@@ -332,9 +352,12 @@ def main():
         img = read_image(path)
         s = REAL_SIZE / max(img.shape[:2])
         small = cv2.resize(img, None, fx=s, fy=s)
+        small960 = to_isp960(img) if args.isp960 else None
         for _ in range(args.neg_repeat if "negatives" in str(path.parent) else 1):
             write(out, "train", f"neg_{k:04d}", to_out(degrade(small), gray), [])
             k += 1
+            if small960 is not None:
+                write(out, "train", f"neg960_{k:04d}", to_out(small960, gray), [])
 
     names = "".join(f"  {i}: '{a}'\n" for i, a in enumerate(classes))
     (out / "data.yaml").write_text(f"path: {out.resolve()}\ntrain: images/train\n"
