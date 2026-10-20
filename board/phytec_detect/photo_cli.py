@@ -93,22 +93,29 @@ def _table(small, every=10):
     return t["img"]
 
 
-def find_product(gray, min_frac=0.0015, max_frac=0.25):
+def find_product(gray, min_frac=0.0005, max_frac=0.25):
     """minAreaRect of the darkest compact object on the light table, or None."""
-    s = 8
-    # Every 8th pixel instead of an INTER_AREA resize of the 5 MP frame: the
-    # preview has to keep up with someone placing the product.
-    # The 3x3 blur takes the aliasing noise of plain striding out again --
-    # without it, noise blobs counted as objects on the empty table.
+    s = 4
+    # Every 4th pixel instead of an INTER_AREA resize of the frame: the
+    # preview has to keep up with someone placing the product. (Every 8th
+    # lost the Hailo-8 M.2, a 45 x 65 px card whose metal lid leaves only a
+    # thin dark rim.) The 3x3 blur takes the aliasing noise of plain
+    # striding out again -- without it, noise blobs counted as objects on
+    # the empty table. The table itself is smooth: estimated on every 8th
+    # pixel (the expensive closing) and scaled up.
     small = cv2.GaussianBlur(np.ascontiguousarray(gray[::s, ::s]), (3, 3), 0)
-    table = _table(small)
+    coarse = cv2.GaussianBlur(np.ascontiguousarray(gray[::8, ::8]), (3, 3), 0)
+    table = cv2.resize(_table(coarse), (small.shape[1], small.shape[0]),
+                       interpolation=cv2.INTER_LINEAR)
     mask = ((table.astype(np.int16) - small) > 35).astype(np.uint8) * 255
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     best = None
     for c in contours:
-        area = cv2.contourArea(c)
+        # the convex hull: a bright metal lid (Hailo-8 M.2) leaves only a
+        # thin dark ring of board, whose own area and fill are too small
+        area = cv2.contourArea(cv2.convexHull(c))
         if not (min_frac * small.size < area < max_frac * small.size):
             continue
         x, y, bw, bh = cv2.boundingRect(c)
@@ -116,8 +123,9 @@ def find_product(gray, min_frac=0.0015, max_frac=0.25):
             continue  # touches the border: table edge, monitor, arm
         (cx, cy), (rw, rh), ang = cv2.minAreaRect(c)
         fill = area / (rw * rh + 1e-9)
-        # M.2 cards (22 x 80 mm) are long and narrow: up to 1:5, from 40 px wide
-        if fill < 0.6 or max(rw, rh) > 5 * min(rw, rh) or min(rw, rh) * s < 40:
+        # M.2 cards (22 x 80 mm) are long and narrow: up to 1:5; small ones
+        # (Hailo-8 M.2) are only ~35 px wide
+        if fill < 0.6 or max(rw, rh) > 5 * min(rw, rh) or min(rw, rh) * s < 28:
             continue  # not a compact product: table seams, cables, shadows
         if best is None or area > best[0]:
             best = (area, ((cx * s, cy * s), (rw * s, rh * s), ang))
