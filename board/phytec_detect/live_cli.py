@@ -111,9 +111,14 @@ class Worker:
     tracking.py) and finds their turned outlines, one frame behind, so the
     accelerator does not wait for it."""
 
-    def __init__(self, detector, source, tiler_factory):
+    def __init__(self, detector, source, tiler_factory, track_process=False):
         self.detector, self.source, self._tiler_factory = detector, source, tiler_factory
         self.tracker = TableTracker()
+        # tracking in a process of its own (track_proc.py), else in a thread here
+        self.track_proc = None
+        if track_process:
+            from .track_proc import TrackProcess
+            self.track_proc = TrackProcess()
         self.snaps = {}  # class -> last still picture of a picked-up product (BGR)
         # The accelerator reports down to 0.2, the smoother decides what is
         # shown (at the demo's threshold): a dip below it is not a dropout.
@@ -145,6 +150,8 @@ class Worker:
             self._track_cond.notify_all()
         for t in self._threads:
             t.join(timeout=5)
+        if self.track_proc is not None:
+            self.track_proc.close()
 
     def _prepare_loop(self):
         last = -1
@@ -253,11 +260,15 @@ class Worker:
             try:
                 t0 = time.perf_counter()
                 gray = frame if frame.ndim == 2 else cv2.cvtColor(frame, cv2.COLOR_BGRA2GRAY)
-                self.tracker.update(gray, dets)
-                lifted = np.array([[*t.box, t.score, t.cls] for t in self.tracker.picked()],
-                                  np.float32).reshape(-1, 6)
-                quads = self._quads(gray, dets)
-                self._snapshot(gray, dets, quads)
+                if self.track_proc is not None:
+                    lifted, quads, _ = self.track_proc.run(gray, dets)
+                    self.snaps = self.track_proc.snaps
+                else:
+                    self.tracker.update(gray, dets)
+                    lifted = np.array([[*t.box, t.score, t.cls] for t in self.tracker.picked()],
+                                      np.float32).reshape(-1, 6)
+                    quads = self._quads(gray, dets)
+                    self._snapshot(gray, dets, quads)
                 self.detector.times["track"].append(time.perf_counter() - t0)
             except Exception as error:
                 self.error = error
@@ -487,6 +498,13 @@ def main(argv=None):
                              "Hailo-8, from this microphone (default: Jabra)")
     parser.add_argument("--axis-boxes", action="store_true",
                         help="plain axis-aligned boxes instead of frames turned like the module")
+    parser.add_argument("--det-fps", type=int, default=20,
+                        help="with --isp: frames per second the ISP delivers for detection "
+                             "(the accelerator takes ~16; every frame read costs CPU), 0 = 30")
+    parser.add_argument("--track-thread", action="store_true",
+                        help="tracking in a thread of the demo instead of a process of its own "
+                             "(on the Hailo board: ~1-2 fps more detection, but tracking "
+                             "170 instead of 88 ms -- half the frames tracked)")
     parser.add_argument("--in-process", action="store_true",
                         help="run the accelerator in this process (default: a process of "
                              "its own per backend, ~50 %% more fps on the Hailo-8)")
@@ -559,7 +577,8 @@ def main(argv=None):
         t_screen = time.monotonic()
     try:
         if args.isp:
-            det_cam = Camera(args.detect_cam, isp=True, isp_width=args.isp_width or None)
+            det_cam = Camera(args.detect_cam, isp=True, isp_width=args.isp_width or None,
+                             isp_fps=args.det_fps or None)
         else:
             det_cam = Camera(args.detect_cam, aspect=_aspect(args.aspect), crop_y=args.crop_y)
         det_source = FrameSource(det_cam, on_demand=True)
@@ -587,7 +606,8 @@ def main(argv=None):
                 from .remote import spawn_local
                 det = spawn_local(name, model_dirs, hef=args.hef, conf=args.conf)
             print(f"  {', '.join(det.paths)} ({det.load_s:.1f} s)", flush=True)
-            workers.append(Worker(det, det_source, tiler_factory))
+            workers.append(Worker(det, det_source, tiler_factory,
+                                  track_process=not (args.track_thread or args.in_process)))
     except (FileNotFoundError, RuntimeError, ValueError) as error:
         for w in workers:
             w.stop()
@@ -729,6 +749,8 @@ def main(argv=None):
                     resets = search.resets
                     for w in workers:
                         w.tracker = TableTracker()
+                        if w.track_proc is not None:
+                            w.track_proc.reset()
                     print("reset: table forgotten", flush=True)
                 if wanted is not None:
                     keep = np.isin(dets[:, 5].astype(int), list(wanted))

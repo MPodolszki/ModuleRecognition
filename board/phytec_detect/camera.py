@@ -172,7 +172,8 @@ class Camera:
     """
 
     def __init__(self, source="csi1", white_balance=True, auto_exposure=True, size=None,
-                 aspect=None, crop_y=0.5, crop=None, max_width=1920, isp=False, isp_width=None):
+                 aspect=None, crop_y=0.5, crop=None, max_width=1920, isp=False, isp_width=None,
+                 isp_fps=None):
         """aspect: e.g. 16/9 -- read only a full-width band of that aspect
         from the sensor (fills a 16:9 screen, fewer pixels to detect on);
         crop_y places the band: 0 top, 0.5 centre, 1 bottom.
@@ -229,7 +230,8 @@ class Camera:
                     self.scale = np.array([out_w / sensor_w, out_h / sensor_h])
                 self._cap = cv2.VideoCapture(
                     f"v4l2src device=/dev/video-isp-csi{csi} ! "
-                    f"video/x-raw,width={out_w},height={out_h},format={fmt} ! "
+                    f"video/x-raw,width={out_w},height={out_h},format={fmt}"
+                    + (f",framerate={isp_fps}/1" if isp_fps else "") + " ! "
                     f"appsink drop=true max-buffers=1", cv2.CAP_GSTREAMER)
                 if self._nv12:
                     self._cap.set(cv2.CAP_PROP_CONVERT_RGB, 0)
