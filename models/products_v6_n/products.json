@@ -1,0 +1,326 @@
+{
+ "PCM-070-0F3243I.A3": {
+  "name": "phyCORE-i.MX8M Plus",
+  "summary": [
+   "Quad Core 1.6 GHz",
+   "NPU",
+   "ISP",
+   "VPU",
+   "CAN-FD",
+   "2 GB (2 GHz) LPDDR4 32-bit",
+   "8 GB (MLC)",
+   "64 MB SPI NOR",
+   "Gbit Ethernet Phy",
+   "Optional Connector mounted",
+   "Industrial Temp"
+  ],
+  "options": [
+   {
+    "Option": "Quad Core 1.6 GHz",
+    "Optionskopf Beschreibung": "",
+    "Optionsbeschreibung": "Tj=-40..+105°C; 8CVN: VPU/NPU/ISP/HIFI4/CAN-FD; 6CVN: VPU/ISP/CAN-FD; 4CVN: CAN-FD",
+    "Option Bemerkung": "Only I-Temp",
+    "Optionskopf Status": "OK",
+    "Optionsstatus": "OK",
+    "Erweitert": "Nein",
+    "Optionsnummer": "0"
+   },
+   {
+    "Option": "NPU",
+    "Optionskopf Beschreibung": "",
+    "Optionsbeschreibung": "With NPU",
+    "Option Bemerkung": "",
+    "Optionskopf Status": "OK",
+    "Optionsstatus": "OK",
+    "Erweitert": "Nein",
+    "Optionsnummer": "1"
+   },
+   {
+    "Option": "ISP",
+    "Optionskopf Beschreibung": "",
+    "Optionsbeschreibung": "With ISP",
+    "Option Bemerkung": "",
+    "Optionskopf Status": "OK",
+    "Optionsstatus": "OK",
+    "Erweitert": "Nein",
+    "Optionsnummer": "1"
+   },
+   {
+    "Option": "VPU",
+    "Optionskopf Beschreibung": "",
+    "Optionsbeschreibung": "With VPU",
+    "Option Bemerkung": "",
+    "Optionskopf Status": "OK",
+    "Optionsstatus": "OK",
+    "Erweitert": "Nein",
+    "Optionsnummer": "1"
+   },
+   {
+    "Option": "CAN-FD",
+    "Optionskopf Beschreibung": "",
+    "Optionsbeschreibung": "",
+    "Option Bemerkung": "",
+    "Optionskopf Status": "OK",
+    "Optionsstatus": "OK",
+    "Erweitert": "Nein",
+    "Optionsnummer": "1"
+   },
+   {
+    "Option": "2 GB  (2 GHz)",
+    "Optionskopf Beschreibung": "LPDDR4 32-bit",
+    "Optionsbeschreibung": "LPDDR4-4266",
+    "Option Bemerkung": "IM922, IM1007 tested.",
+    "Optionskopf Status": "OK",
+    "Optionsstatus": "OK",
+    "Erweitert": "Nein",
+    "Optionsnummer": "3"
+   },
+   {
+    "Option": "8 GB (MLC)",
+    "Optionskopf Beschreibung": "",
+    "Optionsbeschreibung": "",
+    "Option Bemerkung": "IM868 tested.",
+    "Optionskopf Status": "OK",
+    "Optionsstatus": "OK",
+    "Erweitert": "Nein",
+    "Optionsnummer": "2"
+   },
+   {
+    "Option": "64 MB",
+    "Optionskopf Beschreibung": "SPI NOR",
+    "Optionsbeschreibung": "",
+    "Option Bemerkung": "IM925 tested.",
+    "Optionskopf Status": "OK",
+    "Optionsstatus": "OK",
+    "Erweitert": "Nein",
+    "Optionsnummer": "4"
+   },
+   {
+    "Option": "Gbit Ethernet Phy",
+    "Optionskopf Beschreibung": "Option for ETH1 Phy removal. ETH0 is always as RGMII available.",
+    "Optionsbeschreibung": "Gbit Ethernet PHY on module",
+    "Option Bemerkung": "",
+    "Optionskopf Status": "OK",
+    "Optionsstatus": "OK",
+    "Erweitert": "Nein",
+    "Optionsnummer": "1"
+   },
+   {
+    "Option": "Optional Connector mounted",
+    "Optionskopf Beschreibung": "3rd connector, for DSC this option is always 0",
+    "Optionsbeschreibung": "3rd connector mounted (no permissible for DSC)",
+    "Option Bemerkung": "X1-E/F Extension Connector (60pol)  for GPIO[15..8], I2C4, SPDIF, SAI5, CLK, CSI2, DSI1, VDD_1V8_out, VDD_3V3_out",
+    "Optionskopf Status": "OK",
+    "Optionsstatus": "OK",
+    "Erweitert": "Nein",
+    "Optionsnummer": "1"
+   },
+   {
+    "Option": "External RTC",
+    "Optionskopf Beschreibung": "",
+    "Optionsbeschreibung": "I2C-Bus RTC RV-3028-C7",
+    "Option Bemerkung": "",
+    "Optionskopf Status": "OK",
+    "Optionsstatus": "OK",
+    "Erweitert": "Nein",
+    "Optionsnummer": "0"
+   },
+   {
+    "Option": "-",
+    "Optionskopf Beschreibung": "",
+    "Optionsbeschreibung": "",
+    "Option Bemerkung": "",
+    "Optionskopf Status": "OK",
+    "Optionsstatus": "OK",
+    "Erweitert": "Nein",
+    "Optionsnummer": "0"
+   },
+   {
+    "Option": "Industrial Temp",
+    "Optionskopf Beschreibung": "",
+    "Optionsbeschreibung": "-40°C to +85°C (Controller Junction Temp -40°C to +105°C)",
+    "Option Bemerkung": "",
+    "Optionskopf Status": "OK",
+    "Optionsstatus": "OK",
+    "Erweitert": "Nein",
+    "Optionsnummer": "I"
+   },
+   {
+    "Option": "-",
+    "Optionskopf Beschreibung": "",
+    "Optionsbeschreibung": "No TMP102 sensors for board-level temperature monitoring.",
+    "Option Bemerkung": "Sensors are mounted on old style article numer boards with missing extended option number (e.g. PCM-070-0F3243I).",
+    "Optionskopf Status": "OK",
+    "Optionsstatus": "OK",
+    "Erweitert": "Ja",
+    "Optionsnummer": "0"
+   }
+  ],
+  "link": "https://www.phytec.de/produkte/development-kits/phyboard-pollux-kit/#jetzt-bestellen/",
+  "highlights": [
+   "i.MX 8M Plus CPU mit bis zu 4× 1,8 GHz Cortex-A53",
+   "Cortex-M7 Real-time Kern und 800 MHz Tensilica DSP",
+   "NPU mit 2,3 TOPS für KI-Anwendungen und Vision",
+   "Bis zu 8 GB LPDDR4 RAM, 64 GB eMMC & 256 MB SPI Flash",
+   "Dual 1-GbE mit TSN, USB 3.0, PCIe 3.0 & CAN FD",
+   "Display-, Kamera- & Audio-Interfaces"
+  ],
+  "facts": [
+   [
+    "Kerne",
+    "4 × A53 + M7"
+   ],
+   [
+    "Größe in mm",
+    "40 × 37 × 6"
+   ],
+   [
+    "Temperatur",
+    "-40 °C / +85 °C"
+   ],
+   [
+    "Verfügbar bis",
+    "2035"
+   ]
+  ],
+  "category": "System on Module",
+  "new": true,
+  "spoken": "i m x acht m plus",
+  "chart": "charts/PCM-070-0F3243I.A3.png"
+ },
+ "PCM-072-42F2DE11I.A1": {
+  "name": "phyCORE-AM64x",
+  "summary": [],
+  "options": [],
+  "category": "System on Module"
+ },
+ "PFL-A-02-23237E0.A5": {
+  "name": "phyFLEX-i.MX6 Quad",
+  "summary": [],
+  "options": [],
+  "category": "System on Module"
+ },
+ "PCL-071-5432DE11I.A0": {
+  "name": "phyCORE-AM62x DSC",
+  "summary": [],
+  "options": [],
+  "category": "System on Module"
+ },
+ "PCL-063-23500CI.A0": {
+  "name": "phyCORE-i.MX6UL",
+  "summary": [],
+  "options": [],
+  "category": "System on Module"
+ },
+ "PCM-067-82EA01I.A0": {
+  "name": "phyCORE-AM65x",
+  "summary": [],
+  "options": [],
+  "category": "System on Module"
+ },
+ "PCM-058-33230C0I.A0": {
+  "name": "phyCORE-i.MX6 Quad",
+  "summary": [],
+  "options": [],
+  "category": "System on Module"
+ },
+ "PCM-071-5432DE11I.A0": {
+  "name": "phyCORE-AM62x",
+  "summary": [],
+  "options": [],
+  "category": "System on Module"
+ },
+ "PCM-061-2111111C.A0": {
+  "name": "phyCORE-i.MX7",
+  "summary": [],
+  "options": [],
+  "category": "System on Module"
+ },
+ "PCM-060-03051F2I.A0": {
+  "name": "phyCORE-Am335x",
+  "summary": [],
+  "options": [],
+  "category": "System on Module"
+ },
+ "PCM-057-40A00111I.A0": {
+  "name": "phyCORE-AM57x",
+  "summary": [],
+  "options": [],
+  "category": "System on Module"
+ },
+ "libra-imx95": {
+  "name": "phyBOARD-Libra",
+  "summary": [],
+  "options": []
+ },
+ "Hailo10": {
+  "name": "Hailo-10 M.2",
+  "summary": [],
+  "options": []
+ },
+ "Hailo8": {
+  "name": "Hailo-8 M.2",
+  "summary": [],
+  "options": []
+ },
+ "phyVIP-95-Kinara": {
+  "name": "phyVIP-i.MX95-Ara240",
+  "summary": [],
+  "options": []
+ },
+ "phyBOARD-Polis": {
+  "name": "phyBOARD-Polis",
+  "summary": [],
+  "options": []
+ },
+ "NXP-Ara240": {
+  "name": "NXP-Ara240",
+  "summary": [],
+  "options": []
+ },
+ "phyBOARD-Nash": {
+  "name": "phyBOARD-Nash",
+  "summary": [],
+  "options": []
+ },
+ "phyBOARD-Pollux": {
+  "name": "phyBOARD-Pollux",
+  "summary": [],
+  "options": []
+ },
+ "fpsc-imx95": {
+  "name": "phyFLEX-i.MX95",
+  "summary": [],
+  "options": []
+ },
+ "phyCORE-AM68x": {
+  "name": "phyCORE-AM68x",
+  "summary": [],
+  "options": []
+ },
+ "fpsc-imx8mp": {
+  "name": "phyFLEX-i.MX8M Plus",
+  "summary": [],
+  "options": []
+ },
+ "phyFLEX-i.MX93": {
+  "name": "phyFLEX-i.MX93",
+  "summary": [],
+  "options": []
+ },
+ "phyFLEX-STM32MP2": {
+  "name": "phyFLEX-STM32MP2",
+  "summary": [],
+  "options": []
+ },
+ "phyCORE-AM62A": {
+  "name": "phyCORE-AM62A",
+  "summary": [],
+  "options": []
+ },
+ "phyFLEX-AM62p": {
+  "name": "phyFLEX-AM62p",
+  "summary": [],
+  "options": []
+ }
+}
