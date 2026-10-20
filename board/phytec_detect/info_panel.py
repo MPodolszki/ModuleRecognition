@@ -439,7 +439,8 @@ def _render_single(page, art, info):
         y += 8
     page.text(x, y, "Highlights", 28, "Bold")
     y += 48
-    y_high = y
+    n_compare = len([h for h in info.get("compare", []) if h])
+    tops = []
     if not _option_lines(info):
         page.text(x, y, "Produktdaten folgen.", 20, fill=MUTED)
     for k, (label, value) in enumerate(_option_lines(info)):
@@ -451,6 +452,7 @@ def _render_single(page, art, info):
             break
         if info.get("highlights") and page.width(label, 21, "Medium") > w - 2 * x - 34:
             page.overflow.append(("Highlight", f"zu breit: {label}"))
+        tops.append(y)
         page.check(x, y + 3)
         page.text(x + 34, y, label, 21, "Medium")
         y += 28
@@ -458,8 +460,12 @@ def _render_single(page, art, info):
             page.text(x + 34, y, line, 17, fill=MUTED)
             y += 24
         y += 10
-    if info.get("highlights"):
-        page.mark("Highlight 1-8", (x, y_high - 4, w - x, y - 8))
+    if info.get("highlights") and tops:
+        tops.append(y)  # end of the last row
+        groups = (("Vergleich", 0, n_compare), ("Alleinstellungsmerkmal", n_compare, len(tops) - 1))
+        for field, i0, i1 in groups:
+            if i1 > i0:
+                page.mark(field, (x, tops[i0] - 4, w - x, tops[i1] - 8))
 
 
 def _render_compare(page, a, b):
@@ -481,7 +487,39 @@ def _render_compare(page, a, b):
     page.draw.line([(32, y), (w - 32, y)], fill=RULE, width=2)
     y += 20
     rows_a, rows_b = _option_lines(info_a), _option_lines(info_b)
-    if len(rows_a) == len(rows_b):  # same option layout: row by row, differences marked
+    if any(info_a.get("compare", [])) and any(info_b.get("compare", [])):
+        # Vergleich 1-4: same topic on the same place, row by row, differences
+        # marked; then what only each of them has
+        for ta, tb in zip(info_a["compare"], info_b["compare"]):
+            if not (ta or tb) or y > h - 120:
+                continue
+            lines = [page.wrap(t, col - 30, 19)[:2] if t else ["-"] for t in (ta, tb)]
+            rh = 26 * max(len(l) for l in lines) + 18
+            if ta != tb:
+                page.rect((20, y - 6, w - 20, y + rh - 10), fill=ORANGE_TINT, radius=4)
+                page.rect((20, y - 6, 26, y + rh - 10), fill=ORANGE)
+            for x, ls in zip(xs, lines):
+                page.check(x, y + 3, 16)
+                for k, line in enumerate(ls):
+                    page.text(x + 28, y + 26 * k, line, 19)
+            y += rh
+        usps = (info_a.get("usp", []), info_b.get("usp", []))
+        if any(usps) and y < h - 120:
+            y += 14
+            page.text(32, y, "Alleinstellungsmerkmale", 24, "Bold")
+            y += 42
+            for x, items in zip(xs, usps):
+                yy = y
+                for item in items:
+                    for k, line in enumerate(page.wrap(item, col - 30, 19)[:2]):
+                        if yy > h - 50:
+                            break
+                        if k == 0:
+                            page.check(x, yy + 3, 16)
+                        page.text(x + 28, yy, line, 19)
+                        yy += 26
+                    yy += 12
+    elif len(rows_a) == len(rows_b):  # same option layout: row by row, differences marked
         for (na, va), (nb, vb) in zip(rows_a, rows_b):
             if y > h - 50:
                 break

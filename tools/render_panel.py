@@ -40,7 +40,6 @@ SCREENSHOT = ROOT / "runs" / "sim" / "demo_v6.png"
 
 # field name as marked by info_panel -> number in FIELDS
 NUMBER = {field: nr for nr, field, _ in FIELDS if nr}
-NUMBER["Highlight 1-8"] = NUMBER["Highlight"]
 
 
 def font(size, weight="Regular"):
@@ -83,9 +82,8 @@ def layout_page(panel, marks):
     x, y = 60, 50
     draw.text((x, y), "Info-Fenster: Aufbau", font=font(44, "Bold"), fill=(20, 20, 20))
     y += 64
-    for line in ("Rechte Bildschirmhälfte, fährt ein, wenn ein Produkt angehoben wird,",
-                 f"und nach 30 s wieder weg. Eingetragen in {INFO_FILE} im Produktordner:",
-                 "dataset/products/<Artikelnummer>/" + INFO_FILE):
+    for line in ("Rechte Bildschirmhälfte, fährt ein, wenn ein Produkt angehoben wird",
+                 f"(30 s). Eingetragen in dataset/products/<Artikelnummer>/{INFO_FILE}"):
         draw.text((x, y), line, font=font(21), fill=(90, 90, 90))
         y += 30
     y += 14
@@ -97,13 +95,14 @@ def layout_page(panel, marks):
         if field == "Link Kit":
             where += "; Kit-Bezeichnung = Aufschrift des Knopfs darüber"
         badge(draw, x + 17, y + 16, nr)
-        label = {"Highlight": "Highlight  (bis zu 8)",
+        label = {"Vergleich": "Vergleich 1–4  (Highlights 1–4)",
+                 "Alleinstellungsmerkmal": "Alleinstellungsmerkmal 1–4  (Highlights 5–8)",
                  "Link Kit": "Link Kit  +  Kit-Bezeichnung"}.get(field, field)
-        draw.text((x + 50, y + 2), label, font=font(21, "Medium"), fill=(20, 20, 20))
-        lines = wrap(draw, where, PANEL_W - 160, font(17))
+        draw.text((x + 50, y + 2), label, font=font(20, "Medium"), fill=(20, 20, 20))
+        lines = wrap(draw, where, PANEL_W - 140, font(16))
         for i, line in enumerate(lines):
-            draw.text((x + 50, y + 29 + 21 * i), line, font=font(17), fill=(100, 100, 100))
-        y += 29 + 21 * len(lines) + 12
+            draw.text((x + 50, y + 27 + 19 * i), line, font=font(16), fill=(100, 100, 100))
+        y += 27 + 19 * len(lines) + 9
     draw.text((x, SCREEN_H - 44), "Nicht angezeigt: Aussprache (Sprachsuche), Bemerkung. "
               "Leere Felder fallen weg.", font=font(19), fill=(100, 100, 100))
     return page
@@ -124,6 +123,30 @@ def monitor_page(panel):
     draw.text((24, SCREEN_H - 44), "So auf dem Monitor (1920 × 1080)", font=font(24, "Medium"),
               fill=(255, 255, 255))
     return page
+
+
+def compare_page(a, b):
+    """Two products lifted: Vergleich 1-4 side by side, then their
+    Alleinstellungsmerkmale."""
+    page = info_panel.Page(PANEL_W, SCREEN_H)
+    info_panel._render_compare(page, a, b)
+    panel = Image.fromarray(cv2.cvtColor(page.image()[..., :3], cv2.COLOR_BGR2RGB))
+    out = Image.new("RGB", (SCREEN_W, SCREEN_H), (255, 255, 255))
+    out.paste(panel, (SCREEN_W - PANEL_W, 0))
+    draw = ImageDraw.Draw(out)
+    x, y = 60, 50
+    draw.text((x, y), "Zwei Produkte angehoben", font=font(44, "Bold"), fill=(20, 20, 20))
+    y += 70
+    for line in ("Vergleich 1–4 stehen Zeile für Zeile nebeneinander, Unterschiede",
+                 "orange markiert -- darum bei allen Produkten dasselbe Thema auf",
+                 "demselben Platz (z. B. 1 CPU, 2 KI, 3 Speicher, 4 Schnittstellen).",
+                 "",
+                 "Darunter die Alleinstellungsmerkmale 1–4 jedes Produkts.",
+                 "",
+                 f"Beispiel: {a[1].get('name', a[0])} und {b[1].get('name', b[0])}"):
+        draw.text((x, y), line, font=font(22), fill=(90, 90, 90))
+        y += 32
+    return out
 
 
 def product_page(art, panel, info_file):
@@ -190,6 +213,9 @@ def main():
                 info["chart"] = str(pathlib.Path(tmp) / info["chart"])
         example, marks = render(args.example, infos[args.example])
         pages = [layout_page(example, marks), monitor_page(example)]
+        pair = [a for a in ("PCM-071-5432DE11I.A0", "PCL-071-5432DE11I.A0") if a in infos]
+        if len(pair) == 2:
+            pages.append(compare_page(*((a, infos[a]) for a in pair)))
         for art in arts:
             problems = []
             if (products / art / INFO_FILE).exists():
@@ -200,6 +226,8 @@ def main():
             pages.append(product_page(art, panel, products / art / INFO_FILE))
     pages[0].save(out, save_all=True, append_images=pages[1:], resolution=150)
     pages[0].save(out.with_name(out.stem + "_Seite1.png"))
+    if len(pages) > 2 + len(arts):
+        pages[2].save(out.with_name(out.stem + "_Vergleich.png"))
     pages[1].save(out.with_name(out.stem + "_Monitor.png"))
     print(f"{out} ({len(pages)} Seiten)")
 

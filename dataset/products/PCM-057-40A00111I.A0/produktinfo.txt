@@ -2,7 +2,7 @@
 #
 # Eine Angabe pro Zeile:  Feld: Wert   (Zeilen mit # sind Kommentare)
 # Leere Felder bleiben im Fenster einfach weg.
-# Wo welches Feld erscheint ([1]..[13]): dataset/products/Info-Fenster_Aufbau.pdf
+# Wo welches Feld erscheint ([1]..[14]): dataset/products/Info-Fenster_Aufbau.pdf
 # Vorschau ohne Hardware:  uv run tools/render_panel.py
 # Aufs Board:  uv run tools/product_info.py models/<modell> und tools/deploy.sh
 
@@ -29,23 +29,25 @@ Temperatur: -40 °C / +85 °C
 # [9] Kennzahl 4, z. B. 2035
 Verfügbar bis:
 
-# [10] Liste mit Häkchen: bis zu 8 Zeilen "Highlight:", je ca. 55 Zeichen
-Highlight: Dual/Single-Core Arm Cortex-A15
-Highlight: PRU-ICSS für Industrial Ethernet
-Highlight: Embedded Vision Engine für KI
-Highlight: Dual C66x DSP
-Highlight: 2D/3D Hochleistungsgrafik
-Highlight: Advanced Video Accelerator mit 1080p
-Highlight: 2× Gigabit Ethernet, 6× Audio McASP
-Highlight: 24-bit Parallel + HDMI
+# [10] Highlights 1-4 mit Häkchen, je ca. 55 Zeichen -- dienen dem Vergleich: liegen zwei Produkte auf, stehen Vergleich 1-4 Zeile für Zeile nebeneinander, also bei allen Produkten dasselbe Thema auf demselben Platz (z. B. 1 CPU, 2 KI/NPU, 3 Speicher, 4 Schnittstellen)
+Vergleich 1: Dual/Single-Core Arm Cortex-A15
+Vergleich 2: PRU-ICSS für Industrial Ethernet
+Vergleich 3: Embedded Vision Engine für KI
+Vergleich 4: Dual C66x DSP
 
-# [11] Bild "Im Vergleich" unten links, Datei in diesem Ordner (z. B. chart.png)
+# [11] Highlights 5-8 mit Häkchen -- was nur dieses Produkt kann, je ca. 55 Zeichen
+Alleinstellungsmerkmal 1: 2D/3D Hochleistungsgrafik
+Alleinstellungsmerkmal 2: Advanced Video Accelerator mit 1080p
+Alleinstellungsmerkmal 3: 2× Gigabit Ethernet, 6× Audio McASP
+Alleinstellungsmerkmal 4: 24-bit Parallel + HDMI
+
+# [12] Bild "Im Vergleich" unten links, Datei in diesem Ordner (z. B. chart.png)
 Diagramm-Datei:
 
-# [12] QR-Code "Zum Produkt" -- Produktseite auf phytec.de
+# [13] QR-Code "Zum Produkt" -- Produktseite auf phytec.de
 Link Produktseite: https://www.phytec.de/produkte/system-on-modules/phycore-am57x/
 
-# [13] QR-Code ganz rechts -- Entwicklungskit
+# [14] QR-Code ganz rechts -- Entwicklungskit
 Link Kit: https://www.phytec.de/produkte/development-kits/phycore-am57x-rapid-development-kit/
 Kit-Bezeichnung: phyCORE-AM57x Kit
 

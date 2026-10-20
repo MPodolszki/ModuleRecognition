@@ -2,7 +2,7 @@
 #
 # Eine Angabe pro Zeile:  Feld: Wert   (Zeilen mit # sind Kommentare)
 # Leere Felder bleiben im Fenster einfach weg.
-# Wo welches Feld erscheint ([1]..[13]): dataset/products/Info-Fenster_Aufbau.pdf
+# Wo welches Feld erscheint ([1]..[14]): dataset/products/Info-Fenster_Aufbau.pdf
 # Vorschau ohne Hardware:  uv run tools/render_panel.py
 # Aufs Board:  uv run tools/product_info.py models/<modell> und tools/deploy.sh
 
@@ -29,23 +29,25 @@ Temperatur:
 # [9] Kennzahl 4, z. B. 2035
 Verfügbar bis:
 
-# [10] Liste mit Häkchen: bis zu 8 Zeilen "Highlight:", je ca. 55 Zeichen
-Highlight: Ara240 Beschleuniger mit 40 eTOPS
-Highlight: M.2 Key M Einsteckkarte
-Highlight: 2× 8 GB RAM direkt am Ara-Chip angebunden
-Highlight: Bereits integriert in ausgewählte PHYTEC-BSPs
-Highlight: Kompatibel mit vielen PHYTEC-Boards (M.2)
-Highlight: Generative KI, LLMs und VLMs am Edge
-Highlight: TensorFlow, PyTorch, ONNX
-Highlight:
+# [10] Highlights 1-4 mit Häkchen, je ca. 55 Zeichen -- dienen dem Vergleich: liegen zwei Produkte auf, stehen Vergleich 1-4 Zeile für Zeile nebeneinander, also bei allen Produkten dasselbe Thema auf demselben Platz (z. B. 1 CPU, 2 KI/NPU, 3 Speicher, 4 Schnittstellen)
+Vergleich 1: Ara240 Beschleuniger mit 40 eTOPS
+Vergleich 2: M.2 Key M Einsteckkarte
+Vergleich 3: 2× 8 GB RAM direkt am Ara-Chip angebunden
+Vergleich 4: Bereits integriert in ausgewählte PHYTEC-BSPs
 
-# [11] Bild "Im Vergleich" unten links, Datei in diesem Ordner (z. B. chart.png)
+# [11] Highlights 5-8 mit Häkchen -- was nur dieses Produkt kann, je ca. 55 Zeichen
+Alleinstellungsmerkmal 1: Kompatibel mit vielen PHYTEC-Boards (M.2)
+Alleinstellungsmerkmal 2: Generative KI, LLMs und VLMs am Edge
+Alleinstellungsmerkmal 3: TensorFlow, PyTorch, ONNX
+Alleinstellungsmerkmal 4:
+
+# [12] Bild "Im Vergleich" unten links, Datei in diesem Ordner (z. B. chart.png)
 Diagramm-Datei:
 
-# [12] QR-Code "Zum Produkt" -- Produktseite auf phytec.de
+# [13] QR-Code "Zum Produkt" -- Produktseite auf phytec.de
 Link Produktseite: https://www.phytec.de/produkte/zubehoer/ara240-ki-beschleunigungsmodul/
 
-# [13] QR-Code ganz rechts -- Entwicklungskit
+# [14] QR-Code ganz rechts -- Entwicklungskit
 Link Kit: https://www.phytec.de/produkte/development-kits/phyboard-pollux-ki-kit/
 Kit-Bezeichnung: phyBOARD-Pollux KI-Kit
 

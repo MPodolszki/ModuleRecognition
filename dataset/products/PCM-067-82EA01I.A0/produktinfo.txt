@@ -2,7 +2,7 @@
 #
 # Eine Angabe pro Zeile:  Feld: Wert   (Zeilen mit # sind Kommentare)
 # Leere Felder bleiben im Fenster einfach weg.
-# Wo welches Feld erscheint ([1]..[13]): dataset/products/Info-Fenster_Aufbau.pdf
+# Wo welches Feld erscheint ([1]..[14]): dataset/products/Info-Fenster_Aufbau.pdf
 # Vorschau ohne Hardware:  uv run tools/render_panel.py
 # Aufs Board:  uv run tools/product_info.py models/<modell> und tools/deploy.sh
 
@@ -29,23 +29,25 @@ Temperatur: -40 °C / +85 °C
 # [9] Kennzahl 4, z. B. 2035
 Verfügbar bis:
 
-# [10] Liste mit Häkchen: bis zu 8 Zeilen "Highlight:", je ca. 55 Zeichen
-Highlight: 4× Cortex-A53 + Dual-Cortex-R5F-Subsystem
-Highlight: 3D-Grafik via PowerVR SGX544
-Highlight: Bis zu 6 Gigabit Industrial-Comm.-Schnittstellen
-Highlight: Wi-Fi onboard
-Highlight: 3× Audio McASP
-Highlight: MIPI DSI und LVDS
-Highlight: PCIe 3.0, USB 3.0 Dual Role
-Highlight: DDR4 RAM mit separatem DDR4 ECC
+# [10] Highlights 1-4 mit Häkchen, je ca. 55 Zeichen -- dienen dem Vergleich: liegen zwei Produkte auf, stehen Vergleich 1-4 Zeile für Zeile nebeneinander, also bei allen Produkten dasselbe Thema auf demselben Platz (z. B. 1 CPU, 2 KI/NPU, 3 Speicher, 4 Schnittstellen)
+Vergleich 1: 4× Cortex-A53 + Dual-Cortex-R5F-Subsystem
+Vergleich 2: 3D-Grafik via PowerVR SGX544
+Vergleich 3: Bis zu 6 Gigabit Industrial-Comm.-Schnittstellen
+Vergleich 4: Wi-Fi onboard
 
-# [11] Bild "Im Vergleich" unten links, Datei in diesem Ordner (z. B. chart.png)
+# [11] Highlights 5-8 mit Häkchen -- was nur dieses Produkt kann, je ca. 55 Zeichen
+Alleinstellungsmerkmal 1: 3× Audio McASP
+Alleinstellungsmerkmal 2: MIPI DSI und LVDS
+Alleinstellungsmerkmal 3: PCIe 3.0, USB 3.0 Dual Role
+Alleinstellungsmerkmal 4: DDR4 RAM mit separatem DDR4 ECC
+
+# [12] Bild "Im Vergleich" unten links, Datei in diesem Ordner (z. B. chart.png)
 Diagramm-Datei:
 
-# [12] QR-Code "Zum Produkt" -- Produktseite auf phytec.de
+# [13] QR-Code "Zum Produkt" -- Produktseite auf phytec.de
 Link Produktseite: https://www.phytec.de/produkte/system-on-modules/phycore-am65x/
 
-# [13] QR-Code ganz rechts -- Entwicklungskit
+# [14] QR-Code ganz rechts -- Entwicklungskit
 Link Kit:
 Kit-Bezeichnung:
 

@@ -44,84 +44,123 @@ FIELDS = [
     (7, "Größe in mm", "Kennzahl 2, z. B. 40 × 37 × 6"),
     (8, "Temperatur", "Kennzahl 3, z. B. -40 °C / +85 °C"),
     (9, "Verfügbar bis", "Kennzahl 4, z. B. 2035"),
-    (10, "Highlight", "Liste mit Häkchen: bis zu 8 Zeilen \"Highlight:\", je ca. 55 Zeichen"),
-    (11, "Diagramm-Datei", "Bild \"Im Vergleich\" unten links, Datei in diesem Ordner "
+    (10, "Vergleich", "Highlights 1-4 (je ca. 55 Zeichen) für den Vergleich: bei allen "
+                      "Produkten dasselbe Thema auf demselben Platz, z. B. 1 CPU, 2 KI, "
+                      "3 Speicher, 4 Schnittstellen"),
+    (11, "Alleinstellungsmerkmal", "Highlights 5-8 mit Häkchen -- was nur dieses Produkt "
+                                   "kann, je ca. 55 Zeichen"),
+    (12, "Diagramm-Datei", "Bild \"Im Vergleich\" unten links, Datei in diesem Ordner "
                            "(z. B. chart.png)"),
-    (12, "Link Produktseite", "QR-Code \"Zum Produkt\" -- Produktseite auf phytec.de"),
-    (13, "Link Kit", "QR-Code ganz rechts -- Entwicklungskit"),
-    (13, "Kit-Bezeichnung", "Aufschrift des Kit-Knopfs über dem QR-Code (leer: \"Zum Kit\")"),
+    (13, "Link Produktseite", "QR-Code \"Zum Produkt\" -- Produktseite auf phytec.de"),
+    (14, "Link Kit", "QR-Code ganz rechts -- Entwicklungskit"),
+    (14, "Kit-Bezeichnung", "Aufschrift des Kit-Knopfs über dem QR-Code (leer: \"Zum Kit\")"),
     (None, "Aussprache (Sprachsuche)", "nicht angezeigt -- wie man den Namen spricht"),
     (None, "Bemerkung", "nicht angezeigt -- nur für euch"),
 ]
 
 
-KEYS = {field.lower(): field for _, field, _ in FIELDS if field != "Artikelnummer"}
+SLOTS = {"Vergleich": 4, "Alleinstellungsmerkmal": 4}   # numbered fields, 4 places each
+KEYS = {field.lower(): field for _, field, _ in FIELDS
+        if field != "Artikelnummer" and field not in SLOTS}
 KEYS.update({"neu (ja/nein)": "Neu", "artikelnummer": None})
 # what fits on the panel (characters, roughly); render_panel.py warns above it
 # (render_panel.py also measures what really fits)
 LIMITS = {"Bezeichnung": 30, "Kategorie": 30, "Kurzbeschreibung": 270, "Kit-Bezeichnung": 24}
 
 
+def slot_keys():
+    """'Vergleich 1'..'Vergleich 4', 'Alleinstellungsmerkmal 1'..'4'."""
+    return [f"{name} {i}" for name, n in SLOTS.items() for i in range(1, n + 1)]
+
+
+def _slot(key):
+    """'vergleich 2' -> ('Vergleich', 2); 'vergleich' -> ('Vergleich', None);
+    the old 'highlight 5' -> ('Highlight', 5); anything else None."""
+    name, _, num = key.partition(" ")
+    if num and not num.strip().isdigit():
+        return None
+    for field in list(SLOTS) + ["Highlight"]:
+        if name == field.lower():
+            return field, int(num) if num.strip() else None
+    return None
+
+
 def read_info_file(path, problems=None):
     """produktinfo.txt -> the same dict as a produktinfos.csv row. Forgiving,
-    since people edit it by hand: field names in any case, "Highlight 3:"
-    as well as "Highlight:", and a line that is no "Feld:" (a value wrapped
-    by the editor) continues the field above. Anything odd goes to
-    `problems` (a list) if given."""
-    row, highlights, last = {}, [], None
+    since people edit it by hand: field names in any case, "Vergleich 3:"
+    as well as "Vergleich:" (next free place), the old "Highlight:" (1-4 go
+    to Vergleich, 5-8 to Alleinstellungsmerkmal), and a line that is no
+    "Feld:" (a value wrapped by the editor) continues the field above.
+    Anything odd goes to `problems` (a list) if given."""
+    row, last, old_highlights = {}, None, []
     for n, line in enumerate(path.read_text(encoding="utf-8-sig").splitlines(), 1):
         text = line.strip()
         if not text or text.startswith("#"):
             last = None if not text else last
             continue
         key, sep, value = text.partition(":")
-        key = key.strip().lower()
-        field = "Highlight" if key.startswith("highlight") and key[9:].strip(" 0123456789") == "" \
-            else KEYS.get(key, "?")
-        if not sep or field == "?":
+        key = " ".join(key.lower().split())
+        slot = _slot(key) if sep else None
+        field = None if slot else (KEYS.get(key, "?") if sep else "?")
+        if field == "?":
             if last is None:
                 if problems is not None:
                     problems.append(f"Zeile {n} unbekannt: {text[:40]}")
                 continue
-            if last == "Highlight":
-                highlights[-1] = f"{highlights[-1]} {text}".strip()
-            else:
-                row[last] = f"{row.get(last, '')} {text}".strip()
+            row[last] = f"{row.get(last, '')} {text}".strip()
             continue
         value = value.strip()
+        if slot:
+            name, num = slot
+            if name == "Highlight":
+                num = num or len(old_highlights) + 1
+                old_highlights.append(num)
+                name, num = ("Vergleich", num) if num <= 4 else ("Alleinstellungsmerkmal", num - 4)
+            if num is None:  # next free place
+                num = next((i for i in range(1, SLOTS[name] + 1)
+                            if not row.get(f"{name} {i}")), SLOTS[name] + 1)
+            if not 1 <= num <= SLOTS[name]:
+                if problems is not None and value:
+                    problems.append(f"{name} {num}: nur {SLOTS[name]} Plätze")
+                last = None
+                continue
+            last = f"{name} {num}"
+            row[last] = value
+            continue
         last = field
         if field is None:     # Artikelnummer: the folder name counts
             continue
-        if field == "Highlight":
-            highlights.append(value)
-        else:
-            row["Neu (ja/nein)" if field == "Neu" else field] = value
-    highlights = [h for h in highlights if h]
+        last = "Neu (ja/nein)" if field == "Neu" else field
+        row[last] = value
     if problems is not None:
-        if len(highlights) > 8:
-            problems.append(f"{len(highlights)} Highlights, nur 8 werden gezeigt")
         for field, limit in LIMITS.items():
-            for value in highlights if field == "Highlight" else [row.get(field, "")]:
-                if len(value) > limit:
-                    problems.append(f"{field} zu lang ({len(value)} > {limit}): {value[:30]}…")
-    for i, h in enumerate(highlights[:8]):
-        row[f"Highlight {i + 1}"] = h
+            if len(row.get(field, "")) > limit:
+                problems.append(f"{field} zu lang ({len(row[field])} > {limit}): "
+                                f"{row[field][:30]}…")
+    return row
+
+
+def from_sheet(row):
+    """A produktinfos.csv row (Highlight 1-8) in the slot form."""
+    row = dict(row)
+    for i in range(1, 9):
+        h = row.pop(f"Highlight {i}", "")
+        if h:
+            row[f"Vergleich {i}" if i <= 4 else f"Alleinstellungsmerkmal {i - 4}"] = h
     return row
 
 
 def write_info_file(path, art, row):
     """A produktinfo.txt with every field, its place in the panel as a comment,
-    pre-filled from `row` (a produktinfos.csv row or {})."""
+    pre-filled from `row` (read_info_file's form, or {})."""
     out = ["# Produktinfo für das Info-Fenster der Messe-Demo -- " + art,
            "#",
            "# Eine Angabe pro Zeile:  Feld: Wert   (Zeilen mit # sind Kommentare)",
            "# Leere Felder bleiben im Fenster einfach weg.",
-           "# Wo welches Feld erscheint ([1]..[13]): dataset/products/Info-Fenster_Aufbau.pdf",
+           "# Wo welches Feld erscheint ([1]..[14]): dataset/products/Info-Fenster_Aufbau.pdf",
            "# Vorschau ohne Hardware:  uv run tools/render_panel.py",
            "# Aufs Board:  uv run tools/product_info.py models/<modell> und tools/deploy.sh",
            ""]
-    highlights = [row[k] for k in sorted((k for k in row if k.startswith("Highlight ")),
-                                         key=lambda k: int(k.split()[-1]))]
     for nr, field, where in FIELDS:
         tag = f"[{nr}] " if nr else ""
         if field == "Artikelnummer":
@@ -129,9 +168,9 @@ def write_info_file(path, art, row):
             continue
         if field != "Kit-Bezeichnung":
             out.append(f"# {tag}{where}")
-        if field == "Highlight":
-            items = [h for h in highlights if h]
-            out += [f"Highlight: {h}" for h in items] + ["Highlight:"] * (8 - len(items))
+        if field in SLOTS:
+            out += [f"{field} {i}: {row.get(f'{field} {i}', '')}".rstrip()
+                    for i in range(1, SLOTS[field] + 1)]
         elif field == "Neu":
             out.append(f"Neu: {row.get('Neu (ja/nein)', '')}".rstrip())
         else:
@@ -210,7 +249,7 @@ def build(products_dir, labels, model_dir=None):
                      if l.strip()), "") if link_file.exists() else ""
         out[art] = {"name": names.get(art) or art, "summary": summary, "options": options}
         info_file = folder / INFO_FILE
-        row = read_info_file(info_file) if info_file.exists() else sheet.get(art, {})
+        row = read_info_file(info_file) if info_file.exists() else from_sheet(sheet.get(art, {}))
         # QR codes: product page and development kit (old sheets: "Link Mehr Infos")
         links = []
         if row.get("Link Produktseite"):
@@ -225,10 +264,15 @@ def build(products_dir, labels, model_dir=None):
             out[art]["description"] = row["Kurzbeschreibung"]
         if row.get("Bezeichnung"):
             out[art]["name"] = row["Bezeichnung"]
-        highlights = [row[k] for k in sorted((k for k in row if k.startswith("Highlight ")),
-                                             key=lambda k: int(k.split()[-1])) if row[k]]
-        if highlights:
-            out[art]["highlights"] = highlights
+        compare = [row.get(f"Vergleich {i}", "") for i in range(1, 5)]
+        usp = [row[f"Alleinstellungsmerkmal {i}"] for i in range(1, 5)
+               if row.get(f"Alleinstellungsmerkmal {i}")]
+        if any(compare) or usp:
+            # highlights: the list on the single panel; compare: 4 places, kept
+            # in position for the side-by-side view; usp: what only it has
+            out[art]["highlights"] = [h for h in compare if h] + usp
+            out[art]["compare"] = compare
+            out[art]["usp"] = usp
         facts = [(label, row.get(key, "")) for key, label in
                  (("Kerne", "Kerne"), ("Größe in mm", "Größe in mm"),
                   ("Temperatur", "Temperatur"), ("Verfügbar bis", "Verfügbar bis"))]
@@ -273,7 +317,7 @@ def main():
         for art in product_list(products):
             path = products / art / INFO_FILE
             if path.parent.is_dir() and not path.exists():
-                write_info_file(path, art, sheet.get(art, {}))
+                write_info_file(path, art, from_sheet(sheet.get(art, {})))
                 print(f"wrote {path.relative_to(ROOT)}")
         return
     if not args.model_dir:

@@ -2,7 +2,7 @@
 #
 # Eine Angabe pro Zeile:  Feld: Wert   (Zeilen mit # sind Kommentare)
 # Leere Felder bleiben im Fenster einfach weg.
-# Wo welches Feld erscheint ([1]..[13]): dataset/products/Info-Fenster_Aufbau.pdf
+# Wo welches Feld erscheint ([1]..[14]): dataset/products/Info-Fenster_Aufbau.pdf
 # Vorschau ohne Hardware:  uv run tools/render_panel.py
 # Aufs Board:  uv run tools/product_info.py models/<modell> und tools/deploy.sh
 
@@ -29,23 +29,25 @@ Temperatur: -40 °C / +85 °C
 # [9] Kennzahl 4, z. B. 2035
 Verfügbar bis:
 
-# [10] Liste mit Häkchen: bis zu 8 Zeilen "Highlight:", je ca. 55 Zeichen
-Highlight: Samtec-Steckverbinder 2× 120-polig, 0,5 mm
-Highlight: Bis zu 4× Cortex-A53 mit bis zu 1,4 GHz
-Highlight: Isolierter Cortex-M4F (400 MHz), Safety/Security
-Highlight: Dual-Display: 24-Bit RGB + 2× OLDI/LVDS
-Highlight: Wählbare GPU mit bis zu 8 GFLOPS
-Highlight: 1× MIPI CSI-2 Kameraschnittstelle
-Highlight: 2× Gigabit-Ethernet, 3× CAN FD, 2× USB 2.0
-Highlight: Stromsparmodi: Deep Sleep, Standby, MCU-only
+# [10] Highlights 1-4 mit Häkchen, je ca. 55 Zeichen -- dienen dem Vergleich: liegen zwei Produkte auf, stehen Vergleich 1-4 Zeile für Zeile nebeneinander, also bei allen Produkten dasselbe Thema auf demselben Platz (z. B. 1 CPU, 2 KI/NPU, 3 Speicher, 4 Schnittstellen)
+Vergleich 1: Samtec-Steckverbinder 2× 120-polig, 0,5 mm
+Vergleich 2: Bis zu 4× Cortex-A53 mit bis zu 1,4 GHz
+Vergleich 3: Isolierter Cortex-M4F (400 MHz), Safety/Security
+Vergleich 4: Dual-Display: 24-Bit RGB + 2× OLDI/LVDS
 
-# [11] Bild "Im Vergleich" unten links, Datei in diesem Ordner (z. B. chart.png)
+# [11] Highlights 5-8 mit Häkchen -- was nur dieses Produkt kann, je ca. 55 Zeichen
+Alleinstellungsmerkmal 1: Wählbare GPU mit bis zu 8 GFLOPS
+Alleinstellungsmerkmal 2: 1× MIPI CSI-2 Kameraschnittstelle
+Alleinstellungsmerkmal 3: 2× Gigabit-Ethernet, 3× CAN FD, 2× USB 2.0
+Alleinstellungsmerkmal 4: Stromsparmodi: Deep Sleep, Standby, MCU-only
+
+# [12] Bild "Im Vergleich" unten links, Datei in diesem Ordner (z. B. chart.png)
 Diagramm-Datei:
 
-# [12] QR-Code "Zum Produkt" -- Produktseite auf phytec.de
+# [13] QR-Code "Zum Produkt" -- Produktseite auf phytec.de
 Link Produktseite: https://www.phytec.de/produkte/system-on-modules/phycore-am62x/
 
-# [13] QR-Code ganz rechts -- Entwicklungskit
+# [14] QR-Code ganz rechts -- Entwicklungskit
 Link Kit: https://www.phytec.de/produkte/development-kits/phyboard-lyra-rapid-development-kit/
 Kit-Bezeichnung: phyBOARD-Lyra Kit
 

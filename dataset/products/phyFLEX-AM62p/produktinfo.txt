@@ -2,7 +2,7 @@
 #
 # Eine Angabe pro Zeile:  Feld: Wert   (Zeilen mit # sind Kommentare)
 # Leere Felder bleiben im Fenster einfach weg.
-# Wo welches Feld erscheint ([1]..[13]): dataset/products/Info-Fenster_Aufbau.pdf
+# Wo welches Feld erscheint ([1]..[14]): dataset/products/Info-Fenster_Aufbau.pdf
 # Vorschau ohne Hardware:  uv run tools/render_panel.py
 # Aufs Board:  uv run tools/product_info.py models/<modell> und tools/deploy.sh
 
@@ -29,23 +29,25 @@ Temperatur: -40 °C / +85 °C
 # [9] Kennzahl 4, z. B. 2035
 Verfügbar bis: 2035+
 
-# [10] Liste mit Häkchen: bis zu 8 Zeilen "Highlight:", je ca. 55 Zeichen
-Highlight: Bis zu 4× Arm Cortex-A53 mit bis zu 1,4 GHz
-Highlight: 2× Arm Cortex-R5F (800 MHz)
-Highlight: 2D/3D GPU mit bis zu 50 GFLOPS
-Highlight: 3 Displays: MIPI, DPI, LVDS
-Highlight: H.264/H.265 Encoder/Decoder bis 300 MPixel
-Highlight: 2× 1 Gbit Ethernet (TSN), 3× CAN-FD, 2× USB 2.0
-Highlight: 32-Bit LPDDR4 RAM bis zu 3733 MHz
-Highlight: Secure Boot, HSM, TEE, Krypto-Beschleunigung
+# [10] Highlights 1-4 mit Häkchen, je ca. 55 Zeichen -- dienen dem Vergleich: liegen zwei Produkte auf, stehen Vergleich 1-4 Zeile für Zeile nebeneinander, also bei allen Produkten dasselbe Thema auf demselben Platz (z. B. 1 CPU, 2 KI/NPU, 3 Speicher, 4 Schnittstellen)
+Vergleich 1: Bis zu 4× Arm Cortex-A53 mit bis zu 1,4 GHz
+Vergleich 2: 2× Arm Cortex-R5F (800 MHz)
+Vergleich 3: 2D/3D GPU mit bis zu 50 GFLOPS
+Vergleich 4: 3 Displays: MIPI, DPI, LVDS
 
-# [11] Bild "Im Vergleich" unten links, Datei in diesem Ordner (z. B. chart.png)
+# [11] Highlights 5-8 mit Häkchen -- was nur dieses Produkt kann, je ca. 55 Zeichen
+Alleinstellungsmerkmal 1: H.264/H.265 Encoder/Decoder bis 300 MPixel
+Alleinstellungsmerkmal 2: 2× 1 Gbit Ethernet (TSN), 3× CAN-FD, 2× USB 2.0
+Alleinstellungsmerkmal 3: 32-Bit LPDDR4 RAM bis zu 3733 MHz
+Alleinstellungsmerkmal 4: Secure Boot, HSM, TEE, Krypto-Beschleunigung
+
+# [12] Bild "Im Vergleich" unten links, Datei in diesem Ordner (z. B. chart.png)
 Diagramm-Datei:
 
-# [12] QR-Code "Zum Produkt" -- Produktseite auf phytec.de
+# [13] QR-Code "Zum Produkt" -- Produktseite auf phytec.de
 Link Produktseite: https://www.phytec.de/produkte/system-on-modules/phyflex-am62px-fpsc/
 
-# [13] QR-Code ganz rechts -- Entwicklungskit
+# [14] QR-Code ganz rechts -- Entwicklungskit
 Link Kit:
 Kit-Bezeichnung:
 

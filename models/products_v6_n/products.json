@@ -177,6 +177,17 @@
    "Samtec-Steckverbinder mit 2×120 + 1×60 Pins",
    "Display-, Kamera- & Audio-Anschlüsse: LVDS, MIPI, HDMI"
   ],
+  "compare": [
+   "i.MX 8M Plus CPU mit bis zu 4× 1,8 GHz Cortex-A53",
+   "Cortex-M7 Real-time Kern und 800 MHz Tensilica DSP",
+   "2,3 TOPS NPU für KI- und Bildverarbeitungs-Projekte",
+   "Bis zu 8 GB LPDDR4 RAM, 64 GB eMMC & 256 MB SPI Flash"
+  ],
+  "usp": [
+   "Dual 1-GbE mit TSN & zwei CAN FD Interfaces",
+   "Samtec-Steckverbinder mit 2×120 + 1×60 Pins",
+   "Display-, Kamera- & Audio-Anschlüsse: LVDS, MIPI, HDMI"
+  ],
   "facts": [
    [
     "Kerne",
@@ -221,6 +232,18 @@
    "Bis zu 4× Cortex-R5F (800 MHz) für Echtzeit",
    "Isolierte Cortex-M4F MCU für Sicherheit und Schutz",
    "4× PRU-ICSSG Industrial Ethernet ohne Lizenzkosten",
+   "2× Gigabit-Ethernet und 2× CAN FD",
+   "Bis zu 2 GB DDR4 mit Inline-ECC, eMMC bis 128 GB",
+   "ePWM, eCAP und eQEP Unterstützung",
+   "Samtec 2×140 Pins, +3,3 V / 2 A Ausgang am Modul"
+  ],
+  "compare": [
+   "Bis zu 2× Cortex-A53 (1 GHz) für Linux",
+   "Bis zu 4× Cortex-R5F (800 MHz) für Echtzeit",
+   "Isolierte Cortex-M4F MCU für Sicherheit und Schutz",
+   "4× PRU-ICSSG Industrial Ethernet ohne Lizenzkosten"
+  ],
+  "usp": [
    "2× Gigabit-Ethernet und 2× CAN FD",
    "Bis zu 2 GB DDR4 mit Inline-ECC, eMMC bis 128 GB",
    "ePWM, eCAP und eQEP Unterstützung",
@@ -282,6 +305,18 @@
    "2× Gigabit-Ethernet, 3× CAN FD, 2× USB 2.0",
    "Stromsparmodi: Deep Sleep, Standby, MCU-only"
   ],
+  "compare": [
+   "Lötmodul (DSC), 270 Pins, 0,8 mm Raster",
+   "Bis zu 4× Cortex-A53 mit bis zu 1,4 GHz",
+   "Isolierter Cortex-M4F (400 MHz), Safety/Security",
+   "Dual-Display: 24-Bit RGB + 2× OLDI/LVDS"
+  ],
+  "usp": [
+   "Wählbare GPU mit bis zu 8 GFLOPS",
+   "1× MIPI CSI-2 Kameraschnittstelle",
+   "2× Gigabit-Ethernet, 3× CAN FD, 2× USB 2.0",
+   "Stromsparmodi: Deep Sleep, Standby, MCU-only"
+  ],
   "facts": [
    [
     "Kerne",
@@ -325,6 +360,17 @@
    "Industrieller Temperaturbereich verfügbar",
    "Langzeitverfügbarkeit von 15 Jahren"
   ],
+  "compare": [
+   "Energie- und kosteneffizient",
+   "Lötmodul im kleinen Formfaktor",
+   "Komplett maschinell produzierbar",
+   "Lieferbar als Rollenware à 175 Stück"
+  ],
+  "usp": [
+   "1× paralleler Kamera-Eingang",
+   "Industrieller Temperaturbereich verfügbar",
+   "Langzeitverfügbarkeit von 15 Jahren"
+  ],
   "facts": [
    [
     "Kerne",
@@ -359,6 +405,18 @@
    "3D-Grafik via PowerVR SGX544",
    "Bis zu 6 Gigabit Industrial-Comm.-Schnittstellen",
    "Wi-Fi onboard",
+   "3× Audio McASP",
+   "MIPI DSI und LVDS",
+   "PCIe 3.0, USB 3.0 Dual Role",
+   "DDR4 RAM mit separatem DDR4 ECC"
+  ],
+  "compare": [
+   "4× Cortex-A53 + Dual-Cortex-R5F-Subsystem",
+   "3D-Grafik via PowerVR SGX544",
+   "Bis zu 6 Gigabit Industrial-Comm.-Schnittstellen",
+   "Wi-Fi onboard"
+  ],
+  "usp": [
    "3× Audio McASP",
    "MIPI DSI und LVDS",
    "PCIe 3.0, USB 3.0 Dual Role",
@@ -405,6 +463,16 @@
    "SATA",
    "LVDS, Parallel 24-Bit, HDMI"
   ],
+  "compare": [
+   "Skalierbar: i.MX 6Solo bis 6Quad, 1,2 GHz",
+   "Flexibel durch Löt- oder Stecktechnologie",
+   "Sprachsteuerungsengine",
+   "MIPI CSI + paralleles Kamerainterface"
+  ],
+  "usp": [
+   "SATA",
+   "LVDS, Parallel 24-Bit, HDMI"
+  ],
   "facts": [
    [
     "Kerne",
@@ -443,6 +511,18 @@
    "Bis zu 4× Cortex-A53 mit bis zu 1,4 GHz",
    "Isolierter Cortex-M4F (400 MHz), Safety/Security",
    "Dual-Display: 24-Bit RGB + 2× OLDI/LVDS",
+   "Wählbare GPU mit bis zu 8 GFLOPS",
+   "1× MIPI CSI-2 Kameraschnittstelle",
+   "2× Gigabit-Ethernet, 3× CAN FD, 2× USB 2.0",
+   "Stromsparmodi: Deep Sleep, Standby, MCU-only"
+  ],
+  "compare": [
+   "Samtec-Steckverbinder 2× 120-polig, 0,5 mm",
+   "Bis zu 4× Cortex-A53 mit bis zu 1,4 GHz",
+   "Isolierter Cortex-M4F (400 MHz), Safety/Security",
+   "Dual-Display: 24-Bit RGB + 2× OLDI/LVDS"
+  ],
+  "usp": [
    "Wählbare GPU mit bis zu 8 GFLOPS",
    "1× MIPI CSI-2 Kameraschnittstelle",
    "2× Gigabit-Ethernet, 3× CAN FD, 2× USB 2.0",
@@ -490,6 +570,16 @@
    "MIPI DSI und Parallel 24-bit",
    "MIPI CSI"
   ],
+  "compare": [
+   "i.MX 7Solo/Dual bis zu 2× 1 GHz",
+   "Cortex-M4 für Echtzeitanwendungen",
+   "eMMC oder SLC NAND",
+   "2× Gigabit Ethernet"
+  ],
+  "usp": [
+   "MIPI DSI und Parallel 24-bit",
+   "MIPI CSI"
+  ],
   "facts": [
    [
     "Kerne",
@@ -528,6 +618,18 @@
    "Cortex-A8 bis 1 GHz + 2× PRU Rechenkern",
    "Löt- oder Stecktechnologie",
    "Echtzeit-Ethernet-Protokolle",
+   "SGX530 Grafik-Einheit für 2D oder 3D",
+   "Optional bis zu 64 GB eMMC",
+   "Yocto/Linux BSP mit Preempt-RT",
+   "RAUC Update-Mechanismus integriert"
+  ],
+  "compare": [
+   "TI AM3359/8/7/6/4/2",
+   "Cortex-A8 bis 1 GHz + 2× PRU Rechenkern",
+   "Löt- oder Stecktechnologie",
+   "Echtzeit-Ethernet-Protokolle"
+  ],
+  "usp": [
    "SGX530 Grafik-Einheit für 2D oder 3D",
    "Optional bis zu 64 GB eMMC",
    "Yocto/Linux BSP mit Preempt-RT",
@@ -576,6 +678,18 @@
    "2× Gigabit Ethernet, 6× Audio McASP",
    "24-bit Parallel + HDMI"
   ],
+  "compare": [
+   "Dual/Single-Core Arm Cortex-A15",
+   "PRU-ICSS für Industrial Ethernet",
+   "Embedded Vision Engine für KI",
+   "Dual C66x DSP"
+  ],
+  "usp": [
+   "2D/3D Hochleistungsgrafik",
+   "Advanced Video Accelerator mit 1080p",
+   "2× Gigabit Ethernet, 6× Audio McASP",
+   "24-bit Parallel + HDMI"
+  ],
   "facts": [
    [
     "Kerne",
@@ -610,6 +724,16 @@
    "Dedizierte NPU für KI (2 TOP/s)",
    "ISP und mehrere MIPI-CSI-Kameras",
    "Ethernet und WLAN/BT für Cloud-Anbindung",
+   "Pinkompatibel zu i.MX 8M Plus und AM62Lx FPSC",
+   "Yocto Linux mit integriertem Update-System"
+  ],
+  "compare": [
+   "FPSC-Entwicklungsplattform für den i.MX 95",
+   "Dedizierte NPU für KI (2 TOP/s)",
+   "ISP und mehrere MIPI-CSI-Kameras",
+   "Ethernet und WLAN/BT für Cloud-Anbindung"
+  ],
+  "usp": [
    "Pinkompatibel zu i.MX 8M Plus und AM62Lx FPSC",
    "Yocto Linux mit integriertem Update-System"
   ],
@@ -648,6 +772,16 @@
    "Vision- und generative KI-Modelle am Edge",
    "Zweite Generation der Hailo-KI-Beschleuniger",
    "M.2 Key M, Bauformen 2242 und 2280",
+   "Industrietauglich: -40 °C bis +85 °C",
+   "Typische Leistungsaufnahme 2,5 W"
+  ],
+  "compare": [
+   "Hailo-10H mit 40 TOPS (INT4) / 20 TOPS (INT8)",
+   "Vision- und generative KI-Modelle am Edge",
+   "Zweite Generation der Hailo-KI-Beschleuniger",
+   "M.2 Key M, Bauformen 2242 und 2280"
+  ],
+  "usp": [
    "Industrietauglich: -40 °C bis +85 °C",
    "Typische Leistungsaufnahme 2,5 W"
   ],
@@ -694,6 +828,18 @@
    "Passt z. B. auf Libra (FPSC) und phyBOARD-Pollux",
    "CE- und FCC-zertifiziert"
   ],
+  "compare": [
+   "Hailo-8 Beschleuniger mit 26 TOPS",
+   "M.2 Key-A+E Einsteckkarte",
+   "Sehr leistungseffizient (3 TOPS/W)",
+   "PCIe Gen 3.0, 2 Lanes"
+  ],
+  "usp": [
+   "TensorFlow, Keras, ONNX und PyTorch",
+   "Bereits integriert in ausgewählte PHYTEC-BSPs",
+   "Passt z. B. auf Libra (FPSC) und phyBOARD-Pollux",
+   "CE- und FCC-zertifiziert"
+  ],
   "facts": [
    [
     "Kerne",
@@ -729,6 +875,18 @@
    "Hexa-Core Cortex-A55 mit 2 GHz",
    "Cortex-M33 (333 MHz) + Cortex-M7 (800 MHz)",
    "eIQ Neutron NPU 2 TOPS, opt. Ara240 bis 40 TOPS",
+   "Zusätzliche Mali-G310 V2 GPU",
+   "2× phyCAM-M MIPI-CSI-2 Kameraeingänge",
+   "12–36 V Weitbereichsversorgung, passiv kühlbar",
+   "GbE, CAN FD, USB, RS485, WLAN/BT, TPM"
+  ],
+  "compare": [
+   "Modulares Plattformkonzept mit i.MX 95",
+   "Hexa-Core Cortex-A55 mit 2 GHz",
+   "Cortex-M33 (333 MHz) + Cortex-M7 (800 MHz)",
+   "eIQ Neutron NPU 2 TOPS, opt. Ara240 bis 40 TOPS"
+  ],
+  "usp": [
    "Zusätzliche Mali-G310 V2 GPU",
    "2× phyCAM-M MIPI-CSI-2 Kameraeingänge",
    "12–36 V Weitbereichsversorgung, passiv kühlbar",
@@ -782,6 +940,18 @@
    "Integrierter TPM-Chip, optional CAN FD",
    "Linux (Yocto) und Android"
   ],
+  "compare": [
+   "Quad-Core Cortex-A53 bis 1,8 GHz + Cortex-M4",
+   "1080p-Videokodierung und -dekodierung",
+   "2D- und 3D-Grafik",
+   "MIPI-DSI oder LVDS, 1× MIPI CSI-2 Kamera"
+  ],
+  "usp": [
+   "Gigabit-Ethernet, WLAN und BLE 4.2",
+   "USB, RS-232/RS-485, miniPCIe, microSD",
+   "Integrierter TPM-Chip, optional CAN FD",
+   "Linux (Yocto) und Android"
+  ],
   "facts": [
    [
     "Kerne",
@@ -824,6 +994,17 @@
    "Generative KI, LLMs und VLMs am Edge",
    "TensorFlow, PyTorch, ONNX"
   ],
+  "compare": [
+   "Ara240 Beschleuniger mit 40 eTOPS",
+   "M.2 Key M Einsteckkarte",
+   "2× 8 GB RAM direkt am Ara-Chip angebunden",
+   "Bereits integriert in ausgewählte PHYTEC-BSPs"
+  ],
+  "usp": [
+   "Kompatibel mit vielen PHYTEC-Boards (M.2)",
+   "Generative KI, LLMs und VLMs am Edge",
+   "TensorFlow, PyTorch, ONNX"
+  ],
   "facts": [
    [
     "Kerne",
@@ -858,6 +1039,18 @@
    "Echtzeit-MCU Cortex-M33 (250 MHz)",
    "Arm Ethos-U65 microNPU",
    "720p60 LVDS-Display, MIPI CSI-2 Kameras",
+   "2× Ethernet (TSN), 2× CAN FD, 8 UARTs",
+   "Kostenoptimiert durch Lötmodul-Technologie",
+   "Langzeitgepflegtes Yocto Linux mit Security",
+   "EdgeLock Secure Enclave"
+  ],
+  "compare": [
+   "2× Cortex-A55 bis 1,7 GHz",
+   "Echtzeit-MCU Cortex-M33 (250 MHz)",
+   "Arm Ethos-U65 microNPU",
+   "720p60 LVDS-Display, MIPI CSI-2 Kameras"
+  ],
+  "usp": [
    "2× Ethernet (TSN), 2× CAN FD, 8 UARTs",
    "Kostenoptimiert durch Lötmodul-Technologie",
    "Langzeitgepflegtes Yocto Linux mit Security",
@@ -906,6 +1099,18 @@
    "Stromverbrauch des Moduls messbar",
    "Security Features, integrierter RAUC-Client"
   ],
+  "compare": [
+   "i.MX 8M Plus Quad mit 4× 1,6 GHz",
+   "Neural Network Accelerator bis 2,3 TOPS",
+   "Onboard Image Signal Processor",
+   "2× MIPI CSI-2"
+  ],
+  "usp": [
+   "Ethernet mit TSN",
+   "RS-232/RS-485 umschaltbar, ein Connector",
+   "Stromverbrauch des Moduls messbar",
+   "Security Features, integrierter RAUC-Client"
+  ],
   "facts": [
    [
     "Kerne",
@@ -944,6 +1149,16 @@
    "eIQ Neutron NPU mit bis zu 2 TOP/s",
    "LPDDR5-Speicher bis 5,8 GB/s",
    "Integrierter ISP mit 500 MP/s",
+   "Zwei 4-Lane-MIPI-CSI-Schnittstellen",
+   "FPSC: pinkompatibel zu phyFLEX-Gamma Größe M"
+  ],
+  "compare": [
+   "Quad-/Hexa-Core Arm Cortex-A55 + M7 + M33",
+   "eIQ Neutron NPU mit bis zu 2 TOP/s",
+   "LPDDR5-Speicher bis 5,8 GB/s",
+   "Integrierter ISP mit 500 MP/s"
+  ],
+  "usp": [
    "Zwei 4-Lane-MIPI-CSI-Schnittstellen",
    "FPSC: pinkompatibel zu phyFLEX-Gamma Größe M"
   ],
@@ -995,6 +1210,18 @@
    "2 DSP-Einheiten für Signalverarbeitung und KI",
    "Unterstützt TIs Konzept für funkt. Sicherheit"
   ],
+  "compare": [
+   "2 Kamera-Interfaces, bis zu 8 Kameras",
+   "Interner ISP für Bild-Vorverarbeitung",
+   "CAN FD und Gigabit Ethernet mit TSN",
+   "3 Displays: MIPI-DSI, LVDS, DP"
+  ],
+  "usp": [
+   "Bis zu 2 Displays gleichzeitig",
+   "50 GFLOPS Grafikleistung",
+   "2 DSP-Einheiten für Signalverarbeitung und KI",
+   "Unterstützt TIs Konzept für funkt. Sicherheit"
+  ],
   "facts": [
    [
     "Kerne",
@@ -1034,6 +1261,17 @@
    "Bis zu 8 GB LPDDR4 und 64 GB eMMC",
    "2× Gigabit-Ethernet mit TSN",
    "USB 3.0, PCIe 3.0 und CAN FD",
+   "Displays: LVDS, HDMI und MIPI",
+   "Kameras bis 12 MP, H.265-Codec 1080p60",
+   "Yocto-Linux und Android, Secure Boot"
+  ],
+  "compare": [
+   "NPU mit 2,3 TOPS und Tensilica-DSP für KI",
+   "Bis zu 8 GB LPDDR4 und 64 GB eMMC",
+   "2× Gigabit-Ethernet mit TSN",
+   "USB 3.0, PCIe 3.0 und CAN FD"
+  ],
+  "usp": [
    "Displays: LVDS, HDMI und MIPI",
    "Kameras bis 12 MP, H.265-Codec 1080p60",
    "Yocto-Linux und Android, Secure Boot"
@@ -1081,6 +1319,17 @@
    "i.MX 93: Cortex-M33 und Ethos-U65 microNPU",
    "i.MX 93: 2. Ethernet, MIPI DSI, optional LVDS",
    "Displays bis 1920×1200p60",
+   "FPSC: pinkompatibel zu phyFLEX-Gamma",
+   "Upgrades ohne Baseboard-Redesign",
+   "Yocto-Linux-BSP und securiPHY-Distro"
+  ],
+  "compare": [
+   "1× oder 2× Cortex-A55 bis 1,7 GHz",
+   "i.MX 93: Cortex-M33 und Ethos-U65 microNPU",
+   "i.MX 93: 2. Ethernet, MIPI DSI, optional LVDS",
+   "Displays bis 1920×1200p60"
+  ],
+  "usp": [
    "FPSC: pinkompatibel zu phyFLEX-Gamma",
    "Upgrades ohne Baseboard-Redesign",
    "Yocto-Linux-BSP und securiPHY-Distro"
@@ -1133,6 +1382,18 @@
    "SESIP3-Vorzertifizierung, Secure Boot",
    "Yocto-basiertes OpenSTLinux"
   ],
+  "compare": [
+   "1× oder 2× Cortex-A35 bis 1,5 GHz, M33 mit 400 MHz",
+   "NPU mit bis zu 1,35 TOPS",
+   "MIPI CSI-2 Kamera mit ISP, 3D-GPU",
+   "LVDS, MIPI-DSI, RGB für Full-HD-Grafik"
+  ],
+  "usp": [
+   "PCIe und USB 3.2 Gen 1",
+   "Bis zu 3× Gigabit-Ethernet, 3× CAN FD",
+   "SESIP3-Vorzertifizierung, Secure Boot",
+   "Yocto-basiertes OpenSTLinux"
+  ],
   "facts": [
    [
     "Kerne",
@@ -1170,6 +1431,15 @@
    "1× C7 Deep Learning Accelerator (DLA)",
    "2 TOPS KI-Leistung (C7x256v)"
   ],
+  "compare": [
+   "Single-/Dual-/Quad-Core Cortex-A53 bis 1,4 GHz",
+   "Cortex-R5F bis 800 MHz für Echtzeit",
+   "Vision Accelerator mit ISP (5 MP@60 fps)",
+   "1× C7 Deep Learning Accelerator (DLA)"
+  ],
+  "usp": [
+   "2 TOPS KI-Leistung (C7x256v)"
+  ],
   "facts": [
    [
     "Kerne",
@@ -1204,6 +1474,18 @@
    "2× Arm Cortex-R5F (800 MHz)",
    "2D/3D GPU mit bis zu 50 GFLOPS",
    "3 Displays: MIPI, DPI, LVDS",
+   "H.264/H.265 Encoder/Decoder bis 300 MPixel",
+   "2× 1 Gbit Ethernet (TSN), 3× CAN-FD, 2× USB 2.0",
+   "32-Bit LPDDR4 RAM bis zu 3733 MHz",
+   "Secure Boot, HSM, TEE, Krypto-Beschleunigung"
+  ],
+  "compare": [
+   "Bis zu 4× Arm Cortex-A53 mit bis zu 1,4 GHz",
+   "2× Arm Cortex-R5F (800 MHz)",
+   "2D/3D GPU mit bis zu 50 GFLOPS",
+   "3 Displays: MIPI, DPI, LVDS"
+  ],
+  "usp": [
    "H.264/H.265 Encoder/Decoder bis 300 MPixel",
    "2× 1 Gbit Ethernet (TSN), 3× CAN-FD, 2× USB 2.0",
    "32-Bit LPDDR4 RAM bis zu 3733 MHz",

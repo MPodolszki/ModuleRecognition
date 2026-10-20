@@ -13,6 +13,7 @@ dependencies = [
     "numpy",
     "opencv-python",
     "pillow-heif>=1.8.1",
+    "python-docx>=1.2.0",
 ]
 
 # RTX 5090 (Blackwell, sm_120) needs CUDA 12.8 wheels.

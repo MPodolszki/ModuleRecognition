@@ -2,7 +2,7 @@
 #
 # Eine Angabe pro Zeile:  Feld: Wert   (Zeilen mit # sind Kommentare)
 # Leere Felder bleiben im Fenster einfach weg.
-# Wo welches Feld erscheint ([1]..[13]): dataset/products/Info-Fenster_Aufbau.pdf
+# Wo welches Feld erscheint ([1]..[14]): dataset/products/Info-Fenster_Aufbau.pdf
 # Vorschau ohne Hardware:  uv run tools/render_panel.py
 # Aufs Board:  uv run tools/product_info.py models/<modell> und tools/deploy.sh
 
@@ -29,23 +29,25 @@ Temperatur: -40 °C / +85 °C
 # [9] Kennzahl 4, z. B. 2035
 Verfügbar bis:
 
-# [10] Liste mit Häkchen: bis zu 8 Zeilen "Highlight:", je ca. 55 Zeichen
-Highlight: 1× oder 2× Cortex-A35 bis 1,5 GHz, M33 mit 400 MHz
-Highlight: NPU mit bis zu 1,35 TOPS
-Highlight: MIPI CSI-2 Kamera mit ISP, 3D-GPU
-Highlight: LVDS, MIPI-DSI, RGB für Full-HD-Grafik
-Highlight: PCIe und USB 3.2 Gen 1
-Highlight: Bis zu 3× Gigabit-Ethernet, 3× CAN FD
-Highlight: SESIP3-Vorzertifizierung, Secure Boot
-Highlight: Yocto-basiertes OpenSTLinux
+# [10] Highlights 1-4 mit Häkchen, je ca. 55 Zeichen -- dienen dem Vergleich: liegen zwei Produkte auf, stehen Vergleich 1-4 Zeile für Zeile nebeneinander, also bei allen Produkten dasselbe Thema auf demselben Platz (z. B. 1 CPU, 2 KI/NPU, 3 Speicher, 4 Schnittstellen)
+Vergleich 1: 1× oder 2× Cortex-A35 bis 1,5 GHz, M33 mit 400 MHz
+Vergleich 2: NPU mit bis zu 1,35 TOPS
+Vergleich 3: MIPI CSI-2 Kamera mit ISP, 3D-GPU
+Vergleich 4: LVDS, MIPI-DSI, RGB für Full-HD-Grafik
 
-# [11] Bild "Im Vergleich" unten links, Datei in diesem Ordner (z. B. chart.png)
+# [11] Highlights 5-8 mit Häkchen -- was nur dieses Produkt kann, je ca. 55 Zeichen
+Alleinstellungsmerkmal 1: PCIe und USB 3.2 Gen 1
+Alleinstellungsmerkmal 2: Bis zu 3× Gigabit-Ethernet, 3× CAN FD
+Alleinstellungsmerkmal 3: SESIP3-Vorzertifizierung, Secure Boot
+Alleinstellungsmerkmal 4: Yocto-basiertes OpenSTLinux
+
+# [12] Bild "Im Vergleich" unten links, Datei in diesem Ordner (z. B. chart.png)
 Diagramm-Datei:
 
-# [12] QR-Code "Zum Produkt" -- Produktseite auf phytec.de
+# [13] QR-Code "Zum Produkt" -- Produktseite auf phytec.de
 Link Produktseite: https://www.phytec.de/produkte/system-on-modules/phyflex-stm32mp2x-fpsc/
 
-# [13] QR-Code ganz rechts -- Entwicklungskit
+# [14] QR-Code ganz rechts -- Entwicklungskit
 Link Kit: https://www.phytec.de/produkte/development-kits/phyflex-stm32mp2x-fpsc-kit/
 Kit-Bezeichnung: phyFLEX-STM32MP2 Kit
 

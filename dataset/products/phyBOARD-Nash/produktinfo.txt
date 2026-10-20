@@ -2,7 +2,7 @@
 #
 # Eine Angabe pro Zeile:  Feld: Wert   (Zeilen mit # sind Kommentare)
 # Leere Felder bleiben im Fenster einfach weg.
-# Wo welches Feld erscheint ([1]..[13]): dataset/products/Info-Fenster_Aufbau.pdf
+# Wo welches Feld erscheint ([1]..[14]): dataset/products/Info-Fenster_Aufbau.pdf
 # Vorschau ohne Hardware:  uv run tools/render_panel.py
 # Aufs Board:  uv run tools/product_info.py models/<modell> und tools/deploy.sh
 
@@ -29,23 +29,25 @@ Temperatur: -40 °C / +85 °C
 # [9] Kennzahl 4, z. B. 2035
 Verfügbar bis:
 
-# [10] Liste mit Häkchen: bis zu 8 Zeilen "Highlight:", je ca. 55 Zeichen
-Highlight: 2× Cortex-A55 bis 1,7 GHz
-Highlight: Echtzeit-MCU Cortex-M33 (250 MHz)
-Highlight: Arm Ethos-U65 microNPU
-Highlight: 720p60 LVDS-Display, MIPI CSI-2 Kameras
-Highlight: 2× Ethernet (TSN), 2× CAN FD, 8 UARTs
-Highlight: Kostenoptimiert durch Lötmodul-Technologie
-Highlight: Langzeitgepflegtes Yocto Linux mit Security
-Highlight: EdgeLock Secure Enclave
+# [10] Highlights 1-4 mit Häkchen, je ca. 55 Zeichen -- dienen dem Vergleich: liegen zwei Produkte auf, stehen Vergleich 1-4 Zeile für Zeile nebeneinander, also bei allen Produkten dasselbe Thema auf demselben Platz (z. B. 1 CPU, 2 KI/NPU, 3 Speicher, 4 Schnittstellen)
+Vergleich 1: 2× Cortex-A55 bis 1,7 GHz
+Vergleich 2: Echtzeit-MCU Cortex-M33 (250 MHz)
+Vergleich 3: Arm Ethos-U65 microNPU
+Vergleich 4: 720p60 LVDS-Display, MIPI CSI-2 Kameras
 
-# [11] Bild "Im Vergleich" unten links, Datei in diesem Ordner (z. B. chart.png)
+# [11] Highlights 5-8 mit Häkchen -- was nur dieses Produkt kann, je ca. 55 Zeichen
+Alleinstellungsmerkmal 1: 2× Ethernet (TSN), 2× CAN FD, 8 UARTs
+Alleinstellungsmerkmal 2: Kostenoptimiert durch Lötmodul-Technologie
+Alleinstellungsmerkmal 3: Langzeitgepflegtes Yocto Linux mit Security
+Alleinstellungsmerkmal 4: EdgeLock Secure Enclave
+
+# [12] Bild "Im Vergleich" unten links, Datei in diesem Ordner (z. B. chart.png)
 Diagramm-Datei:
 
-# [12] QR-Code "Zum Produkt" -- Produktseite auf phytec.de
+# [13] QR-Code "Zum Produkt" -- Produktseite auf phytec.de
 Link Produktseite: https://www.phytec.de/produkte/development-kits/phyboard-nash/
 
-# [13] QR-Code ganz rechts -- Entwicklungskit
+# [14] QR-Code ganz rechts -- Entwicklungskit
 Link Kit: https://www.phytec.de/produkte/development-kits/phyboard-nash-imaging-kit/
 Kit-Bezeichnung: Nash Imaging Kit
 

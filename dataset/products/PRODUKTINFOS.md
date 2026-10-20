@@ -4,18 +4,30 @@ Jedes Produkt hat eine eigene Datei **`<Artikelnummer>/produktinfo.txt`**
 (Texteditor, UTF-8). Pro Zeile steht ein Feld, Kommentare beginnen mit `#`:
 
     Bezeichnung: phyCORE-i.MX 8M Plus
-    Highlight: 2,3 TOPS NPU für KI- und Bildverarbeitungs-Projekte
+    Vergleich 3: 2,3 TOPS NPU für KI- und Bildverarbeitungs-Projekte
 
-Leere Felder fallen im Fenster weg. Die Nummern [1]–[13] in den Kommentaren
+Leere Felder fallen im Fenster weg. Die Nummern [1]–[14] in den Kommentaren
 zeigen, wo das Feld erscheint, siehe **`Info-Fenster_Aufbau.pdf`**:
 
 - Seite 1: Aufbau
 - Seite 2: Ansicht auf dem Monitor
-- ab Seite 3: je Produkt die Datei links, das Fenster rechts
+- Seite 3: Vergleichsfenster (zwei Produkte angehoben)
+- ab Seite 4: je Produkt die Datei links, das Fenster rechts
 
 Muster mit allen Feldern: `PCM-070-0F3243I.A3/produktinfo.txt`.
 
 ## Für das Marketing
+
+Am einfachsten über Word: **`Produktinfos.docx`** (eine Seite pro Produkt,
+nur die Spalte „Inhalt“ ändern). Zurück in die Dateien:
+
+    uv run tools/produktinfo_word.py import Produktinfos.docx
+
+Neu erzeugen (nach Änderungen an den Dateien):
+
+    uv run tools/produktinfo_word.py export
+
+Oder direkt in den Textdateien:
 
 - Datei mit einem normalen Texteditor öffnen (Windows-Editor, TextEdit,
   VS Code), **nicht** mit Word. Speichern als UTF-8 (Standard).
@@ -23,8 +35,8 @@ Muster mit allen Feldern: `PCM-070-0F3243I.A3/produktinfo.txt`.
   Groß/klein beim Feldnamen ist egal.
 - Lange Texte dürfen umbrechen, auch mit Enter. Eine Folgezeile ohne
   `Feld:` gehört zum Feld darüber.
-- Highlights: eine Zeile `Highlight: …` pro Punkt, höchstens 8. Leere
-  `Highlight:`-Zeilen werden ignoriert.
+- Highlights: `Vergleich 1:` bis `Vergleich 4:` und `Alleinstellungsmerkmal 1:`
+  bis `Alleinstellungsmerkmal 4:`. Der Platz zählt, leere Plätze bleiben weg.
 - Zeilen mit `#` sind Hinweise und werden nicht angezeigt. Die `Bemerkung:`
   wird ebenfalls nicht angezeigt; dort steht, woher die Angaben kommen und
   was noch offen ist.
@@ -42,10 +54,11 @@ Muster mit allen Feldern: `PCM-070-0F3243I.A3/produktinfo.txt`.
 | 4 | (Artikelnummer) | aus dem Ordnernamen |
 | 5 | Kurzbeschreibung | max. 3 Zeilen, ≈ 270 Zeichen |
 | 6–9 | Kerne, Größe in mm, Temperatur, Verfügbar bis | Kennzahlen-Zeile |
-| 10 | Highlight (bis zu 8 Zeilen) | Liste mit Häkchen, ≈ 55 Zeichen |
-| 11 | Diagramm-Datei | Bild „Im Vergleich“, Datei im Produktordner |
-| 12 | Link Produktseite | QR-Code „Zum Produkt“ |
-| 13 | Link Kit, Kit-Bezeichnung | QR-Code des Kits, Aufschrift des Knopfs |
+| 10 | Vergleich 1–4 | Highlights 1–4, ≈ 55 Zeichen; im Vergleichsfenster Zeile für Zeile nebeneinander, also bei allen Produkten dasselbe Thema auf demselben Platz (z. B. 1 CPU, 2 KI, 3 Speicher, 4 Schnittstellen) |
+| 11 | Alleinstellungsmerkmal 1–4 | Highlights 5–8: was nur dieses Produkt kann |
+| 12 | Diagramm-Datei | Bild „Im Vergleich“, Datei im Produktordner |
+| 13 | Link Produktseite | QR-Code „Zum Produkt“ |
+| 14 | Link Kit, Kit-Bezeichnung | QR-Code des Kits, Aufschrift des Knopfs |
 | – | Aussprache (Sprachsuche), Bemerkung | nicht angezeigt |
 
 Vorschau ohne Hardware (PDF neu erzeugen):
