@@ -28,6 +28,7 @@ The detection camera is monochrome, so everything is written as gray
 import argparse
 import csv
 import math
+import os
 import pathlib
 import random
 import shutil
@@ -169,6 +170,8 @@ def main():
     parser.add_argument("-o", "--out", default=str(ROOT / "dataset_products"))
     parser.add_argument("--phycam", nargs="*", default=[], help="camera frames without products")
     parser.add_argument("--backgrounds", nargs="*", default=[], help="any other pictures")
+    parser.add_argument("--jobs", type=int, default=os.cpu_count() or 4,
+                        help="processes for the synthetic scenes")
     parser.add_argument("--neg-repeat", type=int, default=3,
                         help="training copies of each hard negative (_background/*negatives*/)")
     parser.add_argument("-n", "--synth", type=int, default=6000, help="synthetic scenes")
@@ -183,6 +186,10 @@ def main():
 
     random.seed(args.seed)
     np.random.seed(args.seed)
+    # No OpenCV worker threads in this process: the synthetic scenes are
+    # made in forked processes, and a fork taken while OpenCV's thread pool
+    # holds a lock leaves the children hanging (0 % CPU, nothing written).
+    cv2.setNumThreads(0)
     gray = not args.color
     products, out = pathlib.Path(args.products), pathlib.Path(args.out)
     classes, display = load_classes(products)
@@ -277,26 +284,46 @@ def main():
     neg = files([products / "_background"])
     phycam, others = files(args.phycam), files(args.backgrounds)
     n_val = args.synth // 10
-    for i in range(args.synth):
-        roll = random.random()
-        if roll < 0.55:
-            bg = table_background(SYNTH_SIZE)
-        elif neg and roll < 0.75:
-            bg = read_image(random.choice(neg))
-            s = SYNTH_SIZE / max(bg.shape[:2])
-            bg = cv2.resize(bg, None, fx=s, fy=s, interpolation=cv2.INTER_AREA)
-        else:
-            bg = random_background(phycam, others, SYNTH_SIZE)
-        boxes = []
-        if random.random() > 0.1:
-            for _ in range(random.choice([1, 1, 2, 2, 3, 4, 5])):
-                cid = random.choice(usable)
-                box = paste_one(bg, random.choice(cutouts[cid]), [b[1:] for b in boxes],
-                                args.min_size, args.max_size)
-                if box is not None:
-                    boxes.append((cid, *box))
-        split = "val" if i < n_val else "train"
-        write(out, split, f"synth_{i:05d}", to_out(degrade(bg), gray), boxes)
+
+    def synth_range(lo, hi):
+        """Scenes lo..hi-1, in a worker process (forked: cutouts are shared)."""
+        random.seed(args.seed * 100003 + lo)
+        np.random.seed((args.seed * 100003 + lo) % 2**32)
+        cv2.setNumThreads(1)
+        for i in range(lo, hi):
+            roll = random.random()
+            if roll < 0.55:
+                bg = table_background(SYNTH_SIZE)
+            elif neg and roll < 0.75:
+                bg = read_image(random.choice(neg))
+                s = SYNTH_SIZE / max(bg.shape[:2])
+                bg = cv2.resize(bg, None, fx=s, fy=s, interpolation=cv2.INTER_AREA)
+            else:
+                bg = random_background(phycam, others, SYNTH_SIZE)
+            boxes = []
+            if random.random() > 0.1:
+                for _ in range(random.choice([1, 1, 2, 2, 3, 4, 5])):
+                    cid = random.choice(usable)
+                    box = paste_one(bg, random.choice(cutouts[cid]), [b[1:] for b in boxes],
+                                    args.min_size, args.max_size)
+                    if box is not None:
+                        boxes.append((cid, *box))
+            split = "val" if i < n_val else "train"
+            write(out, split, f"synth_{i:05d}", to_out(degrade(bg), gray), boxes)
+
+    # all cores: the scenes are independent (fork keeps the cutouts shared)
+    import multiprocessing as mp
+    workers = max(1, min(args.jobs, args.synth // 200 or 1))
+    step = -(-args.synth // workers)
+    procs = [mp.get_context("fork").Process(target=synth_range,
+                                            args=(k, min(k + step, args.synth)))
+             for k in range(0, args.synth, step)]
+    for p_ in procs:
+        p_.start()
+    for p_ in procs:
+        p_.join()
+        if p_.exitcode:
+            sys.exit(f"a synthetic-scene worker failed ({p_.exitcode})")
 
     # pictures of _background as plain negatives; the hard ones (phones,
     # keys, hands, ... on the demo table, a "negatives" folder) count more

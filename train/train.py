@@ -26,10 +26,17 @@ def main():
     parser.add_argument("--batch", type=int, default=32)
     parser.add_argument("--imgsz", type=int, default=640)
     parser.add_argument("--workers", type=int, default=8)
+    parser.add_argument("--cache", default=None, choices=("ram", "disk"),
+                        help="keep the decoded pictures (faster epochs at 960 px)")
     args = parser.parse_args()
 
-    weights = ROOT / "models" / f"{args.model}.pt"
-    model = YOLO(str(weights) if weights.exists() else f"{args.model}.pt")
+    # --model: a size (yolo26n) or a trained best.pt to continue from (fine-tune:
+    # far fewer epochs; new classes get a fresh classification output)
+    if pathlib.Path(args.model).suffix == ".pt" and pathlib.Path(args.model).exists():
+        model = YOLO(args.model)
+    else:
+        weights = ROOT / "models" / f"{args.model}.pt"
+        model = YOLO(str(weights) if weights.exists() else f"{args.model}.pt")
     model.train(
         data=args.data, epochs=args.epochs, imgsz=args.imgsz, batch=args.batch,
         workers=args.workers, device=0, project=str(ROOT / "runs" / "detect"),
@@ -37,6 +44,7 @@ def main():
         # Modules lie in any orientation on a desk: allow vertical flips and
         # rotation on top of the default augmentation.
         flipud=0.5, degrees=15.0, close_mosaic=10,
+        **({"cache": args.cache} if args.cache else {}),
     )
 
 

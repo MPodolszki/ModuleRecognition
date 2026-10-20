@@ -21,9 +21,11 @@ cd "$ROOT"
 uv run export/cut_onnx.py "$WEIGHTS" --name "$NAME" --imgsz "$IMGSZ"
 uv run tools/product_info.py "$OUT" >/dev/null   # products.json for the info panel
 uv run export/make_calib.py "$CALIB_SRC" -o "$CALIB" -n 512 --imgsz "$IMGSZ"
+if [ -z "${SKIP_NPU:-}" ]; then   # SKIP_NPU=1: Hailo only, ~10 min less
 (cd export/npu && uv run to_tflite.py "$OUT/$NAME.onnx" "$CALIB" \
-    --check-image "$(find "$CALIB_SRC" -name '*.jpg' | sort | head -1)") 2>&1 \
+    --check-image "$(find -L "$CALIB_SRC" -name '*.jpg' | sort | head -1)") 2>&1 \
     | grep -vE '^[EWI]0000|^\s*$'
+fi
 export/hailo/run.sh "$OUT/$NAME.onnx" "$CALIB" --profile "$PROFILE" "$@" 2>&1 \
     | grep -E '^==|calib\[|Error|error|context_[0-9] utilization|Successful'
 ls -la "$OUT"
