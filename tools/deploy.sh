@@ -26,7 +26,7 @@ for dir in "$@"; do
         --exclude='*_fp32.tflite' -cf - .) | $SSH "mkdir -p $DEST/models/$name && tar -C $DEST/models/$name -xf -"
 done
 
-for tool in detect:live_cli benchmark:benchmark_cli capture:capture_cli calibrate:calibrate_cli focus:focus_cli photo:photo_cli photo-queue:photo_queue_cli find:search; do
+for tool in detect:live_cli benchmark:benchmark_cli capture:capture_cli calibrate:calibrate_cli focus:focus_cli photo:photo_cli photo-queue:photo_queue_cli find:search scenes:scene_cli; do
     cmd="${tool%%:*}"; module="${tool#*:}"
     $SSH "cat > $DEST/bin/phytec-$cmd" <<EOF
 #!/bin/sh
@@ -65,3 +65,5 @@ $SSH "systemctl daemon-reload && systemctl enable -q phytec-mode && systemctl re
 
 # Search requests ("Wo ist der i.MX6?", phytec-find / voice) for the demo.
 $SSH "echo 'd /run/phytec-detect 0777 root root -' > /etc/tmpfiles.d/phytec-detect.conf && systemd-tmpfiles --create /etc/tmpfiles.d/phytec-detect.conf"
+$SSH "cat > /var/lib/phytec-detect/szenen.csv && chown weston:weston /var/lib/phytec-detect/szenen.csv" \
+    < "$ROOT/dataset/products/szenen.csv"

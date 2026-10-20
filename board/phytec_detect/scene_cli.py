@@ -26,9 +26,15 @@ import time
 import cv2
 
 from .camera import Camera, Screen, die, screen_size, to_bgrx
-from .photo_cli import read_products
+from .photo_cli import draw_rect, find_products, read_products
 
 OUT = "/var/lib/phytec-detect/capture/_scenes"
+
+
+def _xspan(rect):
+    """Leftmost and rightmost x of a turned rectangle."""
+    xs = cv2.boxPoints(rect)[:, 0]
+    return float(xs.min()), float(xs.max())
 
 
 def read_scenes(path):
@@ -80,7 +86,7 @@ def main(argv=None):
             places = (["LINKS", "RECHTS"] if len(scene) == 2 else
                       ["LINKS", "MITTE", "RECHTS"] if len(scene) == 3 else
                       [f"STREIFEN {i + 1}" for i in range(len(scene))])
-            start, last, n = time.monotonic(), 0.0, done
+            start, last, n, ready_since = time.monotonic(), 0.0, done, None
             print(f"scene {k + 1}/{len(scenes)}: {label}", flush=True)
             while not stop.is_set() and n < args.per_scene:
                 ok, gray = cam.read()
@@ -88,7 +94,22 @@ def main(argv=None):
                     die("could not read from camera")
                 now = time.monotonic()
                 intro = now - start < args.intro
-                if not intro and now - last >= args.interval:
+                # Pictures only while each stripe holds exactly one product and
+                # none lies across a stripe line -- otherwise the labels are wrong.
+                h, w = gray.shape[:2]
+                found = find_products(gray)
+                status = []
+                for i in range(len(scene)):
+                    x0, x1 = w * i / len(scene), w * (i + 1) / len(scene)
+                    inside = [r for r in found if x0 <= r[0][0] < x1]
+                    across = any(_xspan(r)[0] < x0 - 5 or _xspan(r)[1] > x1 + 5 for r in inside)
+                    status.append("ok" if len(inside) == 1 and not across else
+                                  "fehlt" if not inside else
+                                  "auf der Linie" if across else f"{len(inside)} Teile")
+                ready = all(st == "ok" for st in status)
+                ready_since = (ready_since or now) if ready else None
+                steady = ready_since is not None and now - ready_since >= 0.8
+                if not intro and steady and now - last >= args.interval:
                     last = now
                     n += 1
                     base = os.path.join(args.out, f"{tag}_{n:03d}")
@@ -103,17 +124,24 @@ def main(argv=None):
                     x = sw * i // len(scene)
                     for y in range(150, sh, 40):
                         cv2.line(view, (x, y), (x, y + 22), (0, 230, 255, 255), 4)
+                scale = sw / w
+                for r in found:
+                    draw_rect(view, r, scale, (0, 220, 0, 255) if ready else (0, 0, 255, 255), 3)
                 for i, a in enumerate(scene):
                     x0 = sw * i // len(scene)
-                    cv2.putText(view, f"{places[i]}: {names.get(a, a)}", (x0 + 20, sh - 30), font,
-                                1.1, (0, 0, 0, 255), 6, cv2.LINE_AA)
-                    cv2.putText(view, f"{places[i]}: {names.get(a, a)}", (x0 + 20, sh - 30), font,
-                                1.1, (0, 230, 255, 255), 2, cv2.LINE_AA)
+                    ok_ = status[i] == "ok"
+                    text = f"{places[i]}: {names.get(a, a)}" + ("" if ok_ else f"  ({status[i]})")
+                    cv2.putText(view, text, (x0 + 20, sh - 30), font, 1.1, (0, 0, 0, 255), 6,
+                                cv2.LINE_AA)
+                    cv2.putText(view, text, (x0 + 20, sh - 30), font, 1.1,
+                                (0, 220, 0, 255) if ok_ else (0, 0, 255, 255), 2, cv2.LINE_AA)
                 cv2.rectangle(view, (0, 0), (sw, 150), (0, 0, 0, 255), -1)
                 cv2.putText(view, f"Szene {k + 1}/{len(scenes)}:  {label}", (24, 56), font, 1.3,
                             (0, 230, 255, 255), 3, cv2.LINE_AA)
                 hint = (f"Hinlegen - Start in {args.intro - (now - start):.0f} s" if intro else
-                        f"Bild {n}/{args.per_scene} - umlegen, drehen, umdrehen: jedes im eigenen Streifen")
+                        f"Bild {n}/{args.per_scene} - umlegen, drehen, umdrehen: jedes im eigenen Streifen"
+                        if ready else
+                        f"Bild {n}/{args.per_scene} - warte: je ein Produkt pro Streifen (rot = falsch)")
                 cv2.putText(view, hint, (24, 112), font, 1.0, (255, 255, 255, 255), 2, cv2.LINE_AA)
                 if not intro and now - last < 0.25:
                     view[150:] = 255  # flash: picture taken

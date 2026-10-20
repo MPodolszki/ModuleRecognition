@@ -15,6 +15,8 @@ ARTICLES="${*:-$($SSH "ls $SRC" | grep -v '^_raw_alt$\|^_verworfen$')}"
 for art in $ARTICLES; do
     case "$art" in
         bg_*|_background) dest="$ROOT/dataset/products/_background/vm017" ;;
+        _negatives) dest="$ROOT/dataset/products/_background/negatives_isp" ;;
+        _scenes) dest="$ROOT/dataset/products/_scenes" ;;
         *) if $SSH "grep -qs '\"path\": \"isp\"' $SRC/$art/*.json"; then
                dest="$ROOT/dataset/products/$art/vm017_isp"
            else

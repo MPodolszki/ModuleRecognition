@@ -94,7 +94,13 @@ def _table(small, every=10):
 
 
 def find_product(gray, min_frac=0.0005, max_frac=0.25):
-    """minAreaRect of the darkest compact object on the light table, or None."""
+    """minAreaRect of the largest compact dark object on the light table, or None."""
+    found = find_products(gray, min_frac, max_frac)
+    return max(found, key=lambda r: r[1][0] * r[1][1]) if found else None
+
+
+def find_products(gray, min_frac=0.0005, max_frac=0.25):
+    """minAreaRects of all compact dark objects on the light table."""
     s = 4
     # Every 4th pixel instead of an INTER_AREA resize of the frame: the
     # preview has to keep up with someone placing the product. (Every 8th
@@ -111,7 +117,7 @@ def find_product(gray, min_frac=0.0005, max_frac=0.25):
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    best = None
+    found = []
     for c in contours:
         # the convex hull: a bright metal lid (Hailo-8 M.2) leaves only a
         # thin dark ring of board, whose own area and fill are too small
@@ -127,9 +133,8 @@ def find_product(gray, min_frac=0.0005, max_frac=0.25):
         # (Hailo-8 M.2) are only ~35 px wide
         if fill < 0.6 or max(rw, rh) > 5 * min(rw, rh) or min(rw, rh) * s < 28:
             continue  # not a compact product: table seams, cables, shadows
-        if best is None or area > best[0]:
-            best = (area, ((cx * s, cy * s), (rw * s, rh * s), ang))
-    return best[1] if best else None
+        found.append(((cx * s, cy * s), (rw * s, rh * s), ang))
+    return found
 
 
 def angle_diff(a, b):
