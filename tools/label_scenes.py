@@ -11,6 +11,11 @@ exactly one product in each stripe -- otherwise (product on the stripe
 line, one missed, a phone taken for a product) it is skipped and listed.
 The class the model gives is ignored on purpose: telling these look-alikes
 apart is what the scenes are for.
+
+Laid out the wrong way round? For two-product scenes the sizes are checked
+against each product's reference shot (phytec-photo): if most pictures of a
+scene have the bigger product where the smaller one belongs, the whole
+scene was laid out reversed and its two names are swapped.
 """
 
 import argparse
@@ -31,7 +36,17 @@ def main():
 
     from ultralytics import YOLO
     model = YOLO(args.weights)
+    products = pathlib.Path(args.scenes).parent
+
+    def ref_size(article):
+        for meta in (products / article).glob("vm017_isp/*.json"):
+            m = json.loads(meta.read_text(encoding="utf-8"))
+            if m.get("kind") == "reference" and m.get("rect"):
+                w, h = m["rect"][1]
+                return (w * h) ** 0.5
+        return None
     used = skipped = 0
+    written = {}  # scene -> [(path, [[article, box...], ...])]
     for meta_path in sorted(pathlib.Path(args.scenes).glob("*.json")):
         if meta_path.name.endswith(".boxes.json"):
             continue
@@ -48,12 +63,28 @@ def main():
             stripes[min(len(articles) - 1, int(cx / w * len(articles)))].append(b)
         out = meta_path.with_name(meta_path.stem + ".boxes.json")
         if all(len(s) == 1 for s in stripes):
-            out.write_text(json.dumps([[a, *s[0]] for a, s in zip(articles, stripes)]))
+            labelled = [[a, *s[0]] for a, s in zip(articles, stripes)]
+            out.write_text(json.dumps(labelled))
+            written.setdefault("+".join(articles), []).append((out, labelled))
             used += 1
         else:
             out.unlink(missing_ok=True)
             skipped += 1
             print(f"skip {jpg.name}: products per stripe {[len(s) for s in stripes]}")
+    for scene, items in written.items():
+        arts = scene.split("+")
+        if len(arts) != 2:
+            continue
+        ref = [ref_size(a) for a in arts]
+        if None in ref or abs(ref[0] - ref[1]) < 0.1 * max(ref):
+            continue  # too alike in size to tell
+        def size(b):
+            return ((b[3] - b[1]) * (b[4] - b[2])) ** 0.5
+        wrong = sum((size(lab[0]) > size(lab[1])) != (ref[0] > ref[1]) for _, lab in items)
+        if wrong > len(items) / 2:
+            print(f"{scene}: laid out reversed in {wrong}/{len(items)} pictures -- names swapped")
+            for path, lab in items:
+                path.write_text(json.dumps([[lab[1][0], *lab[0][1:]], [lab[0][0], *lab[1][1:]]]))
     print(f"{used} scene pictures labelled, {skipped} skipped")
 
 
