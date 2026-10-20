@@ -430,7 +430,7 @@ def _backend_text(worker):
     det = worker.detector
     name = getattr(det, "display_name", None) or NAMES[det.backend_name]
     tiles = f", {len(worker.tiler.tiles)} tiles" if worker.tiler and len(worker.tiler.tiles) > 1 else ""
-    net = f" + {det.ms('net'):.0f} ms LAN" if "net" in det.times else ""
+    net = f" + {det.ms('net'):.0f} ms LAN" if getattr(det, "show_net", False) else ""
     # (no ms per frame otherwise: with two frames in flight the time from
     # start to result is latency, not what a frame costs)
     return f"{name}  {worker.fps:4.1f} fps{net}{tiles}"
@@ -487,6 +487,9 @@ def main(argv=None):
                              "Hailo-8, from this microphone (default: Jabra)")
     parser.add_argument("--axis-boxes", action="store_true",
                         help="plain axis-aligned boxes instead of frames turned like the module")
+    parser.add_argument("--in-process", action="store_true",
+                        help="run the accelerator in this process (default: a process of "
+                             "its own per backend, ~50 %% more fps on the Hailo-8)")
     parser.add_argument("--remote", metavar="HOST[:PORT]",
                         help="for -b remote: the board running "
                              "'python3 -m phytec_detect.remote serve' (its accelerator, our camera)")
@@ -578,8 +581,11 @@ def main(argv=None):
                 if not args.remote:
                     raise ValueError("-b remote needs --remote host[:port]")
                 det = RemoteDetector(args.remote, conf=args.conf)
-            else:
+            elif args.in_process:
                 det = Detector(name, model_dirs, conf=args.conf, hef=args.hef)
+            else:  # its own process: no GIL shared with drawing and tracking
+                from .remote import spawn_local
+                det = spawn_local(name, model_dirs, hef=args.hef, conf=args.conf)
             print(f"  {', '.join(det.paths)} ({det.load_s:.1f} s)", flush=True)
             workers.append(Worker(det, det_source, tiler_factory))
     except (FileNotFoundError, RuntimeError, ValueError) as error:

@@ -61,8 +61,9 @@ def serve(args):
     from .detector import Detector
     det = Detector(args.backend, args.model_dir, conf=args.conf, hef=args.hef)
     name = NAMES.get(args.backend, args.backend)
-    print(f"{name} ready: {', '.join(det.paths)} -- listening on port {args.port}", flush=True)
-    srv = socket.create_server(("", args.port), reuse_port=True)
+    srv = socket.create_server((args.host, args.port), reuse_port=args.port != 0)
+    port = srv.getsockname()[1]
+    print(f"{name} ready: {', '.join(det.paths)} -- listening on port {port}", flush=True)
     while True:
         conn, peer = srv.accept()
         conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
@@ -113,10 +114,50 @@ def _serve_client(conn, det):
 
 # -- client: the board with the cameras ----------------------------------------
 
+def spawn_local(backend, model_dirs, hef=None, conf=0.5, timeout_s=60):
+    """Run `backend` in a process of its own on this board and return a
+    RemoteDetector for it: detection, drawing and tracking then no longer
+    share one Python interpreter lock (Hailo-8: ~11 -> ~16-18 fps in the
+    demo). The child listens on 127.0.0.1 only and ends with this process."""
+    import subprocess
+    from .backends import NAMES
+    cmd = [sys.executable, "-m", "phytec_detect.remote", "serve", "-b", backend,
+           "--host", "127.0.0.1", "--port", "0", "--parent-death", "-c", "0.2"]
+    for d in model_dirs:
+        cmd += ["-m", d]
+    if hef:
+        cmd += ["--hef", hef]
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                            bufsize=1)
+    deadline, port = time.monotonic() + timeout_s, None
+    lines = []
+    while time.monotonic() < deadline:
+        line = proc.stdout.readline()
+        if not line:
+            break
+        lines.append(line.rstrip())
+        if "listening on port" in line:
+            port = int(line.rsplit(" ", 1)[1])
+            break
+    if port is None:
+        proc.kill()
+        raise RuntimeError(f"{backend} process did not start: " + " | ".join(lines[-5:]))
+
+    def forward():  # keep the child's messages in our log
+        for line in proc.stdout:
+            print(f"[{backend}] {line.rstrip()}", flush=True)
+    import threading
+    threading.Thread(target=forward, daemon=True).start()
+    det = RemoteDetector(f"127.0.0.1:{port}", conf=conf, display_name=NAMES.get(backend, backend))
+    det.backend_name, det.process = backend, proc
+    det.paths = [f"{lines[-1].split(': ', 1)[-1].split(' -- ')[0]} (own process {proc.pid})"]
+    return det
+
+
 class RemoteDetector:
     """A Detector whose accelerator is on another board (see module doc)."""
 
-    def __init__(self, address, conf=0.5, timeout_s=5.0):
+    def __init__(self, address, conf=0.5, timeout_s=5.0, display_name=None):
         self.conf = conf  # what the demo shows (the server detects down to its own -c)
         host, _, port = address.partition(":")
         self.address = f"{host}:{port or PORT}"
@@ -128,7 +169,8 @@ class RemoteDetector:
         self._sock.settimeout(timeout_s)
         self.load_s = time.perf_counter() - t0
         self.backend_name = "remote"
-        self.display_name = f"{hello['name']} (LAN)"
+        self.display_name = display_name or f"{hello['name']} (LAN)"
+        self.show_net = display_name is None  # LAN time in the header (not for our own child)
         self.labels = hello["labels"]
         self.nc = len(self.labels)
         self.imgsz = hello["imgsz"]
@@ -192,6 +234,13 @@ class RemoteDetector:
             self._sock.close()
         except OSError:
             pass
+        proc = getattr(self, "process", None)
+        if proc is not None:
+            proc.terminate()
+            try:
+                proc.wait(5)
+            except Exception:  # noqa: BLE001
+                proc.kill()
 
 
 def main(argv=None):
@@ -203,13 +252,20 @@ def main(argv=None):
     s.add_argument("-m", "--model-dir", action="append", required=True)
     s.add_argument("--hef")
     s.add_argument("-c", "--conf", type=float, default=0.2)
-    s.add_argument("--port", type=int, default=PORT)
+    s.add_argument("--port", type=int, default=PORT, help="0 = any free port (printed)")
+    s.add_argument("--host", default="", help="address to listen on (127.0.0.1: this board only)")
+    s.add_argument("--parent-death", action="store_true",
+                   help="exit when the parent process does (phytec-detect's own child)")
     t = sub.add_parser("bench", help="send a picture N times, print the timing")
     t.add_argument("address")
     t.add_argument("image")
     t.add_argument("-n", type=int, default=100)
     args = parser.parse_args(argv)
     if args.cmd == "serve":
+        if args.parent_death:
+            import ctypes
+            import signal
+            ctypes.CDLL(None).prctl(1, signal.SIGTERM, 0, 0, 0)  # PR_SET_PDEATHSIG
         serve(args)
     else:
         det = RemoteDetector(args.address)
