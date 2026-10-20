@@ -455,11 +455,9 @@ class OverlayScreen:
             buf.unmap(m)
 
     def show(self, bgra):
-        """Replace the layer -- only when it changed: every push costs a
-        full-screen copy (videoconvert)."""
-        if self._last is not None and np.array_equal(self._last, bgra):
-            return
-        self._last = bgra.copy()
+        """Replace the layer. The caller draws only when something changed
+        (comparing 8 MB with the last layer cost ~23 ms on the A53, keeping
+        a copy another ~9 ms -- more than the drawing itself)."""
         self._src.emit("push-buffer", self._Gst.Buffer.new_wrapped(bgra.tobytes()))
 
     def close(self):

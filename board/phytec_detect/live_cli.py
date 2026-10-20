@@ -70,7 +70,7 @@ class FrameSource:
         self._taken = threading.Event()
         self._taken.set()
         self._stop = threading.Event()
-        self._thread = threading.Thread(target=self._loop, daemon=True)
+        self._thread = threading.Thread(target=_named("pd-camera", self._loop), daemon=True)
         self._thread.start()
 
     def _loop(self):
@@ -129,9 +129,11 @@ class Worker:
         self._track_job = None  # (frame, seq, dets) handed from run to track; newest wins
         self._track_cond = threading.Condition()
         self._stop = threading.Event()
-        self._threads = [threading.Thread(target=self._prepare_loop, daemon=True),
-                         threading.Thread(target=self._run_loop, daemon=True),
-                         threading.Thread(target=self._track_loop, daemon=True)]
+        self._threads = [threading.Thread(target=_named("pd-prepare", self._prepare_loop),
+                                          daemon=True),
+                         threading.Thread(target=_named("pd-run", self._run_loop), daemon=True),
+                         threading.Thread(target=_named("pd-track", self._track_loop),
+                                          daemon=True)]
         for t in self._threads:
             t.start()
 
@@ -273,6 +275,19 @@ def _snap_track(worker, gray, dets, quads):
                     if getattr(t, "snap", None) is not None}
 
 
+def _named(name, target):
+    """Thread target that sets its OS thread name (top -H, /proc/*/task/*/comm)
+    -- to see which stage uses the CPU."""
+    def run():
+        try:
+            import ctypes
+            ctypes.CDLL(None).prctl(15, name.encode()[:15], 0, 0, 0)  # PR_SET_NAME
+        except (OSError, AttributeError):
+            pass
+        target()
+    return run
+
+
 def carry_quads(old_dets, old_quads, dets):
     """Outlines for new boxes from the previous ones: same class and
     overlapping -> the old outline shifted by the box centre's move; else
@@ -332,7 +347,7 @@ def in_zone(dets, zone):
                                (cy >= zone[1]) & (cy <= zone[3])))
 
 
-def straight_crop(frame, quad, out_w=480):
+def straight_crop(frame, quad, out_w=300):
     """The product inside its turned outline (detection camera), turned
     straight with a margin, long side horizontal -- the panel's live picture."""
     rect = cv2.minAreaRect(quad.astype(np.float32))
@@ -572,6 +587,14 @@ def main(argv=None):
     zone_classes, live_result = [], None
     screen_tries = 0
     frames, shown_seq, last_draw, last_state = 0, -1, 0.0, None
+    sig, last_sig = [], None
+    timing = os.environ.get("PHYTEC_DETECT_TIMING") == "1"
+    tsum = {}
+
+    def tick(name, t0):
+        if timing:
+            tsum[name] = tsum.get(name, 0.0) + time.perf_counter() - t0
+        return time.perf_counter()
     try:
         while not stop.is_set() and (args.frames is None or frames < args.frames):
             for s in sources:
@@ -599,7 +622,12 @@ def main(argv=None):
                         f"{type(w.error).__name__}: {w.error}", code=3)
 
             if view_geo is not None:  # overlay layer only, at most ~25 times a second
-                wait = 0.04 - (time.monotonic() - last_draw)
+                # 25 a second while the panel slides, else 15: the frames change
+                # only with the detector (~12/s), and every redraw holds the GIL
+                # the detector thread needs (two results per frame: detector and
+                # tracker)
+                wait = (0.04 if panel is not None and panel.moving() else 0.066) \
+                    - (time.monotonic() - last_draw)
                 if wait > 0:
                     time.sleep(wait)
                 # Redraw only when something changed: new detections, the
@@ -610,7 +638,8 @@ def main(argv=None):
                          listener is not None and time.monotonic() < listener.awake_until,
                          search.text, int(time.monotonic()))  # and once a second anyway
                 if state == last_state:
-                    continue
+                    time.sleep(0.005)  # nothing new: wait, do not spin (it held a
+                    continue           # core and the GIL the detector threads need)
                 last_state = state
                 last_draw = time.monotonic()
                 frame = None
@@ -620,6 +649,7 @@ def main(argv=None):
                     time.sleep(0.003)
                     continue
                 shown_seq = seq
+            t_ = time.perf_counter()
             if view_geo is not None:
                 base = None
             elif view_source is None:  # detection picture itself, scaled for the screen
@@ -638,9 +668,16 @@ def main(argv=None):
                     screen = Screen(canvas.shape[1], h)
                 panel = None if args.no_panel else InfoPanel(products, workers[0].detector.labels)
                 zone = zone_rect(args.zone, w_, canvas.shape[0])
+            # panel fully in and unchanged: its half of the layer stays as it is
+            keep_from = panel.static_from(canvas.shape[1]) \
+                if panel is not None and base is None and len(workers) == 1 else None
             for i, worker in enumerate(workers):
-                half = canvas[:, i * w_:(i + 1) * w_]
+                half = canvas[:, i * w_:(i + 1) * w_] if keep_from is None \
+                    else canvas[:, :keep_from]
                 half[:] = 0 if base is None else base  # transparent layer, or the picture
+                t_ = tick("clear", t_)
+                if i == 0:
+                    sig = []  # what is drawn, to skip pushing an unchanged layer
                 result = worker.result
                 if result is None:
                     style.header(half, f"{NAMES[worker.detector.backend_name]} startet \u2026")
@@ -657,6 +694,7 @@ def main(argv=None):
                     dets, quads = dets[keep], quads[keep]
                     lifted = lifted[np.isin(lifted[:, 5].astype(int), list(wanted))]
                 det_quads = quads  # detection-camera outlines (before mapping to the view)
+                t_ = tick("search/reset", t_)
                 if view_source is None and view_geo is None:
                     dets, lifted = dets.copy(), lifted.copy()
                     dets[:, :4] *= view_scale
@@ -667,6 +705,7 @@ def main(argv=None):
                     quads = quads_to_view(quads, det_source.cam, view, plane)
                     dets, lifted = (to_view(d, det_source.cam, view, plane)
                                     for d in (dets, lifted))
+                t_ = tick("map to view", t_)
                 if i == 0 and zone is not None:
                     inside = in_zone(dets, zone)
                     zone_classes = [int(dets[k, 5]) for k in inside]
@@ -678,9 +717,15 @@ def main(argv=None):
                         if crop is not None:
                             panel.set_live(int(dets[k, 5]), crop)
                     draw_zone(half, zone, bool(inside))
+                    sig.append(bool(inside))
+                t_ = tick("zone + live crop", t_)
+                sig.append((np.round(dets).astype(np.int32).tobytes(),
+                            np.round(quads).astype(np.int32).tobytes(),
+                            np.round(lifted).astype(np.int32).tobytes()))
                 draw(half, dets, display_labels(worker.detector.labels, products)
                      if args.box_labels else None, None if args.axis_boxes else quads,
                      phytec=True)
+                t_ = tick("draw frames", t_)
                 for x0, y0, x1, y1, _, _ in lifted:  # lifted: thick orange frame
                     cv2.rectangle(half, (int(x0) - 4, int(y0) - 4), (int(x1) + 4, int(y1) + 4),
                                   style.ORANGE + (255,), 7)
@@ -692,17 +737,24 @@ def main(argv=None):
                                  accent=style.ORANGE)
                 else:
                     style.header(half, _bar_text(worker))
+                    sig.append(_bar_text(worker))
+            t_ = tick("lifted + header", t_)
             if panel is not None:
                 primary = workers[0].result
                 snaps = workers[0].snaps
                 for cls in list(panel._live):  # left the zone / put back: the photo again
-                    if cls not in zone_classes and cls not in snaps:
+                    if cls not in zone_classes and cls not in snaps and \
+                            cls not in panel.shown():  # (not on one missed frame)
                         panel.set_live(cls, None)
                 for cls, snap in snaps.items():
                     if cls not in zone_classes and panel.picture_of(cls) is not snap:
                         panel.set_live(cls, snap, tag="AUFGENOMMEN")
                 panel.update([int(c) for c in primary[3][:, 5]] if primary else [], zone_classes)
-                panel.compose(canvas)
+                t_ = tick("panel update", t_)
+                panel.compose(canvas, intact=keep_from is not None)
+                sig.append(panel.state())
+                t_ = tick("panel compose", t_)
+            sig.append((search.text, listener is not None and time.monotonic() < listener.awake_until))
             if listener is not None and time.monotonic() < listener.awake_until:
                 # "Phytec" heard: red dot top right while it listens for the command
                 cx, cy = canvas.shape[1] - 50, 100
@@ -715,8 +767,16 @@ def main(argv=None):
                     screen.grab_to = "/tmp/phytec-detect-screen.png"
                 if (view_source or view_geo) is not None and det_source.frame is not None:
                     cv2.imwrite("/tmp/phytec-detect-cam.png", det_source.frame)
+            if view_geo is not None and sig == last_sig and frames:
+                continue  # same layer as on screen: no 8 MB copy and conversion
+            last_sig = sig
             screen.show(canvas)
+            t_ = tick("show (push)", t_)
             frames += 1
+            if timing and frames % 60 == 0:
+                print("main loop per pushed frame: " + ", ".join(
+                    f"{k} {v / 60 * 1000:.1f}" for k, v in tsum.items()) + " ms", flush=True)
+                tsum.clear()
 
             if frames % 60 == 0:
                 print(f"detect cam {det_source.fps:4.1f} fps"

@@ -87,14 +87,16 @@ class PlaneMap:
             return dets
         out = dets.copy()
         t = np.linspace(0, 1, 5)
-        for i, (x0, y0, x1, y1) in enumerate(dets[:, :4]):
-            xs, ys = x0 + (x1 - x0) * t, y0 + (y1 - y0) * t
-            outline = np.concatenate([np.stack([xs, np.full(5, y0)], 1),
-                                      np.stack([xs, np.full(5, y1)], 1),
-                                      np.stack([np.full(5, x0), ys], 1),
-                                      np.stack([np.full(5, x1), ys], 1)])
-            m = self(outline)
-            out[i, :4] = [m[:, 0].min(), m[:, 1].min(), m[:, 0].max(), m[:, 1].max()]
+        x0, y0, x1, y1 = (dets[:, k:k + 1].astype(np.float64) for k in range(4))
+        xs, ys = x0 + (x1 - x0) * t, y0 + (y1 - y0) * t  # (N, 5) each
+        n = len(dets)
+        outline = np.concatenate([np.stack([xs, np.broadcast_to(y0, xs.shape)], 2),
+                                  np.stack([xs, np.broadcast_to(y1, xs.shape)], 2),
+                                  np.stack([np.broadcast_to(x0, ys.shape), ys], 2),
+                                  np.stack([np.broadcast_to(x1, ys.shape), ys], 2)], 1)
+        m = self(outline.reshape(-1, 2)).reshape(n, 20, 2)  # all boxes in one call
+        out[:, 0], out[:, 1] = m[..., 0].min(1), m[..., 1].min(1)
+        out[:, 2], out[:, 3] = m[..., 0].max(1), m[..., 1].max(1)
         return out
 
     def save(self, path):

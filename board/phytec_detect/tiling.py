@@ -119,14 +119,20 @@ def merge(dets, cut=None, iou_thres=0.45, contain_thres=0.6):
                     if _overlaps(dets[i], whole)[1].max() < 0.3]
         dets = np.concatenate([whole, dets[keep_cut]])
     dets = dets[np.argsort(-dets[:, 4])]
+    # all pairs at once, then the same greedy pass (highest score first)
+    b = dets[:, :4]
+    xx0 = np.maximum(b[:, None, 0], b[None, :, 0])
+    yy0 = np.maximum(b[:, None, 1], b[None, :, 1])
+    xx1 = np.minimum(b[:, None, 2], b[None, :, 2])
+    yy1 = np.minimum(b[:, None, 3], b[None, :, 3])
+    inter = np.clip(xx1 - xx0, 0, None) * np.clip(yy1 - yy0, 0, None)
+    area = (b[:, 2] - b[:, 0]) * (b[:, 3] - b[:, 1])
+    iou = inter / (area[:, None] + area[None, :] - inter + 1e-9)
+    contained = inter / (np.minimum(area[:, None], area[None, :]) + 1e-9)
+    drops = (iou > iou_thres) | (contained > contain_thres)
     keep, alive = [], np.ones(len(dets), bool)
     for i in range(len(dets)):
-        if not alive[i]:
-            continue
-        keep.append(i)
-        rest = np.flatnonzero(alive[i + 1:]) + i + 1
-        if not len(rest):
-            break
-        iou, contained = _overlaps(dets[i], dets[rest])
-        alive[rest[(iou > iou_thres) | (contained > contain_thres)]] = False
+        if alive[i]:
+            keep.append(i)
+            alive[i + 1:] &= ~drops[i, i + 1:]
     return dets[keep]

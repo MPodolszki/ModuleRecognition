@@ -121,8 +121,16 @@ class InfoPanel:
         self._key = ()            # classes shown (or being slid out)
         self._image = None        # rendered panel for _key
         self._pos = 0.0           # 0 = hidden, 1 = fully in
+        self._version = 0         # bumped whenever the panel's picture changes
+        self._restore = set()     # classes whose photo replaces a dropped camera picture
+        self._copied = None       # width of the panel as last copied into the canvas
         self._target = 0.0
         self._last = time.monotonic()
+
+    def state(self):
+        """What the panel shows right now (position, products, pictures) --
+        equal states draw equal pixels."""
+        return (round(self._pos, 4), self._key, self._version) if self._pos > 0 else None
 
     def moving(self):
         """Still sliding in or out (the screen must be redrawn)."""
@@ -135,10 +143,18 @@ class InfoPanel:
         picked up. Refreshed in place without a new render."""
         if image is None:
             if self._live.pop(cls, None) is not None:
-                self._image = None  # back to the photo
+                self._restore.add(cls)  # back to the photo, in place
+                self._live_dirty = True
+                self._version += 1
             return
+        self._restore.discard(cls)
         self._live[cls] = (image, tag)
         self._live_dirty = True
+        self._version += 1
+
+    def shown(self):
+        """Classes the panel shows now (also while sliding out)."""
+        return self._key if self._pos > 0 else ()
 
     def picture_of(self, cls):
         entry = self._live.get(cls)
@@ -168,8 +184,20 @@ class InfoPanel:
         else:
             self._target = 0.0    # keep the old content while sliding out
 
-    def compose(self, canvas):
-        """Blend the panel into `canvas` (BGRx) at its current slide position."""
+    def static_from(self, width):
+        """x from where the canvas holds the fully shown, unchanged panel --
+        the caller then clears and draws only left of it and passes
+        intact=True; None while it slides, changes or is hidden."""
+        pw = int(width * self.fraction)
+        if self._pos >= 1 and self._target >= 1 and self._key and self._image is not None \
+                and self._copied == pw and self._image.shape[1] == pw:
+            return width - pw
+        return None
+
+    def compose(self, canvas, intact=False):
+        """Blend the panel into `canvas` (BGRx) at its current slide position.
+        intact: the canvas still holds the panel as last composed (only the
+        pictures that changed are copied then)."""
         now = time.monotonic()
         step = (now - self._last) / self.slide_s
         self._last = now
@@ -182,20 +210,34 @@ class InfoPanel:
         if self._image is None or self._image.shape[:2] != (h, pw):
             self._image = self._render(h, pw)
             self._live_dirty = True
+            self._version += 1
+            intact = False
+        patched = []
         if self._live_dirty:
             self._live_dirty = False
             for cls, box in self._boxes.items():
                 if cls in self._live:
                     picture, tag = self._live[cls]
                     _fit_picture(self._image, picture, box, tag=tag)
+                    patched.append(box)
+                elif cls in self._restore:
+                    _fit_picture(self._image, _load_picture(self._info(cls)[1].get("image")), box)
+                    patched.append(box)
+            self._restore.clear()
         eased = 1 - (1 - self._pos) ** 3
         shown = int(pw * eased)
         if shown <= 0:
+            self._copied = None
             return canvas
-        region = canvas[:, w - shown:]
-        region[:] = self._image[:, :shown]  # opaque, like a web page
-        region[..., 3] = 255  # opaque also on the transparent overlay layer
-        cv2.line(canvas, (w - shown, 0), (w - shown, h), (115, 110, 0, 255), 4)  # petrol
+        x = w - shown
+        if intact and shown == pw and self._copied == pw:
+            for box in patched:  # only the pictures that changed
+                x0, y0, x1, y1 = (int(v) for v in box)
+                canvas[y0:y1, x + x0:x + x1] = self._image[y0:y1, x0:x1]
+        else:  # opaque like a web page (the rendered panel's alpha is 255)
+            canvas[:, x:] = self._image[:, :shown]
+        self._copied = shown
+        cv2.line(canvas, (x, 0), (x, h), (115, 110, 0, 255), 4)  # petrol
         return canvas
 
     # -- rendering -------------------------------------------------------

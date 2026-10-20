@@ -89,9 +89,13 @@ def header(canvas, info="", title=TITLE, accent=None):
     return canvas
 
 
-def tag(canvas, x, y, text, bg=PETROL):
+def tag(canvas, x, y, text, bg=PETROL, value=None):
     """Name tag (petrol, white text) with its bottom left corner at (x, y),
-    kept below the header bar."""
+    kept below the header bar. `value` (e.g. "98 %") is drawn as a patch of
+    its own: the name's patch stays cached while the score changes."""
     patch = text_patch(text, 20, "Medium", bg=bg, pad=(10, 4))
+    if value is not None:
+        patch = np.concatenate([patch[:, :-4], text_patch(value, 20, "Medium", bg=bg,
+                                                          pad=(6, 4))], 1)
     y = max(int(y), HEADER_H + 6 + patch.shape[0])
     blit(canvas, patch, x, y - patch.shape[0])

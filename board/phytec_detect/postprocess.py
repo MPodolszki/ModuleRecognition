@@ -194,7 +194,8 @@ def draw(image, dets, labels, quads=None, phytec=False):
         if labels is None:
             continue
         if phytec:
-            style.tag(image, p1[0], p1[1] - 2, f"{labels[int(class_id)]}  {score * 100:.0f} %")
+            style.tag(image, p1[0], p1[1] - 2, labels[int(class_id)],
+                      value=f"{score * 100:.0f} %")
             continue
         text = f"{labels[int(class_id)]} {score * 100:.0f}%"
         font, fscale, thick = cv2.FONT_HERSHEY_SIMPLEX, 0.8, 2
