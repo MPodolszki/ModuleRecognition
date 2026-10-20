@@ -493,6 +493,7 @@ def main(argv=None):
             if snap.is_set():
                 snap.clear()
                 cv2.imwrite("/tmp/phytec-photo.png", view[..., :3])
+                cv2.imwrite("/tmp/phytec-photo-cam.png", gray)
             if screen is None:
                 screen = Screen(view.shape[1], view.shape[0])
             screen.show(view)
