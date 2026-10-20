@@ -35,11 +35,12 @@ import numpy as np
 
 from .backends import BACKENDS, NAMES
 from .calib import PlaneMap, frame_to_sensor, sensor_to_frame
-from .camera import (Camera, OverlayScreen, Screen, die, find_sensor, isp_size, label_frame,
+from .camera import (Camera, OverlayScreen, Screen, die, find_sensor, isp_size,
                      screen_size, to_bgrx)
 from .detector import Detector
 from .info_panel import InfoPanel
 from .postprocess import Smoother, draw, module_quad
+from . import style
 from .search import SearchState
 from .tiling import Tiler, find_image_circle
 from .tracking import TableTracker
@@ -288,8 +289,8 @@ def _bar_text(worker):
     det = worker.detector
     tiles = f"{len(worker.tiler.tiles)} tiles, " if worker.tiler and len(worker.tiler.tiles) > 1 else ""
     n = det.nc  # classes of the running model(s) = products it was trained on
-    return (f"{NAMES[det.backend_name]}: {worker.fps:4.1f} fps  "
-            f"({tiles}inference {det.ms('infer'):.0f} ms)  |  "
+    return (f"{NAMES[det.backend_name]}  \u00b7  {worker.fps:4.1f} fps  \u00b7  "
+            f"{tiles}{det.ms('infer'):.0f} ms  \u00b7  "
             f"{n} Produkt{'e' if n != 1 else ''} trainiert")
 
 
@@ -518,7 +519,7 @@ def main(argv=None):
                 half[:] = 0 if base is None else base  # transparent layer, or the picture
                 result = worker.result
                 if result is None:
-                    label_frame(half, f"{NAMES[worker.detector.backend_name]}: starting ...")
+                    style.header(half, f"{NAMES[worker.detector.backend_name]} startet \u2026")
                     continue
                 dets, lifted, quads = result[1], result[3], result[4]
                 wanted = search.poll()  # "Wo ist der i.MX6?": only those, else all
@@ -542,18 +543,19 @@ def main(argv=None):
                     dets, lifted = (to_view(d, det_source.cam, view, plane)
                                     for d in (dets, lifted))
                 draw(half, dets, display_labels(worker.detector.labels, products)
-                     if args.box_labels else None, None if args.axis_boxes else quads)
-                for x0, y0, x1, y1, _, _ in lifted:  # lifted: thick yellow frame
+                     if args.box_labels else None, None if args.axis_boxes else quads,
+                     phytec=True)
+                for x0, y0, x1, y1, _, _ in lifted:  # lifted: thick orange frame
                     cv2.rectangle(half, (int(x0) - 4, int(y0) - 4), (int(x1) + 4, int(y1) + 4),
-                                  (0, 230, 255, 255), 7)
+                                  style.ORANGE + (255,), 7)
                 if wanted is not None:
                     found = len(dets)
-                    label_frame(half, f"Suche: {search.text}  -  "
-                                + (f"{found} gefunden" if found else
-                                   ("nicht auf dem Tisch" if wanted else "unbekanntes Produkt")),
-                                color=(0, 230, 0))
+                    style.header(half, f"Suche: {search.text}  \u00b7  "
+                                 + (f"{found} gefunden" if found else
+                                    ("nicht auf dem Tisch" if wanted else "unbekanntes Produkt")),
+                                 accent=style.ORANGE)
                 else:
-                    label_frame(half, _bar_text(worker))
+                    style.header(half, _bar_text(worker))
             if panel is not None:
                 primary = workers[0].result
                 panel.update([int(c) for c in primary[3][:, 5]] if primary else [])
