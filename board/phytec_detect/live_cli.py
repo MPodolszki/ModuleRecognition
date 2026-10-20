@@ -479,10 +479,12 @@ def main(argv=None):
                              "Hailo-8, from this microphone (default: Jabra)")
     parser.add_argument("--axis-boxes", action="store_true",
                         help="plain axis-aligned boxes instead of frames turned like the module")
-    parser.add_argument("--isp-width", type=int, default=960,
-                        help="with --isp: the ISP scales the detection picture to this width "
-                             "(0 = full ISP size; the model's input size is right for "
-                             "--tile-scale 0)")
+    parser.add_argument("--isp-width", type=int, default=0,
+                        help="with --isp: the ISP scales the detection picture to this width, "
+                             "e.g. 960 (~52 ms less CPU per frame, own calibration "
+                             "plane_map_isp_w960.json). Off by default until a model is "
+                             "trained on ISP-scaled pictures: products_v6_n (CPU-scaled "
+                             "training) lost confidence on some boards with it")
     parser.add_argument("--zone", default="0.74,0.6,0.98,0.96",
                         help="drop zone x0,y0,x1,y1 as fractions of the screen (a product laid "
                              "there shows its info at once, with its live picture), 'off' = none")

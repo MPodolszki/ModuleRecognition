@@ -109,7 +109,7 @@ def main(argv=None):
     parser.add_argument("--reset", action="store_true", help="forget earlier placements")
     parser.add_argument("--isp", action="store_true",
                         help="both cameras through the ISP (for phytec-detect --isp)")
-    parser.add_argument("--isp-width", type=int, default=960,
+    parser.add_argument("--isp-width", type=int, default=0,
                         help="with --isp: detection picture scaled by the ISP to this width, "
                              "as phytec-detect --isp-width (0 = full size); its own map file, "
                              "the ISP's scaled output frames a slightly different window")
