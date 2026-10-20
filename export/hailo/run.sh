@@ -13,8 +13,11 @@ set -eu
 IMAGE="${HAILO_IMAGE:-hailo8_ai_sw_suite_2025-10:1}"
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 
+# The suite's TensorFlow does not run on this PC's RTX 5090 (Blackwell:
+# CUDA_ERROR_INVALID_HANDLE in the optimiser), so the GPU is opt-in:
+# HAILO_GPU=1 for an older card with the NVIDIA container toolkit.
 GPU=""
-if docker info 2>/dev/null | grep -q "nvidia"; then
+if [ "${HAILO_GPU:-0}" = 1 ] && docker info 2>/dev/null | grep -q "nvidia"; then
     GPU="--gpus all"
 fi
 
