@@ -209,6 +209,7 @@
   "category": "System on Module",
   "new": true,
   "spoken": "i m x acht m plus",
+  "image": "images/PCM-070-0F3243I.A3.jpg",
   "chart": "charts/PCM-070-0F3243I.A3.png"
  },
  "PCM-072-42F2DE11I.A1": {
@@ -264,7 +265,8 @@
    ]
   ],
   "category": "System on Module",
-  "spoken": "a m vierundsechzig x"
+  "spoken": "a m vierundsechzig x",
+  "image": "images/PCM-072-42F2DE11I.A1.jpg"
  },
  "PFL-A-02-23237E0.A5": {
   "name": "phyFLEX-i.MX 6 Quad",
@@ -277,7 +279,8 @@
    ]
   ],
   "category": "System on Module",
-  "spoken": "fei flex i m x sechs quad"
+  "spoken": "fei flex i m x sechs quad",
+  "image": "images/PFL-A-02-23237E0.A5.jpg"
  },
  "PCL-071-5432DE11I.A0": {
   "name": "phyCORE-AM62x DSC",
@@ -333,7 +336,8 @@
   ],
   "category": "System on Module",
   "new": true,
-  "spoken": "a m zweiundsechzig x d s c"
+  "spoken": "a m zweiundsechzig x d s c",
+  "image": "images/PCL-071-5432DE11I.A0.jpg"
  },
  "PCL-063-23500CI.A0": {
   "name": "phyCORE-i.MX 6UL/ULL",
@@ -386,7 +390,8 @@
    ]
   ],
   "category": "System on Module",
-  "spoken": "i m x sechs u l"
+  "spoken": "i m x sechs u l",
+  "image": "images/PCL-063-23500CI.A0.jpg"
  },
  "PCM-067-82EA01I.A0": {
   "name": "phyCORE-AM65x",
@@ -437,7 +442,8 @@
    ]
   ],
   "category": "System on Module",
-  "spoken": "a m fünfundsechzig x"
+  "spoken": "a m fünfundsechzig x",
+  "image": "images/PCM-067-82EA01I.A0.jpg"
  },
  "PCM-058-33230C0I.A0": {
   "name": "phyCORE-i.MX 6",
@@ -488,7 +494,8 @@
    ]
   ],
   "category": "System on Module",
-  "spoken": "fei kor i m x sechs quad"
+  "spoken": "fei kor i m x sechs quad",
+  "image": "images/PCM-058-33230C0I.A0.jpg"
  },
  "PCM-071-5432DE11I.A0": {
   "name": "phyCORE-AM62x",
@@ -544,7 +551,8 @@
   ],
   "category": "System on Module",
   "new": true,
-  "spoken": "a m zweiundsechzig x"
+  "spoken": "a m zweiundsechzig x",
+  "image": "images/PCM-071-5432DE11I.A0.jpg"
  },
  "PCM-061-2111111C.A0": {
   "name": "phyCORE-i.MX 7",
@@ -595,7 +603,8 @@
    ]
   ],
   "category": "System on Module",
-  "spoken": "i m x sieben"
+  "spoken": "i m x sieben",
+  "image": "images/PCM-061-2111111C.A0.jpg"
  },
  "PCM-060-03051F2I.A0": {
   "name": "phyCORE-AM335x",
@@ -650,7 +659,8 @@
    ]
   ],
   "category": "System on Module",
-  "spoken": "a m drei drei fünf x"
+  "spoken": "a m drei drei fünf x",
+  "image": "images/PCM-060-03051F2I.A0.jpg"
  },
  "PCM-057-40A00111I.A0": {
   "name": "phyCORE-AM57x",
@@ -705,7 +715,8 @@
    ]
   ],
   "category": "System on Module",
-  "spoken": "a m siebenundfünfzig x"
+  "spoken": "a m siebenundfünfzig x",
+  "image": "images/PCM-057-40A00111I.A0.jpg"
  },
  "libra-imx95": {
   "name": "phyFLEX-i.MX 95 Kit",
@@ -753,7 +764,8 @@
   ],
   "category": "Development Kit",
   "new": true,
-  "spoken": "libra i m x fünfundneunzig"
+  "spoken": "libra i m x fünfundneunzig",
+  "image": "images/libra-imx95.jpg"
  },
  "Hailo10": {
   "name": "Hailo-10H M.2",
@@ -800,7 +812,8 @@
    ]
   ],
   "category": "KI-Beschleuniger",
-  "spoken": "hailo zehn h"
+  "spoken": "hailo zehn h",
+  "image": "images/Hailo10.jpg"
  },
  "Hailo8": {
   "name": "Hailo-8 M.2",
@@ -856,7 +869,8 @@
   ],
   "category": "KI-Beschleuniger",
   "new": true,
-  "spoken": "hailo acht"
+  "spoken": "hailo acht",
+  "image": "images/Hailo8.jpg"
  },
  "phyVIP-95-Kinara": {
   "name": "phyVIP i.MX 95",
@@ -912,7 +926,8 @@
   ],
   "category": "Vision-Plattform",
   "new": true,
-  "spoken": "fei vip i m x fünfundneunzig"
+  "spoken": "fei vip i m x fünfundneunzig",
+  "image": "images/phyVIP-95-Kinara.jpg"
  },
  "phyBOARD-Polis": {
   "name": "phyBOARD-Polis",
@@ -967,7 +982,8 @@
    ]
   ],
   "category": "Single Board Computer",
-  "spoken": "fei board polis"
+  "spoken": "fei board polis",
+  "image": "images/phyBOARD-Polis.jpg"
  },
  "NXP-Ara240": {
   "name": "NXP Ara240 M.2",
@@ -1016,7 +1032,8 @@
    ]
   ],
   "category": "KI-Beschleuniger",
-  "spoken": "ara zweihundertvierzig"
+  "spoken": "ara zweihundertvierzig",
+  "image": "images/NXP-Ara240.jpg"
  },
  "phyBOARD-Nash": {
   "name": "phyBOARD-Nash",
@@ -1071,7 +1088,8 @@
    ]
   ],
   "category": "Development Kit",
-  "spoken": "fei board näsch"
+  "spoken": "fei board näsch",
+  "image": "images/phyBOARD-Nash.jpg"
  },
  "phyBOARD-Pollux": {
   "name": "phyBOARD-Pollux",
@@ -1126,7 +1144,8 @@
    ]
   ],
   "category": "Development Kit",
-  "spoken": "fei board pollux"
+  "spoken": "fei board pollux",
+  "image": "images/phyBOARD-Pollux.jpg"
  },
  "fpsc-imx95": {
   "name": "phyFLEX-i.MX 95x FPSC",
@@ -1182,7 +1201,8 @@
   ],
   "category": "System on Module",
   "new": true,
-  "spoken": "fei flex i m x fünfundneunzig"
+  "spoken": "fei flex i m x fünfundneunzig",
+  "image": "images/fpsc-imx95.jpg"
  },
  "phyCORE-AM68x": {
   "name": "phyCORE-AM68x/TDA4x",
@@ -1238,7 +1258,8 @@
   ],
   "category": "System on Module",
   "new": true,
-  "spoken": "a m achtundsechzig x"
+  "spoken": "a m achtundsechzig x",
+  "image": "images/phyCORE-AM68x.jpg"
  },
  "fpsc-imx8mp": {
   "name": "phyFLEX-i.MX 8M Plus FPSC",
@@ -1296,7 +1317,8 @@
   ],
   "category": "System on Module",
   "new": true,
-  "spoken": "fei flex i m x acht m plus"
+  "spoken": "fei flex i m x acht m plus",
+  "image": "images/fpsc-imx8mp.jpg"
  },
  "phyFLEX-i.MX93": {
   "name": "phyFLEX-i.MX 91/93 FPSC",
@@ -1354,7 +1376,8 @@
   ],
   "category": "System on Module",
   "new": true,
-  "spoken": "fei flex i m x dreiundneunzig"
+  "spoken": "fei flex i m x dreiundneunzig",
+  "image": "images/phyFLEX-i.MX93.jpg"
  },
  "phyFLEX-STM32MP2": {
   "name": "phyFLEX-STM32MP2x FPSC",
@@ -1410,7 +1433,8 @@
   ],
   "category": "System on Module",
   "new": true,
-  "spoken": "fei flex s t m zweiunddreißig m p zwei"
+  "spoken": "fei flex s t m zweiunddreißig m p zwei",
+  "image": "images/phyFLEX-STM32MP2.jpg"
  },
  "phyCORE-AM62A": {
   "name": "phyCORE-AM62Ax",
@@ -1455,7 +1479,8 @@
    ]
   ],
   "category": "System on Module",
-  "spoken": "a m zweiundsechzig a x"
+  "spoken": "a m zweiundsechzig a x",
+  "image": "images/phyCORE-AM62A.jpg"
  },
  "phyFLEX-AM62p": {
   "name": "phyFLEX-AM62Px FPSC",
@@ -1511,6 +1536,7 @@
   ],
   "category": "System on Module",
   "new": true,
-  "spoken": "phyflex a m zweiundsechzig p x"
+  "spoken": "phyflex a m zweiundsechzig p x",
+  "image": "images/phyFLEX-AM62p.jpg"
  }
 }

@@ -27,6 +27,9 @@ import json
 import pathlib
 import shutil
 
+import cv2
+import numpy as np
+
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 INFO_FILE = "produktinfo.txt"
 
@@ -54,6 +57,8 @@ FIELDS = [
     (13, "Link Produktseite", "QR-Code \"Zum Produkt\" -- Produktseite auf phytec.de"),
     (14, "Link Kit", "QR-Code ganz rechts -- Entwicklungskit"),
     (14, "Kit-Bezeichnung", "Aufschrift des Kit-Knopfs über dem QR-Code (leer: \"Zum Kit\")"),
+    (15, "Produktbild", "Foto oben rechts (Datei im Ordner, z. B. produkt.jpg); leer = "
+                        "Kamera-Referenzbild"),
     (None, "Aussprache (Sprachsuche)", "nicht angezeigt -- wie man den Namen spricht"),
     (None, "Bemerkung", "nicht angezeigt -- nur für euch"),
 ]
@@ -157,7 +162,7 @@ def write_info_file(path, art, row):
            "#",
            "# Eine Angabe pro Zeile:  Feld: Wert   (Zeilen mit # sind Kommentare)",
            "# Leere Felder bleiben im Fenster einfach weg.",
-           "# Wo welches Feld erscheint ([1]..[14]): dataset/products/Info-Fenster_Aufbau.pdf",
+           "# Wo welches Feld erscheint ([1]..[15]): dataset/products/Info-Fenster_Aufbau.pdf",
            "# Vorschau ohne Hardware:  uv run tools/render_panel.py",
            "# Aufs Board:  uv run tools/product_info.py models/<modell> und tools/deploy.sh",
            ""]
@@ -209,6 +214,54 @@ def summarize(options, limit=12):
             text = f"{text} ({desc})"
         lines.append(" ".join(text.split()))
     return lines[:limit]
+
+
+def product_image(folder, name=None, size=480):
+    """The product's picture for the info panel (BGR): the file `name` in
+    its folder if given, else cut from the photo program's reference shot
+    (the turned rectangle around the product, straightened, a margin of
+    table around it), else from the first labelled photo. None if nothing."""
+    if name and (folder / name).exists():
+        img = cv2.imread(str(folder / name))
+        if img is not None:
+            scale = size / max(img.shape[:2])
+            return cv2.resize(img, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA) \
+                if scale < 1 else img
+    for meta_path in sorted(folder.glob("vm017*/*.json")):
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        if meta.get("kind") != "reference" or not meta.get("rect"):
+            continue
+        img = cv2.imread(str(meta_path.with_suffix(".jpg")))
+        if img is None:
+            continue
+        (cx, cy), (w, h), angle = meta["rect"]
+        if w < h:  # long side horizontal
+            w, h, angle = h, w, angle + 90
+        w, h = w * 1.25, h * 1.25
+        out_w = size
+        out_h = max(1, int(round(size * h / w)))
+        box = cv2.boxPoints(((cx, cy), (w, h), angle)).astype(np.float32)
+        # boxPoints order: bottom-left, top-left, top-right, bottom-right
+        dst = np.float32([[0, out_h], [0, 0], [out_w, 0], [out_w, out_h]])
+        m = cv2.getPerspectiveTransform(box, dst)
+        return cv2.warpPerspective(img, m, (out_w, out_h), flags=cv2.INTER_CUBIC,
+                                   borderMode=cv2.BORDER_REPLICATE)
+    for label in sorted(folder.glob("vm017*/*.txt")):
+        img = cv2.imread(str(label.with_suffix(".jpg")))
+        parts = label.read_text().split()
+        if img is None or len(parts) < 5:
+            continue
+        H, W = img.shape[:2]
+        x, y, bw, bh = (float(v) for v in parts[1:5])
+        x0, x1 = int((x - bw * 0.62) * W), int((x + bw * 0.62) * W)
+        y0, y1 = int((y - bh * 0.62) * H), int((y + bh * 0.62) * H)
+        crop = img[max(y0, 0):y1, max(x0, 0):x1]
+        if crop.size:
+            if crop.shape[0] > crop.shape[1]:
+                crop = cv2.rotate(crop, cv2.ROTATE_90_CLOCKWISE)
+            return cv2.resize(crop, (size, int(size * crop.shape[0] / crop.shape[1])),
+                              interpolation=cv2.INTER_CUBIC)
+    return None
 
 
 def product_list(products_dir):
@@ -284,6 +337,12 @@ def build(products_dir, labels, model_dir=None):
             out[art]["new"] = True
         if row.get("Aussprache (Sprachsuche)"):
             out[art]["spoken"] = row["Aussprache (Sprachsuche)"]
+        image = product_image(folder, row.get("Produktbild"))
+        if image is not None and model_dir is not None:
+            (model_dir / "images").mkdir(exist_ok=True)
+            cv2.imwrite(str(model_dir / "images" / f"{art}.jpg"), image,
+                        [cv2.IMWRITE_JPEG_QUALITY, 92])
+            out[art]["image"] = f"images/{art}.jpg"  # relative to the model dir
         chart_name = row.get("Diagramm-Datei")
         chart = (folder / chart_name) if chart_name and (folder / chart_name).exists() else \
             next((folder / f"chart{e}" for e in (".png", ".jpg", ".jpeg")

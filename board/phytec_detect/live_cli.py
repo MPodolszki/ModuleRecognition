@@ -114,6 +114,7 @@ class Worker:
     def __init__(self, detector, source, tiler_factory):
         self.detector, self.source, self._tiler_factory = detector, source, tiler_factory
         self.tracker = TableTracker()
+        self.snaps = {}  # class -> last still picture of a picked-up product (BGR)
         # The accelerator reports down to 0.2, the smoother decides what is
         # shown (at the demo's threshold): a dip below it is not a dropout.
         self.smoother, self.show_conf = Smoother(), detector.conf
@@ -193,6 +194,9 @@ class Worker:
                 self._track_job = (frame, seq, dets)
                 self._track_cond.notify_all()
 
+    def _snapshot(self, gray, dets, quads):
+        _snap_track(self, gray, dets, quads)
+
     def _track_loop(self):
         while not self._stop.is_set():
             with self._track_cond:
@@ -210,11 +214,32 @@ class Worker:
                                   np.float32).reshape(-1, 6)
                 quads = np.array([module_quad(gray, d) for d in dets],
                                  np.float32).reshape(-1, 4, 2)
+                self._snapshot(gray, dets, quads)
                 self.detector.times["track"].append(time.perf_counter() - t0)
             except Exception as error:
                 self.error = error
                 return
             self.result = (frame, dets, seq, lifted, quads)
+
+
+SNAP_EVERY_S = 2.0
+
+
+def _snap_track(worker, gray, dets, quads):
+    """Keep the last still picture of every resting product (at most every
+    SNAP_EVERY_S): when it is picked up, the info panel shows how it lay on
+    the table instead of the reference photo."""
+    now = time.monotonic()
+    for t in worker.tracker.tracks:
+        if t.resting and t.seen == worker.tracker.last_update and \
+                now - getattr(t, "snap_at", 0.0) >= SNAP_EVERY_S:
+            j = next((j for j, d in enumerate(dets)
+                      if int(d[5]) == t.cls and np.allclose(d[:4], t.box)), None)
+            if j is not None:
+                t.snap = straight_crop(gray, quads[j])
+                t.snap_at = now
+    worker.snaps = {t.cls: t.snap for t in worker.tracker.picked()
+                    if getattr(t, "snap", None) is not None}
 
 
 def carry_quads(old_dets, old_quads, dets):
@@ -251,11 +276,68 @@ def load_products(model_dirs):
         if os.path.exists(path):
             with open(path, encoding="utf-8") as f:
                 data = json.load(f)
-            for entry in data.values():  # chart images: relative to the model dir
-                if entry.get("chart"):
-                    entry["chart"] = os.path.join(d, entry["chart"])
+            for entry in data.values():  # charts, pictures: relative to the model dir
+                for key in ("chart", "image"):
+                    if entry.get(key):
+                        entry[key] = os.path.join(d, entry[key])
             info.update(data)
     return info
+
+
+def zone_rect(text, width, height):
+    """'0.74,0.6,0.98,0.96' -> screen pixels (x0, y0, x1, y1); 'off' -> None."""
+    if not text or text == "off":
+        return None
+    x0, y0, x1, y1 = (float(v) for v in text.split(","))
+    return int(x0 * width), int(y0 * height), int(x1 * width), int(y1 * height)
+
+
+def in_zone(dets, zone):
+    """Indices of the detections whose centre lies in the zone."""
+    if zone is None or not len(dets):
+        return []
+    cx, cy = (dets[:, 0] + dets[:, 2]) / 2, (dets[:, 1] + dets[:, 3]) / 2
+    return list(np.flatnonzero((cx >= zone[0]) & (cx <= zone[2]) &
+                               (cy >= zone[1]) & (cy <= zone[3])))
+
+
+def straight_crop(frame, quad, out_w=480):
+    """The product inside its turned outline (detection camera), turned
+    straight with a margin, long side horizontal -- the panel's live picture."""
+    rect = cv2.minAreaRect(quad.astype(np.float32))
+    (cx, cy), (w, h), angle = rect
+    if w < h:
+        w, h, angle = h, w, angle + 90
+    w, h = w * 1.2, h * 1.2
+    if w < 4 or h < 4:
+        return None
+    out_h = max(1, int(round(out_w * h / w)))
+    box = cv2.boxPoints(((cx, cy), (w, h), angle)).astype(np.float32)
+    dst = np.float32([[0, out_h], [0, 0], [out_w, 0], [out_w, out_h]])
+    crop = cv2.warpPerspective(frame, cv2.getPerspectiveTransform(box, dst), (out_w, out_h),
+                               flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
+    return cv2.cvtColor(crop, cv2.COLOR_GRAY2BGR) if crop.ndim == 2 else crop[..., :3]
+
+
+def draw_zone(canvas, zone, busy):
+    """The drop zone: dashed orange frame and a label, solid while a product
+    lies in it."""
+    x0, y0, x1, y1 = zone
+    color = style.ORANGE + (255,)
+    if busy:
+        cv2.rectangle(canvas, (x0, y0), (x1, y1), color, 5)
+    else:
+        for a, b, horizontal in (((x0, y0), (x1, y0), True), ((x0, y1), (x1, y1), True),
+                                 ((x0, y0), (x0, y1), False), ((x1, y0), (x1, y1), False)):
+            length = (b[0] - a[0]) if horizontal else (b[1] - a[1])
+            for t in range(0, length, 36):
+                e = min(t + 20, length)
+                p = (a[0] + t, a[1]) if horizontal else (a[0], a[1] + t)
+                q = (a[0] + e, a[1]) if horizontal else (a[0], a[1] + e)
+                cv2.line(canvas, p, q, color, 4)
+    tag = style.text_patch("Produkt hier ablegen" if not busy else "Erkannt", 20, "Medium",
+                           bg=style.ORANGE, pad=(10, 5))
+    style.blit(canvas, tag, x0, y0 - tag.shape[0])
 
 
 def display_labels(labels, products):
@@ -337,6 +419,9 @@ def main(argv=None):
                              "Hailo-8, from this microphone (default: Jabra)")
     parser.add_argument("--axis-boxes", action="store_true",
                         help="plain axis-aligned boxes instead of frames turned like the module")
+    parser.add_argument("--zone", default="0.74,0.6,0.98,0.96",
+                        help="drop zone x0,y0,x1,y1 as fractions of the screen (a product laid "
+                             "there shows its info at once, with its live picture), 'off' = none")
     parser.add_argument("--no-panel", action="store_true",
                         help="never slide in product info (products.json) for lifted products")
     parser.add_argument("-n", "--frames", type=int, help="stop after N screen frames")
@@ -447,6 +532,8 @@ def main(argv=None):
     search = SearchState([(l, products.get(l, {}).get("name") or l) for l in labels])
     resets = 0
     canvas = panel = None
+    zone = None
+    zone_classes, live_result = [], None
     screen_tries = 0
     frames, shown_seq, last_draw, last_state = 0, -1, 0.0, None
     try:
@@ -514,6 +601,7 @@ def main(argv=None):
                     canvas = np.zeros((h, w_ * len(workers), 4), np.uint8)
                     screen = Screen(canvas.shape[1], h)
                 panel = None if args.no_panel else InfoPanel(products, workers[0].detector.labels)
+                zone = zone_rect(args.zone, w_, canvas.shape[0])
             for i, worker in enumerate(workers):
                 half = canvas[:, i * w_:(i + 1) * w_]
                 half[:] = 0 if base is None else base  # transparent layer, or the picture
@@ -532,6 +620,7 @@ def main(argv=None):
                     keep = np.isin(dets[:, 5].astype(int), list(wanted))
                     dets, quads = dets[keep], quads[keep]
                     lifted = lifted[np.isin(lifted[:, 5].astype(int), list(wanted))]
+                det_quads = quads  # detection-camera outlines (before mapping to the view)
                 if view_source is None and view_geo is None:
                     dets, lifted = dets.copy(), lifted.copy()
                     dets[:, :4] *= view_scale
@@ -542,6 +631,17 @@ def main(argv=None):
                     quads = quads_to_view(quads, det_source.cam, view, plane)
                     dets, lifted = (to_view(d, det_source.cam, view, plane)
                                     for d in (dets, lifted))
+                if i == 0 and zone is not None:
+                    inside = in_zone(dets, zone)
+                    zone_classes = [int(dets[k, 5]) for k in inside]
+                    if panel is not None and inside and live_result is not result:
+                        live_result = result  # one new crop per detection result
+                        k = inside[0]
+                        crop = straight_crop(result[0], det_quads[k]) \
+                            if result[0] is not None and k < len(det_quads) else None
+                        if crop is not None:
+                            panel.set_live(int(dets[k, 5]), crop)
+                    draw_zone(half, zone, bool(inside))
                 draw(half, dets, display_labels(worker.detector.labels, products)
                      if args.box_labels else None, None if args.axis_boxes else quads,
                      phytec=True)
@@ -558,7 +658,14 @@ def main(argv=None):
                     style.header(half, _bar_text(worker))
             if panel is not None:
                 primary = workers[0].result
-                panel.update([int(c) for c in primary[3][:, 5]] if primary else [])
+                snaps = workers[0].snaps
+                for cls in list(panel._live):  # left the zone / put back: the photo again
+                    if cls not in zone_classes and cls not in snaps:
+                        panel.set_live(cls, None)
+                for cls, snap in snaps.items():
+                    if cls not in zone_classes and panel.picture_of(cls) is not snap:
+                        panel.set_live(cls, snap, tag="AUFGENOMMEN")
+                panel.update([int(c) for c in primary[3][:, 5]] if primary else [], zone_classes)
                 panel.compose(canvas)
             if listener is not None and time.monotonic() < listener.awake_until:
                 # "Phytec" heard: red dot top right while it listens for the command

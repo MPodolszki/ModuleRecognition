@@ -2,7 +2,7 @@
 #
 # Eine Angabe pro Zeile:  Feld: Wert   (Zeilen mit # sind Kommentare)
 # Leere Felder bleiben im Fenster einfach weg.
-# Wo welches Feld erscheint ([1]..[14]): dataset/products/Info-Fenster_Aufbau.pdf
+# Wo welches Feld erscheint ([1]..[15]): dataset/products/Info-Fenster_Aufbau.pdf
 # Vorschau ohne Hardware:  uv run tools/render_panel.py
 # Aufs Board:  uv run tools/product_info.py models/<modell> und tools/deploy.sh
 
@@ -29,7 +29,7 @@ Temperatur:
 # [9] Kennzahl 4, z. B. 2035
 Verfügbar bis:
 
-# [10] Highlights 1-4 mit Häkchen, je ca. 55 Zeichen -- dienen dem Vergleich: liegen zwei Produkte auf, stehen Vergleich 1-4 Zeile für Zeile nebeneinander, also bei allen Produkten dasselbe Thema auf demselben Platz (z. B. 1 CPU, 2 KI/NPU, 3 Speicher, 4 Schnittstellen)
+# [10] Highlights 1-4 (je ca. 55 Zeichen) für den Vergleich: bei allen Produkten dasselbe Thema auf demselben Platz, z. B. 1 CPU, 2 KI, 3 Speicher, 4 Schnittstellen
 Vergleich 1:
 Vergleich 2:
 Vergleich 3:
@@ -50,6 +50,9 @@ Link Produktseite:
 # [14] QR-Code ganz rechts -- Entwicklungskit
 Link Kit:
 Kit-Bezeichnung:
+
+# [15] Foto oben rechts (Datei im Ordner, z. B. produkt.jpg); leer = Kamera-Referenzbild
+Produktbild:
 
 # nicht angezeigt -- wie man den Namen spricht
 Aussprache (Sprachsuche): fei flex i m x sechs quad

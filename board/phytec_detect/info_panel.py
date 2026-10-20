@@ -14,6 +14,7 @@ The panel covers `fraction` of the screen width and eases in/out over
 screen frame just blends the cached picture in at the current offset.
 """
 
+import functools
 import os
 import re
 import time
@@ -114,6 +115,9 @@ class InfoPanel:
         self.products, self.labels = products, labels
         self.fraction, self.slide_s, self.show_s = fraction, slide_s, show_s
         self._first, self._seen = {}, {}  # class -> first / last time seen lifted
+        self._live = {}           # class -> BGR crop of the product in the drop zone
+        self._live_dirty = False
+        self._boxes = {}          # class -> picture box (x0, y0, x1, y1) in self._image
         self._key = ()            # classes shown (or being slid out)
         self._image = None        # rendered panel for _key
         self._pos = 0.0           # 0 = hidden, 1 = fully in
@@ -124,7 +128,23 @@ class InfoPanel:
         """Still sliding in or out (the screen must be redrawn)."""
         return self._pos != self._target
 
-    def update(self, lifted_classes):
+    def set_live(self, cls, image, tag="LIVE"):
+        """Camera picture of class `cls` (BGR, None to drop it): shown
+        instead of its product photo with `tag` in the corner -- LIVE from
+        the drop zone, AUFGENOMMEN for the last still picture of a product
+        picked up. Refreshed in place without a new render."""
+        if image is None:
+            if self._live.pop(cls, None) is not None:
+                self._image = None  # back to the photo
+            return
+        self._live[cls] = (image, tag)
+        self._live_dirty = True
+
+    def picture_of(self, cls):
+        entry = self._live.get(cls)
+        return entry[0] if entry else None
+
+    def update(self, lifted_classes, zone_classes=()):
         """Classes of the lifted products, the one lifted first first.
         Each product is shown for `show_s` seconds from when it was lifted
         (a product taken away for good would keep the panel open), counted
@@ -138,7 +158,9 @@ class InfoPanel:
             self._seen[c] = now
         for c in [c for c, t in self._seen.items() if now - t > 2.0]:
             del self._first[c], self._seen[c]
-        key = tuple(c for c in lifted if now - self._first[c] < self.show_s)[:2]
+        key = tuple(c for c in lifted if now - self._first[c] < self.show_s)
+        # a product in the drop zone: shown at once and as long as it lies there
+        key = tuple(dict.fromkeys(list(zone_classes) + list(key)))[:2]
         if key:
             self._target = 1.0
             if key != self._key:
@@ -159,6 +181,13 @@ class InfoPanel:
         pw = int(w * self.fraction)
         if self._image is None or self._image.shape[:2] != (h, pw):
             self._image = self._render(h, pw)
+            self._live_dirty = True
+        if self._live_dirty:
+            self._live_dirty = False
+            for cls, box in self._boxes.items():
+                if cls in self._live:
+                    picture, tag = self._live[cls]
+                    _fit_picture(self._image, picture, box, tag=tag)
         eased = 1 - (1 - self._pos) ** 3
         shown = int(pw * eased)
         if shown <= 0:
@@ -181,12 +210,17 @@ class InfoPanel:
             _render_single(page, *self._info(self._key[0]))
         else:
             _render_compare(page, self._info(self._key[0]), self._info(self._key[1]))
-        return page.image()
+        image = page.image()
+        # picture boxes in key order (single: one, compare: two)
+        self._boxes = dict(zip(self._key, page.picture_boxes))
+        return image
 
 
 # -- PHYTEC web look: white page, Roboto, petrol accents ---------------------
 
 FONTS = os.path.join(os.path.dirname(__file__), "fonts")
+PIC_W, PIC_H = 300, 170      # product picture, top right of the single panel
+THUMB_W, THUMB_H = 150, 104  # ... and per product in the comparison
 PETROL = (0, 110, 115)          # RGB, phytec.de breadcrumb / buttons
 PETROL_TINT = (229, 241, 241)
 INK = (20, 20, 20)
@@ -206,6 +240,8 @@ class Page:
         self.pastes = []  # (numpy BGR(A) image, x, y): QR code, chart
         self.marks = []   # (field, box): where each field landed, for tools/render_panel.py
         self.overflow = []  # (field, text) that did not fit
+        self.picture_boxes = []  # product picture boxes, in drawing order
+        self.pictures = []       # (path, box) drawn into the image at the end
         try:
             from PIL import Image, ImageDraw
         except ImportError:  # no Pillow on the board: OpenCV's own font
@@ -257,6 +293,8 @@ class Page:
     def image(self):
         rgb = np.asarray(self.img) if self.img is not None else self.draw.rgb
         out = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGRA)
+        for path, box in self.pictures:
+            _fit_picture(out, _load_picture(path), box)
         for picture, x, y in self.pastes:
             ph, pw = picture.shape[:2]
             if picture.ndim == 2:
@@ -380,6 +418,43 @@ def _bottom_band(page, info, margin=32):
     return top - 24
 
 
+@functools.lru_cache(maxsize=64)
+def _load_picture(path):
+    return cv2.imread(path) if path and os.path.exists(path) else None
+
+
+def _fit_picture(canvas, picture, box, tag=None):
+    """`picture` (BGR) fitted into `box` of a BGR(A) canvas, centred on the
+    band colour; `tag` (LIVE, AUFGENOMMEN) in the corner for a camera picture."""
+    x0, y0, x1, y1 = (int(v) for v in box)
+    bw, bh = x1 - x0, y1 - y0
+    region = canvas[y0:y1, x0:x1]
+    region[..., :3] = BAND[::-1]
+    if picture is None:
+        return
+    if picture.ndim == 2:
+        picture = cv2.cvtColor(picture, cv2.COLOR_GRAY2BGR)
+    scale = min(bw / picture.shape[1], bh / picture.shape[0])
+    pw, ph = max(1, int(picture.shape[1] * scale)), max(1, int(picture.shape[0] * scale))
+    small = cv2.resize(picture[..., :3], (pw, ph),
+                       interpolation=cv2.INTER_AREA if scale < 1 else cv2.INTER_LINEAR)
+    ox, oy = (bw - pw) // 2, (bh - ph) // 2
+    region[oy:oy + ph, ox:ox + pw, :3] = small
+    if tag:
+        from . import style
+        patch = style.text_patch(tag, 16, "Bold", bg=style.ORANGE, pad=(8, 3))
+        style.blit(region, patch, 8, 8)
+
+
+def _picture(page, info, box):
+    """Product picture box (filled in Page.image(), live pictures by
+    InfoPanel.compose)."""
+    page.rect(box, fill=BAND)
+    page.picture_boxes.append(box)
+    page.pictures.append((info.get("image"), box))
+    page.mark("Produktbild", box)
+
+
 def _render_single(page, art, info):
     name = info.get("name") or art
     category = info.get("category", "")
@@ -388,6 +463,9 @@ def _render_single(page, art, info):
     _header(page, [part for part in ("Produkte", section, name) if part])
     x, w = 32, page.w
     bottom = _bottom_band(page, info) - 16
+    pic = (w - 32 - PIC_W, 84, w - 32, 84 + PIC_H)
+    _picture(page, info, pic)
+    tw = pic[0] - 24 - x  # text width left of the picture
     y = 92
     kicker = "PHYTEC " + (info.get("category") or
                           ("System on Module" if _family(name) != "Produkte" else "Produkt"))
@@ -400,25 +478,36 @@ def _render_single(page, art, info):
         page.mark("Neu", (tx, y - 2, tx + 52, y + 24))
     y += 30
     y_title = y
-    for line in page.wrap(name, w - 2 * x, 46, "Bold"):
-        page.text(x, y, line, 46, "Bold")
-        y += 58
-    page.mark("Bezeichnung", (x, y_title, x + max(page.width(l, 46, "Bold") for l in
-                                                   page.wrap(name, w - 2 * x, 46, "Bold")), y - 4))
+    size = next((s for s in (46, 40, 34) if page.width(name, s, "Bold") <= tw), 34)
+    title = page.wrap(name, tw, size, "Bold")
+    for line in title:
+        page.text(x, y, line, size, "Bold")
+        y += int(size * 1.26)
+    page.mark("Bezeichnung", (x, y_title, x + max(page.width(l, size, "Bold") for l in title),
+                              y - 4))
     if re.match(r"^[A-Z]{2,5}-[A-Z0-9]", art):  # not a placeholder folder name
         page.text(x, y + 2, f"Artikelnummer {art}", 20, fill=MUTED)
         page.mark("Artikelnummer", (x, y, x + page.width(f"Artikelnummer {art}", 20), y + 28))
     y += 40
     y_desc = y
-    desc = page.wrap(info.get("description", ""), w - 2 * x, 19)
-    if len(desc) > 3:
-        page.overflow.append(("Kurzbeschreibung", f"{len(desc)} Zeilen, nur 3 passen"))
-    for line in desc[:3]:
+    # next to the picture narrow, below it the full width
+    words, line, lines = info.get("description", "").split(), "", []
+    for word in words:
+        width = tw if y_desc + 26 * len(lines) < pic[3] else w - 2 * x
+        if line and page.width(f"{line} {word}", 19) > width:
+            lines.append(line)
+            line = word
+        else:
+            line = f"{line} {word}".strip()
+    lines += [line] if line else []
+    if len(lines) > 4:
+        page.overflow.append(("Kurzbeschreibung", f"{len(lines)} Zeilen, nur 4 passen"))
+    for line in lines[:4]:
         page.text(x, y, line, 19, fill=INK)
         y += 26
     if y > y_desc:
         page.mark("Kurzbeschreibung", (x, y_desc - 2, w - x, y))
-    y += 6
+    y = max(y + 6, pic[3] + 12)
     facts = info.get("facts") or []
     if facts:  # key figures row, as under the title on phytec.de
         cw = (w - 2 * x) / len(facts)
@@ -459,7 +548,7 @@ def _render_single(page, art, info):
         for line in lines[:1]:
             page.text(x + 34, y, line, 17, fill=MUTED)
             y += 24
-        y += 10
+        y += 8
     if info.get("highlights") and tops:
         tops.append(y)  # end of the last row
         groups = (("Vergleich", 0, n_compare), ("Alleinstellungsmerkmal", n_compare, len(tops) - 1))
@@ -478,11 +567,13 @@ def _render_compare(page, a, b):
     ends = []
     for x, art, info in ((xs[0], art_a, info_a), (xs[1], art_b, info_b)):
         y = y0
-        for line in page.wrap(info.get("name") or art, col, 32, "Bold")[:2]:
-            page.text(x, y, line, 32, "Bold")
-            y += 40
+        box = (x + col - THUMB_W, y0 - 6, x + col, y0 - 6 + THUMB_H)
+        _picture(page, info, box)
+        for line in page.wrap(info.get("name") or art, col - THUMB_W - 14, 30, "Bold")[:3]:
+            page.text(x, y, line, 30, "Bold")
+            y += 38
         page.text(x, y, art, 17, fill=MUTED)
-        ends.append(y + 34)
+        ends.append(max(y + 34, box[3] + 14))
     y = max(ends)
     page.draw.line([(32, y), (w - 32, y)], fill=RULE, width=2)
     y += 20

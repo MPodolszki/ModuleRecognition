@@ -171,12 +171,14 @@ class Track:
 
 class TableTracker:
     def __init__(self):
+        self.last_update = None
         self.tracks = []
         self.class_rest = {}   # cls -> median resting area of that class
 
     def update(self, gray, dets, now=None):
         """Feed one frame's detections (pixels of `gray`); returns the tracks."""
         now = time.monotonic() if now is None else now
+        self.last_update = now
         live = [t for t in self.tracks if not t.taken]
         pairs = sorted(((_iou(t.box, dets[j, :4]), i, j)
                         for i, t in enumerate(live) for j in range(len(dets))

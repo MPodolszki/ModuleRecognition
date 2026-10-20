@@ -109,8 +109,9 @@ def export(out):
     with tempfile.TemporaryDirectory() as tmp:
         infos = build(PRODUCTS, arts, pathlib.Path(tmp))
         for info in infos.values():
-            if info.get("chart"):
-                info["chart"] = str(pathlib.Path(tmp) / info["chart"])
+            for key in ("chart", "image"):
+                if info.get(key):
+                    info[key] = str(pathlib.Path(tmp) / info[key])
         example = "PCM-070-0F3243I.A3" if "PCM-070-0F3243I.A3" in infos else arts[0]
         panel, marks = render_panel.render(example, infos[example])
         layout = render_panel.layout_page(panel, marks)

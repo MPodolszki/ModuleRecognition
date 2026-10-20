@@ -2,7 +2,7 @@
 #
 # Eine Angabe pro Zeile:  Feld: Wert   (Zeilen mit # sind Kommentare)
 # Leere Felder bleiben im Fenster einfach weg.
-# Wo welches Feld erscheint ([1]..[14]): dataset/products/Info-Fenster_Aufbau.pdf
+# Wo welches Feld erscheint ([1]..[15]): dataset/products/Info-Fenster_Aufbau.pdf
 # Vorschau ohne Hardware:  uv run tools/render_panel.py
 # Aufs Board:  uv run tools/product_info.py models/<modell> und tools/deploy.sh
 
@@ -29,7 +29,7 @@ Temperatur: -40 °C / +85 °C
 # [9] Kennzahl 4, z. B. 2035
 Verfügbar bis:
 
-# [10] Highlights 1-4 mit Häkchen, je ca. 55 Zeichen -- dienen dem Vergleich: liegen zwei Produkte auf, stehen Vergleich 1-4 Zeile für Zeile nebeneinander, also bei allen Produkten dasselbe Thema auf demselben Platz (z. B. 1 CPU, 2 KI/NPU, 3 Speicher, 4 Schnittstellen)
+# [10] Highlights 1-4 (je ca. 55 Zeichen) für den Vergleich: bei allen Produkten dasselbe Thema auf demselben Platz, z. B. 1 CPU, 2 KI, 3 Speicher, 4 Schnittstellen
 Vergleich 1: 1× oder 2× Cortex-A35 bis 1,5 GHz, M33 mit 400 MHz
 Vergleich 2: NPU mit bis zu 1,35 TOPS
 Vergleich 3: MIPI CSI-2 Kamera mit ISP, 3D-GPU
@@ -50,6 +50,9 @@ Link Produktseite: https://www.phytec.de/produkte/system-on-modules/phyflex-stm3
 # [14] QR-Code ganz rechts -- Entwicklungskit
 Link Kit: https://www.phytec.de/produkte/development-kits/phyflex-stm32mp2x-fpsc-kit/
 Kit-Bezeichnung: phyFLEX-STM32MP2 Kit
+
+# [15] Foto oben rechts (Datei im Ordner, z. B. produkt.jpg); leer = Kamera-Referenzbild
+Produktbild:
 
 # nicht angezeigt -- wie man den Namen spricht
 Aussprache (Sprachsuche): fei flex s t m zweiunddreißig m p zwei

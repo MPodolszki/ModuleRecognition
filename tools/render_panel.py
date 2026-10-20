@@ -208,9 +208,10 @@ def main():
     out = pathlib.Path(args.out) if args.out else products / "Info-Fenster_Aufbau.pdf"
     with tempfile.TemporaryDirectory() as tmp:
         infos = build(products, sorted(set(arts) | {args.example}), pathlib.Path(tmp))
-        for info in infos.values():  # charts: relative to the (temporary) model dir
-            if info.get("chart"):
-                info["chart"] = str(pathlib.Path(tmp) / info["chart"])
+        for info in infos.values():  # charts, pictures: relative to the (temporary) model dir
+            for key in ("chart", "image"):
+                if info.get(key):
+                    info[key] = str(pathlib.Path(tmp) / info[key])
         example, marks = render(args.example, infos[args.example])
         pages = [layout_page(example, marks), monitor_page(example)]
         pair = [a for a in ("PCM-071-5432DE11I.A0", "PCL-071-5432DE11I.A0") if a in infos]
