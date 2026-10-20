@@ -157,56 +157,95 @@
    }
   ],
   "link": "https://www.phytec.de/produkte/development-kits/phyboard-pollux-kit/#jetzt-bestellen/",
+  "highlights": [
+   "i.MX 8M Plus CPU mit bis zu 4× 1,8 GHz Cortex-A53",
+   "Cortex-M7 Real-time Kern und 800 MHz Tensilica DSP",
+   "NPU mit 2,3 TOPS für KI-Anwendungen und Vision",
+   "Bis zu 8 GB LPDDR4 RAM, 64 GB eMMC & 256 MB SPI Flash",
+   "Dual 1-GbE mit TSN, USB 3.0, PCIe 3.0 & CAN FD",
+   "Display-, Kamera- & Audio-Interfaces"
+  ],
+  "facts": [
+   [
+    "Kerne",
+    "4 × A53 + M7"
+   ],
+   [
+    "Größe in mm",
+    "40 × 37 × 6"
+   ],
+   [
+    "Temperatur",
+    "-40 °C / +85 °C"
+   ],
+   [
+    "Verfügbar bis",
+    "2035"
+   ]
+  ],
+  "category": "System on Module",
+  "new": true,
+  "spoken": "i m x acht m plus",
   "chart": "charts/PCM-070-0F3243I.A3.png"
  },
  "PCM-072-42F2DE11I.A1": {
   "name": "phyCORE-AM64x",
   "summary": [],
-  "options": []
+  "options": [],
+  "category": "System on Module"
  },
  "PFL-A-02-23237E0.A5": {
   "name": "phyFLEX-i.MX6 Quad",
   "summary": [],
-  "options": []
+  "options": [],
+  "category": "System on Module"
  },
  "PCL-071-5432DE11I.A0": {
   "name": "phyCORE-AM62x DSC",
   "summary": [],
-  "options": []
+  "options": [],
+  "category": "System on Module"
  },
  "PCL-063-23500CI.A0": {
   "name": "phyCORE-i.MX6UL",
   "summary": [],
-  "options": []
+  "options": [],
+  "category": "System on Module"
  },
  "PCM-067-82EA01I.A0": {
   "name": "phyCORE-AM65x",
   "summary": [],
-  "options": []
+  "options": [],
+  "category": "System on Module"
  },
  "PCM-058-33230C0I.A0": {
   "name": "phyCORE-i.MX6 Quad",
   "summary": [],
-  "options": []
+  "options": [],
+  "category": "System on Module"
  },
  "PCM-071-5432DE11I.A0": {
   "name": "phyCORE-AM62x",
   "summary": [],
-  "options": []
+  "options": [],
+  "category": "System on Module"
  },
  "PCM-061-2111111C.A0": {
   "name": "phyCORE-i.MX7",
   "summary": [],
-  "options": []
+  "options": [],
+  "category": "System on Module"
  },
  "PCM-060-03051F2I.A0": {
   "name": "phyCORE-Am335x",
   "summary": [],
-  "options": []
+  "options": [],
+  "category": "System on Module"
  },
  "PCM-057-40A00111I.A0": {
   "name": "phyCORE-AM57x",
   "summary": [],
-  "options": []
+  "options": [],
+  "category": "System on Module"
  }
 }

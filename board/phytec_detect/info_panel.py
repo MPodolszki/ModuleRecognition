@@ -24,7 +24,10 @@ WHITE, GREY, YELLOW, CYAN = (255, 255, 255, 255), (170, 170, 170, 255), (0, 230,
 
 
 def _option_lines(info):
-    """(label, value) rows for one product."""
+    """(label, value) rows for one product: the hand-written highlights
+    (produktinfos.csv) if there are any, else the option export."""
+    if info.get("highlights"):
+        return [(h, "") for h in info["highlights"]]
     rows = []
     for o in info.get("options", []):
         name = " ".join(o.get("Option", "").split())
@@ -343,18 +346,39 @@ def _bottom_band(page, info, margin=32):
 
 def _render_single(page, art, info):
     name = info.get("name") or art
-    _header(page, ["Produkte", _family(name), name])
+    _header(page, ["Produkte", info.get("category") and info["category"] + "s"
+                   if info.get("category", "").endswith("Module") else _family(name), name])
     x, w = 32, page.w
     bottom = _bottom_band(page, info) - 16
     y = 92
-    page.text(x, y, "PHYTEC " + ("System on Module" if _family(name) != "Produkte" else "Produkt"),
-              18, fill=MUTED)
+    kicker = "PHYTEC " + (info.get("category") or
+                          ("System on Module" if _family(name) != "Produkte" else "Produkt"))
+    page.text(x, y, kicker, 18, fill=MUTED)
+    if info.get("new"):  # orange "NEU" tag as on phytec.de
+        tx = x + page.width(kicker, 18) + 14
+        page.rect((tx, y - 2, tx + 52, y + 24), outline=ORANGE, width=2, radius=3)
+        page.text(tx + 9, y, "NEU", 17, "Medium", fill=ORANGE)
     y += 30
     for line in page.wrap(name, w - 2 * x, 46, "Bold"):
         page.text(x, y, line, 46, "Bold")
         y += 58
     page.text(x, y + 2, f"Artikelnummer {art}", 20, fill=MUTED)
-    y += 54
+    y += 46
+    facts = info.get("facts") or []
+    if facts:  # key figures row, as under the title on phytec.de
+        cw = (w - 2 * x) / len(facts)
+        page.draw.line([(x, y), (w - x, y)], fill=RULE, width=1)
+        for i, (label, value) in enumerate(facts):
+            fx = x + i * cw
+            if i:
+                page.draw.line([(fx - 10, y + 12), (fx - 10, y + 70)], fill=RULE, width=1)
+            page.text(fx, y + 14, label, 16, fill=MUTED)
+            page.text(fx, y + 38, value, 22, "Medium", fill=PETROL)
+        y += 84
+        page.draw.line([(x, y), (w - x, y)], fill=RULE, width=1)
+        y += 22
+    else:
+        y += 8
     page.text(x, y, "Highlights", 28, "Bold")
     y += 48
     if not _option_lines(info):

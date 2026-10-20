@@ -11,6 +11,10 @@ Per class (article number, the model's label):
   chart    chart.png/.jpg if present, copied to <model>/charts/<article>.<ext>
            (the panel shows it next to the QR code)
 
+produktinfos.csv (one row per product, filled in by hand) comes first:
+its highlights, key figures (cores, size, temperature, available until),
+category, "new" flag, link and chart file override the per-folder files.
+
     uv run tools/product_info.py models/products_v1_n
 """
 
@@ -62,6 +66,14 @@ def build(products_dir, labels, model_dir=None):
             for row in csv.reader(f, delimiter=";"):
                 if row and row[0] and row[0] != "Artikelnummer":
                     names[row[0].strip()] = row[1].strip() if len(row) > 1 else ""
+    sheet = {}
+    sheet_path = products_dir / "produktinfos.csv"
+    if sheet_path.exists():
+        with open(sheet_path, newline="", encoding="utf-8-sig") as f:
+            for row in csv.DictReader(f, delimiter=";"):
+                art = (row.get("Artikelnummer") or "").strip()
+                if art:
+                    sheet[art] = {k.strip(): (v or "").strip() for k, v in row.items() if k}
     out = {}
     for art in labels:
         folder = products_dir / art
@@ -73,10 +85,30 @@ def build(products_dir, labels, model_dir=None):
         link = next((l.strip() for l in link_file.read_text(encoding="utf-8").splitlines()
                      if l.strip()), "") if link_file.exists() else ""
         out[art] = {"name": names.get(art) or art, "summary": summary, "options": options}
+        row = sheet.get(art, {})
+        link = row.get("Link Mehr Infos") or link
         if link:
             out[art]["link"] = link
-        chart = next((folder / f"chart{e}" for e in (".png", ".jpg", ".jpeg")
-                      if (folder / f"chart{e}").exists()), None)
+        if row.get("Bezeichnung"):
+            out[art]["name"] = row["Bezeichnung"]
+        highlights = [row[k] for k in sorted(row) if k.startswith("Highlight") and row[k]]
+        if highlights:
+            out[art]["highlights"] = highlights
+        facts = [(label, row.get(key, "")) for key, label in
+                 (("Kerne", "Kerne"), ("Größe in mm", "Größe in mm"),
+                  ("Temperatur", "Temperatur"), ("Verfügbar bis", "Verfügbar bis"))]
+        if any(v for _, v in facts):
+            out[art]["facts"] = [[k, v] for k, v in facts if v]
+        if row.get("Kategorie"):
+            out[art]["category"] = row["Kategorie"]
+        if row.get("Neu (ja/nein)", "").lower() in ("ja", "j", "yes", "x", "1"):
+            out[art]["new"] = True
+        if row.get("Aussprache (Sprachsuche)"):
+            out[art]["spoken"] = row["Aussprache (Sprachsuche)"]
+        chart_name = row.get("Diagramm-Datei")
+        chart = (folder / chart_name) if chart_name and (folder / chart_name).exists() else \
+            next((folder / f"chart{e}" for e in (".png", ".jpg", ".jpeg")
+                  if (folder / f"chart{e}").exists()), None)
         if chart is not None and model_dir is not None:
             (model_dir / "charts").mkdir(exist_ok=True)
             dest = model_dir / "charts" / f"{art}{chart.suffix.lower()}"
