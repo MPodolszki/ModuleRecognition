@@ -3,6 +3,8 @@
   nothing lifted     no panel -- the table just shows boxes
   one lifted         name, article number and its options (products.json,
                      from info.tsv / summary.txt)
+  (either)           slides out by itself after 30 s, until the lifted
+                     products change
   two lifted         both side by side; if they share the option layout
                      (same family, same number of option rows) the rows are
                      put next to each other and differences are highlighted
@@ -107,9 +109,10 @@ def _put(img, text, x, y, scale, color, thickness=1):
 
 
 class InfoPanel:
-    def __init__(self, products, labels, fraction=0.5, slide_s=0.35):
+    def __init__(self, products, labels, fraction=0.5, slide_s=0.35, show_s=30.0):
         self.products, self.labels = products, labels
-        self.fraction, self.slide_s = fraction, slide_s
+        self.fraction, self.slide_s, self.show_s = fraction, slide_s, show_s
+        self._seen_key, self._seen_since = (), 0.0
         self._key = ()            # classes shown (or being slid out)
         self._image = None        # rendered panel for _key
         self._pos = 0.0           # 0 = hidden, 1 = fully in
@@ -121,9 +124,15 @@ class InfoPanel:
         return self._pos != self._target
 
     def update(self, lifted_classes):
-        """Classes of the lifted products, the one lifted first first."""
+        """Classes of the lifted products, the one lifted first first.
+        A panel slides out by itself after `show_s` seconds (a product taken
+        away for good would keep it open) and comes back only when the
+        lifted products change."""
         key = tuple(dict.fromkeys(lifted_classes))[:2]  # unique, max two
-        if key:
+        now = time.monotonic()
+        if key != self._seen_key:            # something new lifted (or put back)
+            self._seen_key, self._seen_since = key, now
+        if key and now - self._seen_since < self.show_s:
             self._target = 1.0
             if key != self._key:
                 self._key, self._image = key, None
