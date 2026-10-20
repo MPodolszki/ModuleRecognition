@@ -165,17 +165,30 @@ class Worker:
                 self._cond.notify_all()
 
     def _run_loop(self):
+        """Two frames in flight: the next one is started on the accelerator
+        before the previous one is decoded, so chip and CPU work at the same
+        time. Every frame is decoded exactly as before; when no new frame is
+        ready soon, the pending one is finished right away."""
+        pending = None  # (frame, seq, submitted)
         while not self._stop.is_set():
             with self._cond:
-                while self._job is None and not self._stop.is_set():
-                    self._cond.wait(0.1)
+                deadline = time.monotonic() + (0.005 if pending else 0.1)
+                while self._job is None and not self._stop.is_set() \
+                        and time.monotonic() < deadline:
+                    self._cond.wait(max(0.0, deadline - time.monotonic()))
                 job, self._job = self._job, None
                 self._cond.notify_all()
-            if job is None:
-                continue
-            frame, seq, prepared = job
             try:
-                dets = self.detector.run(prepared)
+                started = None
+                if job is not None:
+                    frame, seq, prepared = job
+                    started = (frame, seq, self.detector.submit(prepared))
+                if pending is None:
+                    pending = started
+                    continue
+                frame, seq, submitted = pending
+                pending = started
+                dets = self.detector.finish(submitted)
             except Exception as error:  # e.g. HailoRTTimeout: let main() exit
                 self.error = error
                 return
@@ -417,9 +430,10 @@ def _bar_text(worker):
     det = worker.detector
     tiles = f"{len(worker.tiler.tiles)} tiles, " if worker.tiler and len(worker.tiler.tiles) > 1 else ""
     n = det.nc  # classes of the running model(s) = products it was trained on
+    # (no ms: with two frames in flight the time from start to result is
+    # latency, not what a frame costs)
     return (f"{NAMES[det.backend_name]}  \u00b7  {worker.fps:4.1f} fps  \u00b7  "
-            f"{tiles}{det.ms('infer'):.0f} ms  \u00b7  "
-            f"{n} Produkt{'e' if n != 1 else ''} trainiert")
+            f"{tiles}{n} Produkt{'e' if n != 1 else ''} trainiert")
 
 
 def _aspect(text):

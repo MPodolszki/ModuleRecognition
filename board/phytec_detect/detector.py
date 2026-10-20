@@ -84,10 +84,23 @@ class Detector:
 
     def run(self, job):
         """Accelerator + decode/merge of a prepare()d frame."""
-        pieces, boxed, scale, frame_size = job
+        return self.finish(self.submit(job))
+
+    def submit(self, job):
+        """Start a prepare()d frame on the accelerator(s); finish() decodes it.
+        Backends without asynchronous submission run it right here."""
         t1 = time.perf_counter()
-        rgbs = [rgb for rgb, _ in boxed]
-        maps = [m.backend.infer_many(rgbs) for m in self.models]  # [model][piece]
+        rgbs = [rgb for rgb, _ in job[1]]
+        tokens = [(True, m.backend.submit_many(rgbs)) if hasattr(m.backend, "submit_many")
+                  else (False, m.backend.infer_many(rgbs)) for m in self.models]
+        return job, tokens, t1
+
+    def finish(self, submitted):
+        """Wait for a submit()ted frame and decode/merge its detections."""
+        job, tokens, t1 = submitted
+        pieces, boxed, scale, frame_size = job
+        maps = [m.backend.collect(token) if pending else token  # [model][piece]
+                for m, (pending, token) in zip(self.models, tokens)]
         t2 = time.perf_counter()
         dets, cuts = [], []
         for k, ((shape, (x0, y0)), (_, info)) in enumerate(zip(pieces, boxed)):

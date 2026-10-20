@@ -57,23 +57,46 @@ class HailoDetector:
             configured = self._model.configure()
             self._stack.append(configured)
             self._configured = configured.__enter__()
-            self._pool = []  # (bindings, {output name: buffer}), grown on demand
+            self._pool = {}  # index -> (bindings, {output name: buffer}), made on demand
         except BaseException:
             self.close()
             raise
 
     def _binding(self, i):
-        while len(self._pool) <= i:
+        if i not in self._pool:
             outputs = {name: np.empty(self._model.output(name).shape, np.float32)
                        for name in self.output_names}
             bindings = self._configured.create_bindings()
             for name, buf in outputs.items():
                 bindings.output(name).set_buffer(buf)
-            self._pool.append((bindings, outputs))
+            self._pool[i] = (bindings, outputs)
         return self._pool[i]
 
     def infer(self, rgb):
         return self.infer_many([rgb])[0]
+
+    def submit_many(self, rgbs):
+        """Start the pictures on the Hailo-8 and return at once; collect()
+        waits for them. Two submissions may be in flight (alternating sets
+        of buffers): the next frame runs on the chip while the host decodes
+        the previous one."""
+        self._slot = 1 - getattr(self, "_slot", 1)
+        used, jobs, keep = [], [], []
+        for i, rgb in enumerate(rgbs):
+            bindings, outputs = self._binding(self._slot * 64 + i)
+            buf = np.ascontiguousarray(rgb)
+            keep.append(buf)  # alive until the chip has read it
+            bindings.input(self.input_name).set_buffer(buf)
+            self._configured.wait_for_async_ready(timeout_ms=self._timeout_ms)
+            jobs.append(self._configured.run_async([bindings]))
+            used.append(outputs)
+        return jobs, used, keep
+
+    def collect(self, token):
+        jobs, used, _keep = token
+        for job in jobs:
+            job.wait(self._timeout_ms)
+        return [[outputs[name].copy() for name in self.output_names] for outputs in used]
 
     def infer_many(self, rgbs):
         """Several pictures in one run(): HailoRT pipelines them through the
