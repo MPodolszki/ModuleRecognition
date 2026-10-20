@@ -12,7 +12,7 @@ the right. Between two products the monitor shows which one is next and
 waits, as long as it takes, until someone lays it in the middle -- nobody
 has to stay at the table. With everything done the queue keeps watching
 the list (--once: it ends). Stopping the queue stops the current product;
-run it again to go on (that product starts over).
+run it again to go on where it stopped.
 """
 
 import argparse
@@ -57,14 +57,13 @@ def main(argv=None):
         article, name = pending[0]
         print(f"next: {article} {name} ({len(pending)} to do)", flush=True)
         folder = os.path.join(args.out, article)
-        if os.path.isdir(folder) and os.listdir(folder):  # interrupted: start over
-            old = os.path.join(args.out, "_verworfen", f"{article}_unfertig")
-            os.makedirs(old, exist_ok=True)
-            for name_ in os.listdir(folder):
-                os.replace(os.path.join(folder, name_), os.path.join(old, name_))
+        shots = len([f for f in os.listdir(folder) if f.endswith(".jpg")]) \
+            if os.path.isdir(folder) else 0
+        # interrupted after the reference shot: go on where it stopped
+        resume = ["--start", str(shots + 1)] if shots >= 1 else []
         rc = photo_cli.main(["--article", article, "--name", name, "--intro", "4",
                              "--wait-start", "--previous", previous, "--list-csv", args.csv,
-                             "--out", args.out]
+                             "--out", args.out] + resume
                             + ([] if args.raw else ["--isp"]))
         if rc != 0:
             print("stopped", flush=True)
