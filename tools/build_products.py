@@ -169,6 +169,8 @@ def main():
     parser.add_argument("-o", "--out", default=str(ROOT / "dataset_products"))
     parser.add_argument("--phycam", nargs="*", default=[], help="camera frames without products")
     parser.add_argument("--backgrounds", nargs="*", default=[], help="any other pictures")
+    parser.add_argument("--neg-repeat", type=int, default=3,
+                        help="training copies of each hard negative (_background/*negatives*/)")
     parser.add_argument("-n", "--synth", type=int, default=6000, help="synthetic scenes")
     parser.add_argument("--min-size", type=float, default=0.04,
                         help="smallest product, fraction of the scene's short side")
@@ -274,11 +276,16 @@ def main():
         split = "val" if i < n_val else "train"
         write(out, split, f"synth_{i:05d}", to_out(degrade(bg), gray), boxes)
 
-    # pictures of _background as plain negatives
-    for k, path in enumerate(neg):
+    # pictures of _background as plain negatives; the hard ones (phones,
+    # keys, hands, ... on the demo table, a "negatives" folder) count more
+    k = 0
+    for path in neg:
         img = read_image(path)
         s = REAL_SIZE / max(img.shape[:2])
-        write(out, "train", f"neg_{k:04d}", to_out(cv2.resize(img, None, fx=s, fy=s), gray), [])
+        small = cv2.resize(img, None, fx=s, fy=s)
+        for _ in range(args.neg_repeat if "negatives" in str(path.parent) else 1):
+            write(out, "train", f"neg_{k:04d}", to_out(degrade(small), gray), [])
+            k += 1
 
     names = "".join(f"  {i}: '{a}'\n" for i, a in enumerate(classes))
     (out / "data.yaml").write_text(f"path: {out.resolve()}\ntrain: images/train\n"
