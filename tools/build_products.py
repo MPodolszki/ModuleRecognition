@@ -41,7 +41,8 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 from synth_dataset import (_overlap, color_jitter, cut_module, degrade,  # noqa: E402
                            find_module, random_background, rect_box)
-from isp960 import boxes_to_isp960, to_isp960  # noqa: E402
+sys.path.insert(0, str(ROOT / "board"))
+from phytec_detect.isp960 import boxes_to_isp960, to_isp960  # noqa: E402
 
 EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".heic", ".heif"}
 REAL_SIZE = 1600      # long side of the real photos in the dataset
@@ -292,6 +293,28 @@ def main():
                 n_scene += 1
     if n_scene:
         print(f"scenes: {n_scene} pictures (with copies)")
+
+    # real ISP-960 pictures from phytec-improve: labelled by the reference
+    # model, taken where the ISP-960 model was weak -- weighted like the
+    # setup pictures (weak places more: every weak shot is kept)
+    isp_dir = products / "_isp960"
+    n_isp = 0
+    for k, meta_path in enumerate(sorted(isp_dir.rglob("*.json")) if isp_dir.exists() else []):
+        import json
+        meta = json.loads(meta_path.read_text())
+        jpg = meta_path.with_suffix(".jpg")
+        boxes = [(classes.index(a), x0, y0, x1, y1) for a, x0, y0, x1, y1 in meta.get("boxes", [])
+                 if a in classes]
+        if not jpg.exists() or not boxes:
+            continue
+        img = read_image(jpg)
+        split = "val" if k % 5 == 4 else "train"
+        for c in range(args.setup_repeat if split == "train" else 1):
+            write(out, split, f"isp960_{meta_path.stem}" + (f"_r{c}" if c else ""),
+                  to_out(img, gray), boxes)
+            n_isp += 1
+    if n_isp:
+        print(f"real ISP-960 pictures (phytec-improve): {n_isp} (with copies)")
 
     usable = [c for c in cutouts if cutouts[c]]
     if not usable:

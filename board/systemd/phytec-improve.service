@@ -1,0 +1,17 @@
+[Unit]
+Description=PHYTEC: real ISP-960 pictures where the ISP-960 model is weak (phytec-improve)
+After=weston.service imx8-phycam-isp.service
+Wants=weston.service
+Conflicts=phytec-detect.service phytec-trial.service
+
+[Service]
+User=weston
+WorkingDirectory=/tmp
+Environment=XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0
+Environment=PYTHONPATH=/opt/phytec-detect PYTHONUNBUFFERED=1
+Environment="PHYTEC_IMPROVE_ARGS="
+EnvironmentFile=-/etc/default/phytec-improve
+ExecStartPre=/bin/sh -c 'for i in $(seq 60); do [ -S /run/user/1000/wayland-0 ] && exit 0; sleep 1; done; exit 1'
+ExecStart=/bin/sh -c 'exec /usr/bin/python3 -m phytec_detect.improve_cli $PHYTEC_IMPROVE_ARGS'
+# started by hand (systemctl start phytec-improve), back to the demo afterwards
+ExecStopPost=/bin/systemctl --no-block start phytec-detect.service

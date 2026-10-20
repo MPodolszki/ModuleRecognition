@@ -17,6 +17,11 @@ for art in $ARTICLES; do
         bg_*|_background) dest="$ROOT/dataset/products/_background/vm017" ;;
         _negatives) dest="$ROOT/dataset/products/_background/negatives_isp" ;;
         _scenes) dest="$ROOT/dataset/products/_scenes" ;;
+        _isp960) dest="$ROOT/dataset/products/_isp960"   # phytec-improve, one folder per article
+                 mkdir -p "$dest"
+                 $SSH "cd $SRC/_isp960 && tar -cf - ." | tar -C "$dest" --skip-old-files -xf -
+                 echo "_isp960: $(find "$dest" -name '*.jpg' ! -name '*_ref.jpg' | wc -l) pictures -> ${dest#$ROOT/}"
+                 continue ;;
         *) if $SSH "grep -qs '\"path\": \"isp\"' $SRC/$art/*.json"; then
                dest="$ROOT/dataset/products/$art/vm017_isp"
            else

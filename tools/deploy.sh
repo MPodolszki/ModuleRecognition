@@ -53,7 +53,7 @@ $SSH "cat > /etc/systemd/system/phytec-camera-retry.service && systemctl daemon-
 "$ROOT/tools/sync_products.sh" "$BOARD" --once >/dev/null
 
 # Demo, trade-fair training show and the buttons switching between them.
-for unit in phytec-detect phytec-trial phytec-mode phytec-voice; do
+for unit in phytec-detect phytec-trial phytec-mode phytec-voice phytec-improve; do
     $SSH "cat > /etc/systemd/system/$unit.service" < "$ROOT/board/systemd/$unit.service"
 done
 $SSH "cat > $DEST/bin/phytec-mode && chmod +x $DEST/bin/phytec-mode" <<EOF2

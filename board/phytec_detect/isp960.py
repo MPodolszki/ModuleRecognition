@@ -11,8 +11,8 @@ both outputs, SIFT pairs): a 3rd-order polynomial maps between the two
 sigma ~0.9 before resampling matches the ISP's softness (mean difference
 1.9 grey levels, Laplacian variance 145 vs 140).
 
-    uv run tools/isp960.py fit runs/ispcmp     # full_*.raw / s960_*.raw -> tools/isp960.json
-    from isp960 import to_isp960, boxes_to_isp960
+    cd board && python3 -m phytec_detect.isp960 fit ../runs/ispcmp   # full_*.raw / s960_*.raw
+    from phytec_detect.isp960 import to_isp960, boxes_to_isp960       # -> isp960.json here
 """
 
 import functools
@@ -79,18 +79,22 @@ def points_to_isp960(xy):
 
 def boxes_to_isp960(boxes):
     """[(cls, x0, y0, x1, y1)] in 1920x1080 pixels -> the same in the
-    960x544 picture: the box outline (corners and edge midpoints) is mapped
-    and bounded, then clipped; boxes that fall outside are dropped."""
-    out, t = [], np.linspace(0, 1, 5)
+    960x544 picture: the bounding box of the 960 pixels that show a point of
+    the box (forward map only -- exact up to the edges of the 960 view,
+    where the way back has no solution). Boxes not in view are dropped."""
+    _, src = _params()
+    grid = src[::2, ::2]  # every 2nd 960 pixel is plenty for a box
+    out = []
     for cid, x0, y0, x1, y1 in boxes:
-        xs, ys = x0 + (x1 - x0) * t, y0 + (y1 - y0) * t
-        outline = np.concatenate([np.stack([xs, np.full(5, y0)], 1), np.stack([xs, np.full(5, y1)], 1),
-                                  np.stack([np.full(5, x0), ys], 1), np.stack([np.full(5, x1), ys], 1)])
-        m = points_to_isp960(outline)
-        a0, b0 = max(m[:, 0].min(), 0), max(m[:, 1].min(), 0)
-        a1, b1 = min(m[:, 0].max(), SMALL[0] - 1), min(m[:, 1].max(), SMALL[1] - 1)
+        inside = (grid[..., 0] >= x0) & (grid[..., 0] <= x1) & \
+            (grid[..., 1] >= y0) & (grid[..., 1] <= y1)
+        ys, xs = np.nonzero(inside)
+        if len(xs) < 4:
+            continue
+        a0, a1 = xs.min() * 2.0, min(xs.max() * 2.0 + 2, SMALL[0] - 1)
+        b0, b1 = ys.min() * 2.0, min(ys.max() * 2.0 + 2, SMALL[1] - 1)
         if a1 - a0 > 4 and b1 - b0 > 4:
-            out.append((cid, a0, b0, a1, b1))
+            out.append((cid, float(a0), float(b0), float(a1), float(b1)))
     return out
 
 
