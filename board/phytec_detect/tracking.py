@@ -37,6 +37,9 @@ LIFT_BOX = 1.25       # the box must have grown too (a hand next to a product
                       # table grows the box, not the area)
 CONFIRM = 3           # consecutive frames for a lifted/put-down change
 FORGET_S = 1.5        # a never-resting track unseen this long is dropped
+AREA_EVERY_S = 0.5    # a still product's dark area is re-measured this often
+                      # (only to keep learning its resting size) -- every
+                      # frame while it could be lifted or is lifted
 TAKEN_MAX_S = 120.0   # give up on a taken product after this long (info panel closes;
                       # a guest's module that never comes back must not stay forever)
 
@@ -143,6 +146,7 @@ class Track:
         self.box = det[:4].copy()
         self.score = float(det[4])
         self.area = area
+        self.area_at = now          # when `area` was measured
         self.rest_area = None       # learnt while still
         self.rest_box = None        # where it rests
         self.rest_box_area = None   # its box area while resting (kept when lifted)
@@ -229,10 +233,20 @@ class TableTracker:
         size = max(det[2] - det[0], det[3] - det[1], 1.0)
         moved = np.linalg.norm((det[:2] + det[2:4]) / 2 - t.centre) / size
         t.box, t.score, t.seen = det[:4].copy(), float(det[4]), now
-        t.area = dark_area(gray, t.box)
         if moved > STILL:
             t.still_since = now
         ref = t.rest_area or self.class_rest.get(t.cls)
+        # Lifted needs the box grown by LIFT_BOX: while it has not grown (and
+        # the product is not lifted) the area cannot change the decision, so
+        # it is measured only now and then to keep learning the resting size.
+        box_ref = _box_area(t.rest_box) if t.rest_box is not None else t.rest_box_area
+        measure = (t.lifted or ref is None or not t.area or not box_ref
+                   or _box_area(t.box) / box_ref >= LIFT_BOX
+                   or now - t.area_at >= AREA_EVERY_S)
+        if not measure:
+            t._votes = 0  # same as the full check: not lifted, stays so
+            return
+        t.area, t.area_at = dark_area(gray, t.box), now
         plausible_rest = ref is None or t.area < LIFT_OFF * ref
         if not t.lifted and moved < STILL and plausible_rest and t.area:
             # learn what this product looks like on the table -- never from a

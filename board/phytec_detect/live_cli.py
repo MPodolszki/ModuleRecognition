@@ -194,6 +194,35 @@ class Worker:
                 self._track_job = (frame, seq, dets)
                 self._track_cond.notify_all()
 
+    def _quads(self, gray, dets):
+        """Turned outlines (module_quad) -- reused from the previous frame for
+        a product whose box and picture have not changed: a 16x16 thumbnail
+        of the box, compared to the last one, says whether anything did
+        (a hand, a shadow, a turn), and then it is measured again."""
+        cache, out, new_cache = getattr(self, "_quad_cache", []), [], []
+        for d in dets:
+            x0, y0, x1, y1 = (int(round(v)) for v in d[:4])
+            crop = gray[max(y0, 0):max(y1, 1), max(x0, 0):max(x1, 1)]
+            thumb = cv2.resize(crop, (16, 16), interpolation=cv2.INTER_AREA).astype(np.int16) \
+                if crop.size else None
+            quad = None
+            for c_box, c_cls, c_thumb, c_quad in cache:
+                if c_cls == int(d[5]) and np.abs(c_box - d[:4]).max() <= QUAD_BOX_PX \
+                        and thumb is not None and c_thumb is not None \
+                        and np.abs(thumb - c_thumb).mean() <= QUAD_THUMB_DIFF:
+                    quad = c_quad  # same product, same place, same picture
+                    thumb, box = c_thumb, c_box  # compare against when it was measured
+                    break
+            else:
+                box = d[:4].copy()
+            if quad is None:
+                quad = module_quad(gray, d)
+                box = d[:4].copy()
+            out.append(quad)
+            new_cache.append((box, int(d[5]), thumb, quad))
+        self._quad_cache = new_cache
+        return np.array(out, np.float32).reshape(-1, 4, 2)
+
     def _snapshot(self, gray, dets, quads):
         _snap_track(self, gray, dets, quads)
 
@@ -212,14 +241,17 @@ class Worker:
                 self.tracker.update(gray, dets)
                 lifted = np.array([[*t.box, t.score, t.cls] for t in self.tracker.picked()],
                                   np.float32).reshape(-1, 6)
-                quads = np.array([module_quad(gray, d) for d in dets],
-                                 np.float32).reshape(-1, 4, 2)
+                quads = self._quads(gray, dets)
                 self._snapshot(gray, dets, quads)
                 self.detector.times["track"].append(time.perf_counter() - t0)
             except Exception as error:
                 self.error = error
                 return
             self.result = (frame, dets, seq, lifted, quads)
+
+
+QUAD_BOX_PX = 2.0      # box corners moved at most this much (detection jitter)
+QUAD_THUMB_DIFF = 3.0  # mean grey-level change of the 16x16 thumbnail
 
 
 def _snap_track(worker, gray, dets, quads):
