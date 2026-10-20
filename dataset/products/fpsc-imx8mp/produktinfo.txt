@@ -1,0 +1,56 @@
+# Produktinfo für das Info-Fenster der Messe-Demo -- fpsc-imx8mp
+#
+# Eine Angabe pro Zeile:  Feld: Wert   (Zeilen mit # sind Kommentare)
+# Leere Felder bleiben im Fenster einfach weg.
+# Wo welches Feld erscheint ([1]..[13]): dataset/products/Info-Fenster_Aufbau.pdf
+# Vorschau ohne Hardware:  uv run tools/render_panel.py
+# Aufs Board:  uv run tools/product_info.py models/<modell> und tools/deploy.sh
+
+# [1] Titel (groß) und letzter Teil im Kopfbalken
+Bezeichnung: phyFLEX-i.MX8M Plus
+
+# [2] graue Zeile über dem Titel und Kopfbalken, z. B. System on Module, Development Kit
+Kategorie: System on Module
+
+# [3] orangefarbenes NEU neben der Kategorie: ja / nein
+Neu:
+
+# [4] Artikelnummer fpsc-imx8mp -- kommt aus dem Ordnernamen, nicht eintragen
+
+# [5] 1-2 Sätze unter der Artikelnummer, höchstens 3 Zeilen (ca. 270 Zeichen)
+Kurzbeschreibung:
+
+# [6] Kennzahl 1, kurz (ca. 16 Zeichen), z. B. 4 × A53 + M7
+Kerne:
+# [7] Kennzahl 2, z. B. 40 × 37 × 6
+Größe in mm:
+# [8] Kennzahl 3, z. B. -40 °C / +85 °C
+Temperatur:
+# [9] Kennzahl 4, z. B. 2035
+Verfügbar bis:
+
+# [10] Liste mit Häkchen: bis zu 8 Zeilen "Highlight:", je ca. 55 Zeichen
+Highlight:
+Highlight:
+Highlight:
+Highlight:
+Highlight:
+Highlight:
+Highlight:
+Highlight:
+
+# [11] Bild "Im Vergleich" unten links, Datei in diesem Ordner (z. B. chart.png)
+Diagramm-Datei:
+
+# [12] QR-Code "Zum Produkt" -- Produktseite auf phytec.de
+Link Produktseite:
+
+# [13] QR-Code ganz rechts -- Entwicklungskit
+Link Kit:
+Kit-Bezeichnung:
+
+# nicht angezeigt -- wie man den Namen spricht
+Aussprache (Sprachsuche):
+
+# nicht angezeigt -- nur für euch
+Bemerkung:

@@ -1,27 +1,47 @@
-# Produktinfos für die Demo-Anzeige
+# Produktinfos für das Info-Fenster der Demo
 
-`produktinfos.csv` (Excel: Datei öffnen, Trennzeichen Semikolon, UTF-8) –
-eine Zeile pro Produkt, Artikelnummer wie in `products.csv`. Leere Felder
-bleiben einfach leer.
+Jedes Produkt hat eine eigene Datei **`<Artikelnummer>/produktinfo.txt`**
+(Texteditor, UTF-8). Pro Zeile steht ein Feld, Kommentare beginnen mit `#`:
 
-| Spalte | Wofür | Beispiel |
+    Bezeichnung: phyCORE-i.MX 8M Plus
+    Highlight: 2,3 TOPS NPU für KI- und Bildverarbeitungs-Projekte
+
+Leere Felder fallen im Fenster weg. Die Nummern [1]–[13] in den Kommentaren
+zeigen, wo das Feld erscheint, siehe **`Info-Fenster_Aufbau.pdf`**:
+
+- Seite 1: Aufbau
+- Seite 2: Ansicht auf dem Monitor
+- ab Seite 3: je Produkt die Datei links, das Fenster rechts
+
+Muster mit allen Feldern: `PCM-070-0F3243I.A3/produktinfo.txt`.
+
+| Nr. | Feld | Wo |
 |---|---|---|
-| Artikelnummer | Schlüssel, wie in products.csv | PCM-070-0F3243I.A3 |
-| Bezeichnung | Titel im Info-Panel | phyCORE-i.MX8M Plus |
-| Kategorie | graue Zeile über dem Titel, Brotkrumen | System on Module |
-| Neu (ja/nein) | orangefarbenes „NEU“ | ja |
-| Kurzbeschreibung | 1–2 Sätze unter der Artikelnummer (max. 3 Zeilen, ≈ 270 Zeichen) | Leistungsfähiges System on Module mit NXP i.MX 8M Plus … |
-| Kerne / Größe in mm / Temperatur / Verfügbar bis | Kennzahlen-Zeile unter dem Titel | 4 × A53 + M7 / 40 × 37 × 6 / -40 °C / +85 °C / 2035 |
-| Highlight 1–8 | Liste mit Häkchen, je eine kurze Zeile (≤ 55 Zeichen) | NPU mit 2,3 TOPS für KI-Anwendungen |
-| Link Produktseite | QR-Code „Zum Produkt ›“ | https://www.phytec.de/produkte/system-on-modules/phycore-imx-8m-plus-plugged/ |
-| Link Kit | QR-Code ganz rechts (Entwicklungskit) | https://www.phytec.de/produkte/development-kits/phyboard-pollux-kit/ |
-| Kit-Bezeichnung | Beschriftung über dem Kit-QR-Code (leer: „Zum Kit“) | phyBOARD-Pollux Kit |
-| Diagramm-Datei | Bild im Produktordner, links neben den QR-Codes | chart.png |
-| Aussprache (Sprachsuche) | wie man den Namen spricht (für spätere Sprachsuche) | i m x acht m plus |
-| Bemerkung | nur für euch, wird nicht angezeigt | |
+| 1 | Bezeichnung | Titel, Kopfbalken |
+| 2 | Kategorie | graue Zeile über dem Titel |
+| 3 | Neu | orangefarbenes „NEU“ (ja/nein) |
+| 4 | (Artikelnummer) | aus dem Ordnernamen |
+| 5 | Kurzbeschreibung | max. 3 Zeilen, ≈ 270 Zeichen |
+| 6–9 | Kerne, Größe in mm, Temperatur, Verfügbar bis | Kennzahlen-Zeile |
+| 10 | Highlight (bis zu 8 Zeilen) | Liste mit Häkchen, ≈ 55 Zeichen |
+| 11 | Diagramm-Datei | Bild „Im Vergleich“, Datei im Produktordner |
+| 12 | Link Produktseite | QR-Code „Zum Produkt“ |
+| 13 | Link Kit, Kit-Bezeichnung | QR-Code des Kits, Aufschrift des Knopfs |
+| – | Aussprache (Sprachsuche), Bemerkung | nicht angezeigt |
 
-Ohne Highlights zeigt das Panel die Optionen aus `info.tsv` des
-Produktordners. Neue Produkte: zuerst in `products.csv` eintragen
-(fotografieren und trainieren), dann hier eine Zeile ergänzen.
-Änderungen kommen mit `tools/product_info.py <model>` bzw. dem nächsten
-Modell-Build auf das Board.
+Vorschau ohne Hardware (PDF neu erzeugen):
+
+    uv run tools/render_panel.py
+
+Auf das Board bringen:
+
+    uv run tools/product_info.py models/products_v6_n
+    tools/deploy.sh <board-ip> models/products_v6_n
+
+Für ein neues Produkt:
+
+1. in `products.csv` eintragen, fotografieren und trainieren;
+2. `uv run tools/product_info.py --vorlagen` legt die leere `produktinfo.txt` an.
+
+Die frühere Sammeltabelle liegt in `_verworfen/produktinfos.csv`. Sie wird nur
+noch für Produkte ohne `produktinfo.txt` gelesen.

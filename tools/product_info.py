@@ -11,12 +11,14 @@ Per class (article number, the model's label):
   chart    chart.png/.jpg if present, copied to <model>/charts/<article>.<ext>
            (the panel shows it next to the QR code)
 
-produktinfos.csv (one row per product, filled in by hand) comes first:
-its short description, highlights, key figures (cores, size, temperature,
+produktinfo.txt in each product folder (filled in by hand, "Feld: Wert",
+see FIELDS; written for every product by --vorlagen) comes first, an old
+produktinfos.csv row is used where a folder has none: its short description, highlights, key figures (cores, size, temperature,
 available until), category, "new" flag, product page and kit links (QR
 codes) and chart file override the per-folder files.
 
     uv run tools/product_info.py models/products_v1_n
+    uv run tools/product_info.py --vorlagen      # produktinfo.txt where missing
 """
 
 import argparse
@@ -26,6 +28,82 @@ import pathlib
 import shutil
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
+INFO_FILE = "produktinfo.txt"
+
+# (number in the layout picture, field, where it shows up in the panel);
+# number None = not shown. tools/render_panel.py draws the same numbers.
+FIELDS = [
+    (1, "Bezeichnung", "Titel (groß) und letzter Teil im Kopfbalken"),
+    (2, "Kategorie", "graue Zeile über dem Titel und Kopfbalken, z. B. System on Module, "
+                     "Development Kit"),
+    (3, "Neu", "orangefarbenes NEU neben der Kategorie: ja / nein"),
+    (4, "Artikelnummer", "unter dem Titel -- kommt aus dem Ordnernamen, nicht eintragen"),
+    (5, "Kurzbeschreibung", "1-2 Sätze unter der Artikelnummer, höchstens 3 Zeilen "
+                            "(ca. 270 Zeichen)"),
+    (6, "Kerne", "Kennzahl 1, kurz (ca. 16 Zeichen), z. B. 4 × A53 + M7"),
+    (7, "Größe in mm", "Kennzahl 2, z. B. 40 × 37 × 6"),
+    (8, "Temperatur", "Kennzahl 3, z. B. -40 °C / +85 °C"),
+    (9, "Verfügbar bis", "Kennzahl 4, z. B. 2035"),
+    (10, "Highlight", "Liste mit Häkchen: bis zu 8 Zeilen \"Highlight:\", je ca. 55 Zeichen"),
+    (11, "Diagramm-Datei", "Bild \"Im Vergleich\" unten links, Datei in diesem Ordner "
+                           "(z. B. chart.png)"),
+    (12, "Link Produktseite", "QR-Code \"Zum Produkt\" -- Produktseite auf phytec.de"),
+    (13, "Link Kit", "QR-Code ganz rechts -- Entwicklungskit"),
+    (13, "Kit-Bezeichnung", "Aufschrift des Kit-Knopfs über dem QR-Code (leer: \"Zum Kit\")"),
+    (None, "Aussprache (Sprachsuche)", "nicht angezeigt -- wie man den Namen spricht"),
+    (None, "Bemerkung", "nicht angezeigt -- nur für euch"),
+]
+
+
+def read_info_file(path):
+    """produktinfo.txt -> the same dict as a produktinfos.csv row."""
+    row, highlights = {}, []
+    for line in path.read_text(encoding="utf-8-sig").splitlines():
+        if not line.strip() or line.lstrip().startswith("#") or ":" not in line:
+            continue
+        key, value = (part.strip() for part in line.split(":", 1))
+        if key.lower().startswith("highlight"):
+            if value:
+                highlights.append(value)
+        elif key == "Neu":
+            row["Neu (ja/nein)"] = value
+        else:
+            row[key] = value
+    for i, h in enumerate(highlights[:8]):
+        row[f"Highlight {i + 1}"] = h
+    return row
+
+
+def write_info_file(path, art, row):
+    """A produktinfo.txt with every field, its place in the panel as a comment,
+    pre-filled from `row` (a produktinfos.csv row or {})."""
+    out = ["# Produktinfo für das Info-Fenster der Messe-Demo -- " + art,
+           "#",
+           "# Eine Angabe pro Zeile:  Feld: Wert   (Zeilen mit # sind Kommentare)",
+           "# Leere Felder bleiben im Fenster einfach weg.",
+           "# Wo welches Feld erscheint ([1]..[13]): dataset/products/Info-Fenster_Aufbau.pdf",
+           "# Vorschau ohne Hardware:  uv run tools/render_panel.py",
+           "# Aufs Board:  uv run tools/product_info.py models/<modell> und tools/deploy.sh",
+           ""]
+    highlights = [row[k] for k in sorted((k for k in row if k.startswith("Highlight ")),
+                                         key=lambda k: int(k.split()[-1]))]
+    for nr, field, where in FIELDS:
+        tag = f"[{nr}] " if nr else ""
+        if field == "Artikelnummer":
+            out += [f"# {tag}Artikelnummer {art} -- {where.split(' -- ')[1]}", ""]
+            continue
+        if field != "Kit-Bezeichnung":
+            out.append(f"# {tag}{where}")
+        if field == "Highlight":
+            items = [h for h in highlights if h]
+            out += [f"Highlight: {h}" for h in items] + ["Highlight:"] * (8 - len(items))
+        elif field == "Neu":
+            out.append(f"Neu: {row.get('Neu (ja/nein)', '')}".rstrip())
+        else:
+            out.append(f"{field}: {row.get(field, '')}".rstrip())
+        if field not in ("Link Kit", "Kerne", "Größe in mm", "Temperatur"):
+            out.append("")
+    path.write_text("\n".join(out), encoding="utf-8")
 
 
 def read_tsv(path):
@@ -59,6 +137,14 @@ def summarize(options, limit=12):
     return lines[:limit]
 
 
+def product_list(products_dir):
+    """Article numbers in products.csv, in order."""
+    with open(products_dir / "products.csv", newline="", encoding="utf-8") as f:
+        return [row[0].strip() for row in csv.reader(f, delimiter=";")
+                if row and row[0].strip() and row[0].strip() != "Artikelnummer"
+                and not row[0].startswith("#")]
+
+
 def build(products_dir, labels, model_dir=None):
     names = {}
     csv_path = products_dir / "products.csv"
@@ -69,6 +155,8 @@ def build(products_dir, labels, model_dir=None):
                     names[row[0].strip()] = row[1].strip() if len(row) > 1 else ""
     sheet = {}
     sheet_path = products_dir / "produktinfos.csv"
+    if not sheet_path.exists():
+        sheet_path = products_dir / "_verworfen" / "produktinfos.csv"
     if sheet_path.exists():
         with open(sheet_path, newline="", encoding="utf-8-sig") as f:
             for row in csv.DictReader(f, delimiter=";"):
@@ -86,7 +174,8 @@ def build(products_dir, labels, model_dir=None):
         link = next((l.strip() for l in link_file.read_text(encoding="utf-8").splitlines()
                      if l.strip()), "") if link_file.exists() else ""
         out[art] = {"name": names.get(art) or art, "summary": summary, "options": options}
-        row = sheet.get(art, {})
+        info_file = folder / INFO_FILE
+        row = read_info_file(info_file) if info_file.exists() else sheet.get(art, {})
         # QR codes: product page and development kit (old sheets: "Link Mehr Infos")
         links = []
         if row.get("Link Produktseite"):
@@ -101,7 +190,8 @@ def build(products_dir, labels, model_dir=None):
             out[art]["description"] = row["Kurzbeschreibung"]
         if row.get("Bezeichnung"):
             out[art]["name"] = row["Bezeichnung"]
-        highlights = [row[k] for k in sorted(row) if k.startswith("Highlight") and row[k]]
+        highlights = [row[k] for k in sorted((k for k in row if k.startswith("Highlight ")),
+                                             key=lambda k: int(k.split()[-1])) if row[k]]
         if highlights:
             out[art]["highlights"] = highlights
         facts = [(label, row.get(key, "")) for key, label in
@@ -130,9 +220,29 @@ def build(products_dir, labels, model_dir=None):
 def main():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("model_dir", help="model directory with labels.txt")
+    parser.add_argument("model_dir", nargs="?", help="model directory with labels.txt")
     parser.add_argument("--products", default=str(ROOT / "dataset" / "products"))
+    parser.add_argument("--vorlagen", action="store_true",
+                        help=f"write {INFO_FILE} into every product folder of products.csv "
+                             "that has none (pre-filled from produktinfos.csv)")
     args = parser.parse_args()
+    if args.vorlagen:
+        products = pathlib.Path(args.products)
+        sheet = {}
+        if (products / "produktinfos.csv").exists():
+            with open(products / "produktinfos.csv", newline="", encoding="utf-8-sig") as f:
+                for row in csv.DictReader(f, delimiter=";"):
+                    if (row.get("Artikelnummer") or "").strip():
+                        sheet[row["Artikelnummer"].strip()] = {
+                            k.strip(): (v or "").strip() for k, v in row.items() if k}
+        for art in product_list(products):
+            path = products / art / INFO_FILE
+            if path.parent.is_dir() and not path.exists():
+                write_info_file(path, art, sheet.get(art, {}))
+                print(f"wrote {path.relative_to(ROOT)}")
+        return
+    if not args.model_dir:
+        parser.error("model_dir is needed (or --vorlagen)")
     model_dir = pathlib.Path(args.model_dir)
     labels = [l.strip() for l in (model_dir / "labels.txt").read_text().splitlines() if l.strip()]
     info = build(pathlib.Path(args.products), labels, model_dir)

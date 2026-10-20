@@ -197,6 +197,7 @@ class Page:
         self.w, self.h = w, h
         self._fonts = {}
         self.pastes = []  # (numpy BGR(A) image, x, y): QR code, chart
+        self.marks = []   # (field, box): where each field landed, for tools/render_panel.py
         try:
             from PIL import Image, ImageDraw
         except ImportError:  # no Pillow on the board: OpenCV's own font
@@ -232,6 +233,9 @@ class Page:
             else:
                 line = test
         return lines + ([line] if line else [])
+
+    def mark(self, field, box):
+        self.marks.append((field, tuple(int(v) for v in box)))
 
     def rect(self, box, fill=None, outline=None, width=1, radius=0):
         self.draw.rounded_rectangle(box, radius=radius, fill=fill, outline=outline, width=width)
@@ -340,6 +344,8 @@ def _bottom_band(page, info, margin=32):
         x -= q.shape[0]
         page.pastes.append((q, x, page.h - margin - q.shape[0]))
         bw, bh = q.shape[0], 46
+        page.mark("Link Produktseite" if label == "Zum Produkt" else "Link Kit",
+                  (x, y_img - bh - 16, x + bw, page.h - margin))
         page.rect((x, y_img - bh - 16, x + bw, y_img - 16), fill=PETROL, radius=4)
         fs = 19
         while page.width(label + "  \u203a", fs, "Medium") > bw - 16 and fs > 12:
@@ -358,6 +364,7 @@ def _bottom_band(page, info, margin=32):
             ch, cw = chart.shape[:2]
             page.pastes.append((chart, right - cw, page.h - margin - ch))
             page.text(right - cw, top - 6, "Im Vergleich", 20, "Medium")
+            page.mark("Diagramm-Datei", (right - cw, top - 6, right, page.h - margin))
     return top - 24
 
 
@@ -371,19 +378,28 @@ def _render_single(page, art, info):
     kicker = "PHYTEC " + (info.get("category") or
                           ("System on Module" if _family(name) != "Produkte" else "Produkt"))
     page.text(x, y, kicker, 18, fill=MUTED)
+    page.mark("Kategorie", (x, y - 2, x + page.width(kicker, 18), y + 24))
     if info.get("new"):  # orange "NEU" tag as on phytec.de
         tx = x + page.width(kicker, 18) + 14
         page.rect((tx, y - 2, tx + 52, y + 24), outline=ORANGE, width=2, radius=3)
         page.text(tx + 9, y, "NEU", 17, "Medium", fill=ORANGE)
+        page.mark("Neu", (tx, y - 2, tx + 52, y + 24))
     y += 30
+    y_title = y
     for line in page.wrap(name, w - 2 * x, 46, "Bold"):
         page.text(x, y, line, 46, "Bold")
         y += 58
+    page.mark("Bezeichnung", (x, y_title, x + max(page.width(l, 46, "Bold") for l in
+                                                   page.wrap(name, w - 2 * x, 46, "Bold")), y - 4))
     page.text(x, y + 2, f"Artikelnummer {art}", 20, fill=MUTED)
+    page.mark("Artikelnummer", (x, y, x + page.width(f"Artikelnummer {art}", 20), y + 28))
     y += 40
+    y_desc = y
     for line in page.wrap(info.get("description", ""), w - 2 * x, 19)[:3]:
         page.text(x, y, line, 19, fill=INK)
         y += 26
+    if y > y_desc:
+        page.mark("Kurzbeschreibung", (x, y_desc - 2, w - x, y))
     y += 6
     facts = info.get("facts") or []
     if facts:  # key figures row, as under the title on phytec.de
@@ -395,6 +411,7 @@ def _render_single(page, art, info):
                 page.draw.line([(fx - 10, y + 12), (fx - 10, y + 70)], fill=RULE, width=1)
             page.text(fx, y + 14, label, 16, fill=MUTED)
             page.text(fx, y + 38, value, 22, "Medium", fill=PETROL)
+            page.mark(label, (fx, y + 10, fx + cw - 20, y + 70))
         y += 84
         page.draw.line([(x, y), (w - x, y)], fill=RULE, width=1)
         y += 22
@@ -402,6 +419,7 @@ def _render_single(page, art, info):
         y += 8
     page.text(x, y, "Highlights", 28, "Bold")
     y += 48
+    y_high = y
     if not _option_lines(info):
         page.text(x, y, "Produktdaten folgen.", 20, fill=MUTED)
     for label, value in _option_lines(info):
@@ -416,6 +434,8 @@ def _render_single(page, art, info):
             page.text(x + 34, y, line, 17, fill=MUTED)
             y += 24
         y += 10
+    if info.get("highlights"):
+        page.mark("Highlight 1-8", (x, y_high - 4, w - x, y - 8))
 
 
 def _render_compare(page, a, b):
