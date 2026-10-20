@@ -43,7 +43,7 @@ from .postprocess import Smoother, draw, module_quad
 from . import style
 from .search import SearchState
 from .tiling import Tiler, find_image_circle
-from .tracking import TableTracker
+from .tracking import TableTracker, _iou
 
 DEFAULT_MODEL_DIR = "/usr/share/phytec-detect/model"
 DEFAULT_CALIB = "/etc/phytec-detect/plane_map.json"
@@ -222,22 +222,21 @@ class Worker:
             self.result = (frame, dets, seq, lifted, quads)
 
 
-SNAP_EVERY_S = 2.0
-
-
 def _snap_track(worker, gray, dets, quads):
-    """Keep the last still picture of every resting product (at most every
-    SNAP_EVERY_S): when it is picked up, the info panel shows how it lay on
-    the table instead of the reference photo."""
-    now = time.monotonic()
+    """One still picture per resting product, taken once when it has come
+    to rest (again only after it was moved or turned): when it is picked
+    up, the info panel shows how it lay on the table instead of the
+    reference photo."""
     for t in worker.tracker.tracks:
-        if t.resting and t.seen == worker.tracker.last_update and \
-                now - getattr(t, "snap_at", 0.0) >= SNAP_EVERY_S:
-            j = next((j for j, d in enumerate(dets)
-                      if int(d[5]) == t.cls and np.allclose(d[:4], t.box)), None)
-            if j is not None:
-                t.snap = straight_crop(gray, quads[j])
-                t.snap_at = now
+        if not t.resting or t.seen != worker.tracker.last_update:
+            continue
+        old = getattr(t, "snap_box", None)
+        if old is not None and _iou(old, t.rest_box) >= 0.9:
+            continue  # already taken here
+        j = next((j for j, d in enumerate(dets)
+                  if int(d[5]) == t.cls and np.allclose(d[:4], t.box)), None)
+        if j is not None:
+            t.snap, t.snap_box = straight_crop(gray, quads[j]), t.rest_box.copy()
     worker.snaps = {t.cls: t.snap for t in worker.tracker.picked()
                     if getattr(t, "snap", None) is not None}
 
