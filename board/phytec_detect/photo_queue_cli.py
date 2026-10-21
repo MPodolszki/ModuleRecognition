@@ -14,6 +14,10 @@ has to stay at the table. With everything done the queue keeps watching
 the list (--once: it ends). A product with capture/<Artikelnummer>/SKIP
 is left out. Stopping the queue stops the current product;
 run it again to go on where it stopped.
+
+--round 2 (3, ...) photographs the list again, e.g. the products the demo
+recognises badly (quality/nachtrainieren.csv): its own marker DONE_R2, the
+new pictures numbered on after the earlier ones.
 """
 
 import argparse
@@ -33,13 +37,18 @@ def main(argv=None):
     parser.add_argument("--csv", default="/var/lib/phytec-detect/products.csv")
     parser.add_argument("--out", default=CAPTURE)
     parser.add_argument("--raw", action="store_true", help="raw path instead of the ISP")
+    parser.add_argument("--round", type=int, default=1,
+                        help="2, 3, ...: photograph the products again (marker DONE_R<n>)")
     parser.add_argument("--once", action="store_true",
                         help="end when the list is done instead of waiting for new rows")
     args = parser.parse_args(argv)
 
+    done_marker = "DONE" if args.round == 1 else f"DONE_R{args.round}"
+
     def todo():  # re-read every time: the list may grow while the queue runs
         return [(a, n) for a, n in read_products(args.csv)
-                if not any(os.path.exists(os.path.join(args.out, a, m)) for m in ("DONE", "SKIP"))]
+                if not any(os.path.exists(os.path.join(args.out, a, m))
+                           for m in (done_marker, "SKIP"))]
 
     previous, waiting = "", False
     while True:
@@ -60,11 +69,19 @@ def main(argv=None):
         folder = os.path.join(args.out, article)
         shots = len([f for f in os.listdir(folder) if f.endswith(".jpg")]) \
             if os.path.isdir(folder) else 0
+        if args.round > 1:  # only this round's pictures count for going on
+            start_file = os.path.join(folder, f"R{args.round}_START")
+            if not os.path.exists(start_file):
+                os.makedirs(folder, exist_ok=True)
+                with open(start_file, "w") as f:
+                    f.write(str(shots))
+            with open(start_file) as f:
+                shots -= int(f.read().strip() or 0)
         # interrupted after the reference shot: go on where it stopped
         resume = ["--start", str(shots + 1)] if shots >= 1 else []
         rc = photo_cli.main(["--article", article, "--name", name, "--intro", "4",
                              "--wait-start", "--previous", previous, "--list-csv", args.csv,
-                             "--out", args.out] + resume
+                             "--out", args.out, "--done-marker", done_marker] + resume
                             + ([] if args.raw else ["--isp"]))
         if rc != 0:
             print("stopped", flush=True)

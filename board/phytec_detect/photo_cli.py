@@ -200,8 +200,9 @@ class ProductList:
     """The product list beside the camera picture, re-read every few seconds
     (products.csv may change while the queue runs): done, current, to do."""
 
-    def __init__(self, csv, capture, current, every=5.0):
+    def __init__(self, csv, capture, current, every=5.0, done_marker="DONE"):
         self.csv, self.capture, self.current, self.every = csv, capture, current, every
+        self.done_marker = done_marker
         self.rows, self.done, self._t = [], set(), -1e9
         self._out = None  # screen buffer, list drawn into it on refresh only
 
@@ -242,7 +243,7 @@ class ProductList:
             self._t = time.monotonic()
             self.rows = read_products(self.csv)
             self.done = {a for a, _ in self.rows
-                         if os.path.exists(os.path.join(self.capture, a, "DONE"))}
+                         if os.path.exists(os.path.join(self.capture, a, self.done_marker))}
             self.skipped = {a for a, _ in self.rows
                             if os.path.exists(os.path.join(self.capture, a, "SKIP"))}
             self._draw_list()
@@ -284,6 +285,9 @@ def main(argv=None):
     parser.add_argument("--list-csv", default=None,
                         help="show this products.csv on the right, with what is done "
                              "(phytec-photo-queue)")
+    parser.add_argument("--done-marker", default="DONE",
+                        help="file written when the plan is finished (phytec-photo-queue "
+                             "--round 2: DONE_R2)")
     parser.add_argument("--dry-run", action="store_true",
                         help="show the whole procedure without saving anything, over and "
                              "over (trade fair: phytec-trial)")
@@ -338,7 +342,8 @@ def main(argv=None):
     shot = done
     intro_until = time.monotonic() + args.intro
     intro_text = None
-    plist = ProductList(args.list_csv, args.out, args.article) if args.list_csv else None
+    plist = ProductList(args.list_csv, args.out, args.article,
+                        done_marker=args.done_marker) if args.list_csv else None
     finished = False
     try:
         while not stop.is_set() and step < len(plan):
@@ -508,7 +513,7 @@ def main(argv=None):
             screen.show(view)
         if step >= len(plan):
             print(f"done: {shot - done} new pictures in {out_dir}", flush=True)
-            with open(os.path.join(out_dir, "DONE"), "w") as f:  # phytec-photo-queue
+            with open(os.path.join(out_dir, args.done_marker), "w") as f:  # phytec-photo-queue
                 f.write(time.strftime("%Y-%m-%d %H:%M:%S\n"))
             finished = True
     finally:
