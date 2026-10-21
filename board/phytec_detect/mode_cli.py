@@ -16,6 +16,12 @@ are GPIO lines, set in /etc/default/phytec-mode:
     PHYTEC_MODE_TRAINING_GPIO="gpiochip3 6"
     PHYTEC_MODE_BIAS=pull-up                  # pull-up / pull-down / disabled
     PHYTEC_MODE_ACTIVE_LOW=1                  # button pulls the line to GND
+    PHYTEC_MODE_PAD_PULLUP="0x3033043C 0x3033047C"  # i.MX8MP pad registers
+The i.MX8MP GPIO driver ignores the bias asked for by libgpiod; where the
+device tree leaves a button's pad on pull-down (0x106 on the phyVIP's
+GPIO1/GPIO2: SPDIF_EXT_CLK, I2C4_SDA), PHYTEC_MODE_PAD_PULLUP lists the
+pads' IOMUXC SW_PAD_CTL registers, and the pull is switched to up at start
+(only the pull bits; the device tree overlay would be the clean way).
 
 Without them the service waits (and says so) -- switching by hand works
 anyway.
@@ -43,6 +49,28 @@ def switch(mode):
         return
     print(f"-> {mode} ({unit})", flush=True)
     subprocess.run(["systemctl", "start", "--no-block", unit], check=False)
+
+
+PAD_PE, PAD_PUE = 1 << 8, 1 << 6  # i.MX8MP SW_PAD_CTL: pull enable, pull up
+
+
+def pad_pullup(addresses):
+    """Set pull-up (enable + up) in i.MX8MP pad control registers, leaving
+    the other bits (drive strength, hysteresis, ...) as they are."""
+    import mmap
+    import struct
+    fd = os.open("/dev/mem", os.O_RDWR | os.O_SYNC)
+    try:
+        for addr in addresses:
+            base, off = addr & ~0xFFF, addr & 0xFFF
+            m = mmap.mmap(fd, 4096, mmap.MAP_SHARED, mmap.PROT_READ | mmap.PROT_WRITE, offset=base)
+            old = struct.unpack_from("<I", m, off)[0]
+            struct.pack_into("<I", m, off, old | PAD_PE | PAD_PUE)
+            print(f"pad 0x{addr:08X}: 0x{old:X} -> 0x{old | PAD_PE | PAD_PUE:X} (pull-up)",
+                  flush=True)
+            m.close()
+    finally:
+        os.close(fd)
 
 
 def watch(mode, spec, bias, active_low, lock, last):
@@ -73,6 +101,12 @@ def main(argv=None):
             sys.exit(f"usage: phytec-mode [{'|'.join(UNITS)}]")
         switch(argv[0])
         return 0
+    pads = os.environ.get("PHYTEC_MODE_PAD_PULLUP", "").split()
+    if pads:
+        try:
+            pad_pullup([int(a, 0) for a in pads])
+        except OSError as error:
+            print(f"pad pull-up failed: {error}", flush=True)
     bias = os.environ.get("PHYTEC_MODE_BIAS", "pull-up")
     active_low = os.environ.get("PHYTEC_MODE_ACTIVE_LOW", "1") not in ("0", "", "no")
     lock, last, threads = threading.Lock(), [0.0], []
