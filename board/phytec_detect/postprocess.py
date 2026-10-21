@@ -176,15 +176,17 @@ def module_quad(gray, box, margin=0.15):
     return (cv2.boxPoints(rect) * step + [cx0, cy0]).astype(np.float32)
 
 
-def draw(image, dets, labels, quads=None, phytec=False):
+def draw(image, dets, labels, quads=None, phytec=False, warn_below=None):
     """Draw image-space detections onto a BGR or BGRx frame, in place.
     labels=None draws the frames only; quads (N, 4, 2) draws turned frames
     (module_quad) instead of the boxes. phytec=True: petrol frames and name
-    tags in the phytec.de look (style.py) instead of a colour per class."""
+    tags in the phytec.de look (style.py) instead of a colour per class;
+    warn_below: frames and tags of detections below this score in orange."""
     for i, (x1, y1, x2, y2, score, class_id) in enumerate(dets):
         p1, p2 = (int(x1), int(y1)), (int(x2), int(y2))
-        color = (style.PETROL if phytec else id_to_color(class_id)) + \
-            ((255,) if image.shape[2] == 4 else ())
+        weak = warn_below is not None and score < warn_below
+        base = (style.ORANGE if weak else style.PETROL) if phytec else id_to_color(class_id)
+        color = base + ((255,) if image.shape[2] == 4 else ())
         if quads is not None:
             q = np.round(quads[i]).astype(np.int32)
             cv2.polylines(image, [q], True, color, 3, cv2.LINE_AA)
@@ -195,7 +197,7 @@ def draw(image, dets, labels, quads=None, phytec=False):
             continue
         if phytec:
             style.tag(image, p1[0], p1[1] - 2, labels[int(class_id)],
-                      value=f"{score * 100:.0f} %")
+                      value=f"{score * 100:.0f} %", bg=style.ORANGE if weak else style.PETROL)
             continue
         text = f"{labels[int(class_id)]} {score * 100:.0f}%"
         font, fscale, thick = cv2.FONT_HERSHEY_SIMPLEX, 0.8, 2

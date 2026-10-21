@@ -511,6 +511,8 @@ def main(argv=None):
     parser.add_argument("--remote", metavar="HOST[:PORT]",
                         help="for -b remote: the board running "
                              "'python3 -m phytec_detect.remote serve' (its accelerator, our camera)")
+    parser.add_argument("--warn-below", type=float, default=0.9,
+                        help="frame and tag in orange below this score (0 = off)")
     parser.add_argument("--quality-dir", default="/var/lib/phytec-detect/quality",
                         help="record unsure / confused detections there (quality.py), "
                              "'' = off")
@@ -801,7 +803,7 @@ def main(argv=None):
                             np.round(lifted).astype(np.int32).tobytes()))
                 draw(half, dets, display_labels(worker.detector.labels, products)
                      if args.box_labels else None, None if args.axis_boxes else quads,
-                     phytec=True)
+                     phytec=True, warn_below=args.warn_below or None)
                 t_ = tick("draw frames", t_)
                 for x0, y0, x1, y1, _, _ in lifted:  # lifted: thick orange frame
                     cv2.rectangle(half, (int(x0) - 4, int(y0) - 4), (int(x1) + 4, int(y1) + 4),
