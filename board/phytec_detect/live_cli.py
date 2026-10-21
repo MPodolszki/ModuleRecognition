@@ -812,9 +812,9 @@ def main(argv=None):
                     if cls not in zone_classes and cls not in snaps and \
                             cls not in panel.shown():  # (not on one missed frame)
                         panel.set_live(cls, None)
-                for cls, snap in snaps.items():
-                    if cls not in zone_classes and panel.picture_of(cls) is not snap:
-                        panel.set_live(cls, snap, tag="AUFGENOMMEN")
+                for cls, still in snaps.items():  # (not `snap`: that is the USR1 event)
+                    if cls not in zone_classes and panel.picture_of(cls) is not still:
+                        panel.set_live(cls, still, tag="AUFGENOMMEN")
                 panel.update([int(c) for c in primary[3][:, 5]] if primary else [], zone_classes)
                 t_ = tick("panel update", t_)
                 panel.compose(canvas, intact=keep_from is not None)
