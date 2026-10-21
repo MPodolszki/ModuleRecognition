@@ -163,7 +163,7 @@ class App:
                       line, boxes, place)
             if mine and held >= self.args.hold:
                 return frame, dets
-            if now - t_start > self.args.give_up:
+            if self.args.give_up > 0 and now - t_start > self.args.give_up:
                 return None, None
         return None, None
 
@@ -274,8 +274,9 @@ def main(argv=None):
     parser.add_argument("--hold", type=float, default=1.0, help="seconds still before judging")
     parser.add_argument("--shots", type=int, default=3, help="pictures per weak place")
     parser.add_argument("--places", type=int, default=len(PLACES), help="first N places")
-    parser.add_argument("--give-up", type=float, default=90.0,
-                        help="seconds without the reference recognising the product: next place")
+    parser.add_argument("--give-up", type=float, default=0.0,
+                        help="seconds without the reference recognising the product, then the "
+                             "next place (default 0: never -- it waits for the right product)")
     parser.add_argument("--source", default="csi1")
     parser.add_argument("--out", default=OUT)
     args = parser.parse_args(argv)
