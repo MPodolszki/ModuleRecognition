@@ -10,7 +10,7 @@ WorkingDirectory=/tmp
 Environment=XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0
 Environment=PYTHONPATH=/opt/phytec-detect PYTHONUNBUFFERED=1
 # Backends/models/threshold, overridable without touching this file.
-Environment="PHYTEC_DETECT_ARGS=-b hailo -m /opt/phytec-detect/models/products_v6_n -c 0.5 --tile-scale 0 --box-labels --isp"
+Environment="PHYTEC_DETECT_ARGS=-b hailo -m /opt/phytec-detect/models/products_v8_n -c 0.5 --tile-scale 0 --box-labels --isp"
 EnvironmentFile=-/etc/default/phytec-detect
 ExecStartPre=/bin/sh -c 'for i in $(seq 60); do [ -S /run/user/1000/wayland-0 ] && exit 0; sleep 1; done; exit 1'
 # Give the previous run's Hailo/Whisper DMA memory (CMA) time to come back:
