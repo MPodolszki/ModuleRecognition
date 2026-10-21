@@ -5,7 +5,7 @@
 for try in 1 2 3 4 5; do
     missing=0
     for dev in /sys/bus/i2c/devices/*; do
-        [ "$(cat "$dev/name" 2>/dev/null)" = ds90ub960 ] || continue
+        case "$(cat "$dev/name" 2>/dev/null)" in ds90ub9*) ;; *) continue ;; esac  # ds90ub954-q1 too
         [ -e "$dev/driver" ] && continue
         missing=1
         echo "binding $(basename "$dev") (try $try)"
