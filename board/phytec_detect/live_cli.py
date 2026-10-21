@@ -511,6 +511,9 @@ def main(argv=None):
     parser.add_argument("--remote", metavar="HOST[:PORT]",
                         help="for -b remote: the board running "
                              "'python3 -m phytec_detect.remote serve' (its accelerator, our camera)")
+    parser.add_argument("--quality-dir", default="/var/lib/phytec-detect/quality",
+                        help="record unsure / confused detections there (quality.py), "
+                             "'' = off")
     parser.add_argument("--isp-width", type=int, default=0,
                         help="with --isp: the ISP scales the detection picture to this width, "
                              "e.g. 960 (~52 ms less CPU per frame, own calibration "
@@ -647,6 +650,14 @@ def main(argv=None):
     screen_tries = 0
     frames, shown_seq, last_draw, last_state = 0, -1, 0.0, None
     sig, last_sig = [], None
+    quality, quality_result = None, None
+    if args.quality_dir and workers[0].smoother is not None:
+        try:
+            from .quality import QualityRecorder
+            quality = QualityRecorder(args.quality_dir, workers[0].detector.labels,
+                                      {a: p.get("name", a) for a, p in products.items()})
+        except OSError as error:
+            print(f"quality recorder off: {error}", flush=True)
     timing = os.environ.get("PHYTEC_DETECT_TIMING") == "1"
     tsum = {}
 
@@ -744,6 +755,9 @@ def main(argv=None):
                     style.header(half, f"{NAMES[worker.detector.backend_name]} startet \u2026")
                     continue
                 dets, lifted, quads = result[1], result[3], result[4]
+                if i == 0 and quality is not None and result is not quality_result:
+                    quality_result = result  # once per detection result
+                    quality.observe(result[0], worker.smoother.spots)
                 wanted = search.poll()  # "Wo ist der i.MX6?": only those, else all
                 if search.resets != resets:  # "Reset": forget the table, start afresh
                     resets = search.resets
