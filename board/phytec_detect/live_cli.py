@@ -528,7 +528,7 @@ def main(argv=None):
     parser.add_argument("--remote", metavar="HOST[:PORT]",
                         help="for -b remote: the board running "
                              "'python3 -m phytec_detect.remote serve' (its accelerator, our camera)")
-    parser.add_argument("--warn-below", type=float, default=0.9,
+    parser.add_argument("--warn-below", type=float, default=0.8,
                         help="frame and tag in orange below this score (0 = off)")
     parser.add_argument("--quality-dir", default="/var/lib/phytec-detect/quality",
                         help="record unsure / confused detections there (quality.py), "
