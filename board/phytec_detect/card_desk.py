@@ -5,8 +5,9 @@ Whenever the zone's part of the detection picture has changed and then
 lain still for HOLD_S, it goes to the card reader (phytec_detect.ocr) in a
 thread of its own, the detected products blanked out -- independent of
 the detector, which may miss a product the card half hides. An unchanged
-zone is not read again. The name stays until the zone has changed and
-settled again without that card; then the next visitor.
+zone is not read again. The name goes when the card or the product is
+taken out (a patch of the zone differs from the picture it was read in)
+or after SHOW_S at the latest; the same card lying on is not greeted again.
 
 Every visit with a name is saved in LEADS_DIR: the zone picture (JPEG)
 and a line in leads.csv (time; first name; surname; article; product;
@@ -25,6 +26,8 @@ import numpy as np
 HOLD_S = 1.0               # still for this long: read
 MOVED, CHANGED = 4.0, 8.0  # mean grey difference (0..255) of the zone, 64 x 64
 RETRIES, RETRY_S = 3, 3.0  # no name: read the still zone again (exposure settling, a hand)
+SHOW_S = 30.0              # the banner at most this long
+TAKEN = 0.03               # this share of the zone changed by > 25 grey levels: taken out
 LEADS_DIR = "/var/lib/phytec-detect/leads"
 
 
@@ -39,6 +42,8 @@ class CardDesk:
         self._read_small, self._name_small = None, None
         self._busy = False
         self._tries, self._last_read = 0, 0.0
+        self._shown_at = 0.0
+        self._greeted = None      # greeted, card not taken away since
         self._classes = ()
         self._name_classes = ()
 
@@ -69,12 +74,17 @@ class CardDesk:
         self._prev = small
         if len(products):
             self._classes = tuple(sorted({int(c) for c in products[:, 5]}))
+        if self.name is not None and (
+                now - self._shown_at > SHOW_S or
+                (self._name_small is not None
+                 and (np.abs(small - self._name_small) > 25).mean() > TAKEN)):
+            # card or product taken out (even while the hand is still there),
+            # or shown long enough: this picture is done, no new greeting
+            self.name, self._name_small = None, None
+            self._tries = RETRIES
+            self.version += 1
         if now - self._still_since < HOLD_S:
             return
-        if self.name is not None and self._name_small is not None \
-                and np.abs(small - self._name_small).mean() > CHANGED:
-            self.name, self._name_small = None, None  # card gone: next visitor
-            self.version += 1
         if self._busy or self.reader is None:
             return
         if self._read_small is not None and np.abs(small - self._read_small).mean() <= MOVED:
@@ -101,13 +111,17 @@ class CardDesk:
             name = name_from(lines)
             print(f"card: {name or 'no name'} in {time.perf_counter() - t:.1f} s "
                   f"({' | '.join(t for t, _ in lines)})", flush=True)
-            if name and name != self.name:
+            if not name:
+                self._greeted = None  # zone without a card: the next one is greeted
+            elif name == self._greeted:
+                pass  # still that card (only the product taken, or after SHOW_S)
+            elif name != self.name:
+                self._greeted = name
                 self.name, self._name_small = name, small
                 self._name_classes = self._classes
+                self._shown_at = time.monotonic()
                 self.version += 1
                 self._save(crop, name, self._classes, lines)
-            elif name:
-                self._name_small = small
         except Exception as error:  # noqa: BLE001
             print(f"card reader: {type(error).__name__}: {error}", flush=True)
         finally:
