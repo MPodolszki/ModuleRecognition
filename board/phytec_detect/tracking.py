@@ -19,6 +19,12 @@ its spot, or another product of the same class settling down anywhere --
 or a product of another class settling where the taken one was last seen
 (look-alikes like AM62x and AM62x DSC swap class when put down).
 Short detection dropouts do nothing, because the spot is not empty then.
+
+On top, an inventory: when each class was last detected anywhere on the
+table. A taken product whose class is still (or again) detected somewhere
+is on the table -- slid aside, or its spot misjudged -- and is dropped at
+once; taken counts only once the class has been missing for ABSENT_S. (The
+demo has one product of each kind; of two alike, taking one goes unseen.)
 """
 
 import time
@@ -45,6 +51,7 @@ PICKED_MAX_S = 30.0   # a lifted or taken product is forgotten after this long, 
                       # module slid out of detection or never brought back -- a
                       # clean table again; one still lying there starts afresh
 TAKEN_MAX_S = 120.0   # a resting product unseen this long is dropped
+ABSENT_S = 1.0        # a class detected nowhere this long: may be taken
 
 
 def dark_area(gray, box):
@@ -181,11 +188,19 @@ class TableTracker:
         self.last_update = None
         self.tracks = []
         self.class_rest = {}   # cls -> median resting area of that class
+        self.class_seen = {}   # cls -> when last detected anywhere (the table inventory)
 
     def update(self, gray, dets, now=None):
         """Feed one frame's detections (pixels of `gray`); returns the tracks."""
         now = time.monotonic() if now is None else now
         self.last_update = now
+        for c in {int(c) for c in dets[:, 5]}:
+            self.class_seen[c] = now
+        # on the table after all: a taken product whose class is detected
+        for t in [t for t in self.tracks if t.taken and self.class_seen.get(t.cls) == now]:
+            print(f"track {t.id} class {t.cls}: on the table again (detected), not taken",
+                  flush=True)
+            self.tracks.remove(t)
         live = [t for t in self.tracks if not t.taken]
         pairs = sorted(((_iou(t.box, dets[j, :4]), i, j)
                         for i, t in enumerate(live) for j in range(len(dets))
@@ -209,9 +224,15 @@ class TableTracker:
                 t.empty_since = None  # still there, or covered by an arm: wait
             elif t.empty_since is None:
                 t.empty_since = now
-            elif now - t.empty_since >= EMPTY_S:
+            elif now - t.empty_since >= EMPTY_S and \
+                    now - self.class_seen.get(t.cls, -1e9) >= ABSENT_S:
                 t.taken, t.lifted = True, False
                 t.picked_at = t.picked_at or now
+                inner = _region_stats(gray, t.rest_box, None, -0.1)
+                ring = table_ring(gray, t.rest_box)
+                print(f"track {t.id} class {t.cls}: TAKEN (unseen {now - t.seen:.1f} s, spot "
+                      f"inner {inner} ring {ring} ref {t.ring}, box "
+                      f"{[int(v) for v in t.rest_box]})", flush=True)
         # Keep: taken products (for a while), resting products (a resting one
         # whose spot is not empty is just covered or missed), and recent ones;
         # nothing picked longer than PICKED_MAX_S.
@@ -275,6 +296,9 @@ class TableTracker:
             t._votes += 1
             if t._votes >= CONFIRM:
                 t.lifted, t._votes = want, 0
+                print(f"track {t.id} class {t.cls}: {'LIFTED' if want else 'put down'} "
+                      f"(area x{ratio:.2f}, box x{box_ratio:.2f}, score {t.score:.2f}, box "
+                      f"{[int(v) for v in t.box]})", flush=True)
                 t.picked_at = now if want else None
                 if not want:
                     # put down: wait until it rests again; settling then is
