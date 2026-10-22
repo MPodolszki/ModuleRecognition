@@ -34,6 +34,7 @@ import cv2
 import numpy as np
 
 from .backends import BACKENDS, NAMES
+from .card_desk import zone_in_picture
 from .calib import PlaneMap, frame_to_sensor, sensor_to_frame
 from .camera import (Camera, OverlayScreen, Screen, die, find_sensor, isp_size,
                      screen_size, to_bgrx)
@@ -355,7 +356,7 @@ def load_products(model_dirs):
 
 
 def zone_rect(text, width, height):
-    """'0.74,0.6,0.98,0.96' -> screen pixels (x0, y0, x1, y1); 'off' -> None."""
+    """'0.02,0.6,0.26,0.96' -> screen pixels (x0, y0, x1, y1); 'off' -> None."""
     if not text or text == "off":
         return None
     x0, y0, x1, y1 = (float(v) for v in text.split(","))
@@ -410,6 +411,20 @@ def draw_zone(canvas, zone, busy, color=style.ORANGE,
 
 
 CARD_ZONE_TEXT = ("Produkt + Visitenkarte hier ablegen", "Erkannt")
+
+
+def draw_banner(canvas, name, fraction):
+    """'Thank you <name>' in PHYTEC petrol across the top of the info panel."""
+    w = canvas.shape[1]
+    x0 = w - int(w * fraction)
+    first = style.text_patch(f"Thank you {name[0]} {name[1]}", 36, "Bold", pad=(28, 0))
+    second = style.text_patch("We will contact you shortly.", 26, "Regular", pad=(28, 0))
+    h = 22 + first.shape[0] + 6 + second.shape[0] + 22
+    y0 = style.HEADER_H
+    cv2.rectangle(canvas, (x0, y0), (w - 1, y0 + h), style.PETROL + (255,), -1)
+    cv2.rectangle(canvas, (x0, y0 + h - 4), (w - 1, y0 + h), style.WHITE + (255,), -1)
+    style.blit(canvas, first, x0, y0 + 22)
+    style.blit(canvas, second, x0, y0 + 22 + first.shape[0] + 6)
 
 
 def display_labels(labels, products):
@@ -524,12 +539,16 @@ def main(argv=None):
                              "plane_map_isp_w960.json). Off by default until a model is "
                              "trained on ISP-scaled pictures: products_v6_n (CPU-scaled "
                              "training) lost confidence on some boards with it")
-    parser.add_argument("--zone", default="0.74,0.6,0.98,0.96",
+    parser.add_argument("--zone", default="0.02,0.6,0.26,0.96",
                         help="drop zone x0,y0,x1,y1 as fractions of the screen (a product laid "
                              "there shows its info at once, with its live picture), 'off' = none")
-    parser.add_argument("--card-zone", default="0.74,0.12,0.98,0.48",
+    parser.add_argument("--card-zone", default="0.02,0.12,0.26,0.48",
                         help="card zone x0,y0,x1,y1 as fractions of the screen (blue: a product "
                              "and a business card laid there), 'off' = none")
+    parser.add_argument("--ocr-models", default="/opt/phytec-detect/models/ocr",
+                        help="business card reader models (phytec_detect.ocr) for the card zone")
+    parser.add_argument("--leads-dir", default="/var/lib/phytec-detect/leads",
+                        help="where the card zone saves the visitors' names and cards")
     parser.add_argument("--no-panel", action="store_true",
                         help="never slide in product info (products.json) for lifted products")
     parser.add_argument("-n", "--frames", type=int, help="stop after N screen frames")
@@ -652,7 +671,8 @@ def main(argv=None):
     search = SearchState([(l, products.get(l, {}).get("name") or l) for l in labels])
     resets = 0
     canvas = panel = None
-    zone = card_zone = None
+    zone = card_zone = card_region = cards = None
+    banner_seen = None
     zone_classes, live_result = [], None
     screen_tries = 0
     frames, shown_seq, last_draw, last_state = 0, -1, 0.0, None
@@ -713,7 +733,8 @@ def main(argv=None):
                 state = (tuple(id(w.result) for w in workers),
                          panel is not None and panel.moving(),
                          listener is not None and time.monotonic() < listener.awake_until,
-                         search.text, int(time.monotonic()))  # and once a second anyway
+                         search.text, int(time.monotonic()),  # and once a second anyway
+                         cards.version if cards is not None else 0)
                 if state == last_state:
                     time.sleep(0.005)  # nothing new: wait, do not spin (it held a
                     continue           # core and the GIL the detector threads need)
@@ -746,9 +767,17 @@ def main(argv=None):
                 panel = None if args.no_panel else InfoPanel(products, workers[0].detector.labels)
                 zone = zone_rect(args.zone, w_, canvas.shape[0])
                 card_zone = zone_rect(args.card_zone, w_, canvas.shape[0])
+                if card_zone is not None and os.path.isdir(args.ocr_models):
+                    from .card_desk import CardDesk
+                    cards = CardDesk(workers[0].detector.labels,
+                                     {a: p.get("name", a) for a, p in products.items()},
+                                     args.ocr_models, args.leads_dir)
             # panel fully in and unchanged: its half of the layer stays as it is
+            banner = cards.banner() if cards is not None else None
             keep_from = panel.static_from(canvas.shape[1]) \
-                if panel is not None and base is None and len(workers) == 1 else None
+                if panel is not None and base is None and len(workers) == 1 \
+                and banner == banner_seen else None  # a new banner: the panel again
+            banner_seen = banner
             for i, worker in enumerate(workers):
                 if view_geo is not None and i > 0:
                     continue  # one live picture: frames of the first backend only
@@ -779,6 +808,7 @@ def main(argv=None):
                     dets, quads = dets[keep], quads[keep]
                     lifted = lifted[np.isin(lifted[:, 5].astype(int), list(wanted))]
                 det_quads = quads  # detection-camera outlines (before mapping to the view)
+                det_dets = dets
                 t_ = tick("search/reset", t_)
                 if view_source is None and view_geo is None:
                     dets, lifted = dets.copy(), lifted.copy()
@@ -808,6 +838,24 @@ def main(argv=None):
                         draw_zone(half, zone, bool(inside))
                     if card_zone is not None:
                         draw_zone(half, card_zone, bool(in_card), style.BLUE, CARD_ZONE_TEXT)
+                    if cards is not None and result[0] is not None:
+                        if card_region is None:  # the zone in the detection picture, once
+                            if view_source is None and view_geo is None:
+                                def to_screen(b, s_=view_scale):
+                                    b = b.copy()
+                                    b[:, :4] *= s_
+                                    return b
+                            else:
+                                def to_screen(b, v_=view):
+                                    return to_view(b, det_source.cam, v_, plane)
+                            card_region = zone_in_picture(
+                                card_zone, to_screen, result[0].shape[1::-1]) or ()
+                            print(f"card zone in the detection picture: {card_region}", flush=True)
+                        if card_region:
+                            cards.update(result[0], card_region, det_dets[in_card])
+                        if cards.name is not None:  # visitor greeted: their product's info,
+                            zone_classes += [c for c in cards.product_classes()  # even when
+                                             if c not in zone_classes]  # the card hides it
                     sig.append((bool(inside), bool(in_card)))
                 t_ = tick("zone + live crop", t_)
                 sig.append((np.round(dets).astype(np.int32).tobytes(),
@@ -847,6 +895,9 @@ def main(argv=None):
                 t_ = tick("panel update", t_)
                 panel.compose(canvas, intact=keep_from is not None)
                 sig.append(panel.state())
+            if banner is not None:
+                draw_banner(canvas, banner, panel.fraction if panel is not None else 0.5)
+                sig.append(banner)
                 t_ = tick("panel compose", t_)
             sig.append((search.text, listener is not None and time.monotonic() < listener.awake_until))
             if listener is not None and time.monotonic() < listener.awake_until:
