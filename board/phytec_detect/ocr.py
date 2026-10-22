@@ -252,7 +252,7 @@ class CardReader:
             if name_from(texts):
                 break
         self.times["rec"] = time.perf_counter() - t
-        return [x for x in texts if x[0]], rects
+        return texts, rects  # aligned: texts[i] is rects[i] ("" = not read)
 
 
 # -- who is it? ----------------------------------------------------------------
@@ -309,7 +309,8 @@ def main(argv=None):
     lines, _ = reader(card)
     dt = time.perf_counter() - t
     for text, conf in lines:
-        print(f"  {conf:.2f}  {text}")
+        if text:
+            print(f"  {conf:.2f}  {text}")
     print(f"name: {name_from(lines)}   ({reader.det.kind}/{reader.rec.kind}: "
           f"det {reader.times.get('det', 0) * 1000:.0f} ms, rec {reader.times.get('rec', 0) * 1000:.0f} ms, "
           f"total {dt * 1000:.0f} ms)")

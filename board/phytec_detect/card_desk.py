@@ -44,6 +44,7 @@ class CardDesk:
         self._tries, self._last_read = 0, 0.0
         self._shown_at = 0.0
         self._greeted = None      # greeted, card not taken away since
+        self.card_quad = None     # the card's outline (detection picture), with the name
         self._classes = ()
         self._name_classes = ()
 
@@ -80,7 +81,7 @@ class CardDesk:
                  and (np.abs(small - self._name_small) > 25).mean() > TAKEN)):
             # card or product taken out (even while the hand is still there),
             # or shown long enough: this picture is done, no new greeting
-            self.name, self._name_small = None, None
+            self.name, self._name_small, self.card_quad = None, None, None
             self._tries = RETRIES
             self.version += 1
         if now - self._still_since < HOLD_S:
@@ -100,17 +101,17 @@ class CardDesk:
             cv2.rectangle(crop, (bx0 - x0 - 4, by0 - y0 - 4), (bx1 - x0 + 4, by1 - y0 + 4),
                           int(np.median(crop)), -1)
         self._busy, self._read_small = True, small
-        threading.Thread(target=self._read, args=(crop, small), daemon=True,
+        threading.Thread(target=self._read, args=(crop, small, (x0, y0)), daemon=True,
                          name="pd-ocr").start()
 
-    def _read(self, crop, small):
+    def _read(self, crop, small, offset):
         try:
             from .ocr import name_from
             t = time.perf_counter()
-            lines, _ = self.reader(crop)
+            lines, rects = self.reader(crop)
             name = name_from(lines)
             print(f"card: {name or 'no name'} in {time.perf_counter() - t:.1f} s "
-                  f"({' | '.join(t for t, _ in lines)})", flush=True)
+                  f"({' | '.join(t for t, _ in lines if t)})", flush=True)
             if not name:
                 self._greeted = None  # zone without a card: the next one is greeted
             elif name == self._greeted:
@@ -120,6 +121,7 @@ class CardDesk:
                 self.name, self._name_small = name, small
                 self._name_classes = self._classes
                 self._shown_at = time.monotonic()
+                self.card_quad = _card_outline(rects, lines, name, offset)
                 self.version += 1
                 self._save(crop, name, self._classes, lines)
         except Exception as error:  # noqa: BLE001
@@ -144,7 +146,7 @@ class CardDesk:
                                 "Text der Karte"])
                 for art in arts:
                     w.writerow([time.strftime("%Y-%m-%d %H:%M:%S"), name[0], name[1], art,
-                                self.names.get(art, art), " | ".join(t for t, _ in lines)])
+                                self.names.get(art, art), " | ".join(t for t, _ in lines if t)])
         except OSError as error:
             print(f"lead not saved: {error}", flush=True)
 
@@ -154,6 +156,42 @@ class CardDesk:
 
     def banner(self):
         return None if self.name is None else self.name
+
+
+def _line_axis(rect):
+    """Unit vector along a text line (pointing right)."""
+    p = cv2.boxPoints(rect)
+    e1, e2 = p[1] - p[0], p[2] - p[1]
+    u = e1 if np.hypot(*e1) >= np.hypot(*e2) else e2
+    u = u / max(np.hypot(*u), 1e-6)
+    return -u if u[0] < 0 else u
+
+
+def _card_outline(rects, lines, name, offset):
+    """The card around its text: the lines near the name line and parallel
+    to it (a card's print all runs one way; the module's, if any was read,
+    lies apart or turned), as a rectangle along the name line with the
+    card's usual margins -> (4, 2) picture pixels."""
+    at = [i for i, (t, _) in enumerate(lines) if name[1] in t]
+    if not rects or not at:
+        return None
+    name_rect = rects[at[0]]
+    c = np.float32(name_rect[0])
+    u = _line_axis(name_rect)
+    v = np.float32([-u[1], u[0]])
+    reach = 14 * max(min(name_rect[1]), 4)  # a card is ~15 name heights wide
+    pts = []
+    for r in rects:
+        if np.hypot(*(np.float32(r[0]) - c)) < reach and abs(float(_line_axis(r) @ u)) > 0.985:
+            pts.append(cv2.boxPoints(r))
+    pts = np.concatenate(pts).astype(np.float32) - c
+    a, b = pts @ u, pts @ v
+    (a0, a1), (b0, b1) = (a.min(), a.max()), (b.min(), b.max())
+    ma, mb = 0.07 * (a1 - a0), 0.12 * (b1 - b0)  # print keeps clear of the edge
+    a0, a1, b0, b1 = a0 - ma, a1 + ma, b0 - mb, b1 + mb
+    quad = np.float32([c + a0 * u + b0 * v, c + a1 * u + b0 * v,
+                       c + a1 * u + b1 * v, c + a0 * u + b1 * v])
+    return quad + np.float32(offset)
 
 
 def zone_in_picture(zone, to_screen, size, step=12):

@@ -413,6 +413,16 @@ def draw_zone(canvas, zone, busy, color=style.ORANGE,
 CARD_ZONE_TEXT = ("Produkt + Visitenkarte hier ablegen", "Erkannt")
 
 
+def draw_card(canvas, quad, name):
+    """The business card's outline in blue, tagged with the person's name."""
+    pts = np.round(quad).astype(np.int32)
+    cv2.polylines(canvas, [pts], True, style.BLUE + (255,), 4, cv2.LINE_AA)
+    top = pts[np.argsort(pts[:, 1])[:2]]
+    x, y = int(top[:, 0].min()), int(top[:, 1].min())
+    tag = style.text_patch(f"{name[0]} {name[1]}", 20, "Medium", bg=style.BLUE, pad=(10, 5))
+    style.blit(canvas, tag, x, max(0, y - tag.shape[0]))
+
+
 def draw_banner(canvas, name, fraction):
     """'Thank you <name>' in PHYTEC petrol across the top of the info panel."""
     w = canvas.shape[1]
@@ -853,6 +863,11 @@ def main(argv=None):
                             print(f"card zone in the detection picture: {card_region}", flush=True)
                         if card_region:
                             cards.update(result[0], card_region, det_dets[in_card])
+                        if cards.name is not None and cards.card_quad is not None:
+                            q = cards.card_quad[None]
+                            q = q * view_scale if view_source is None and view_geo is None \
+                                else quads_to_view(q, det_source.cam, view, plane)
+                            draw_card(half, q[0], cards.name)
                         if cards.name is not None:  # visitor greeted: their product's info,
                             zone_classes += [c for c in cards.product_classes()  # even when
                                              if c not in zone_classes]  # the card hides it

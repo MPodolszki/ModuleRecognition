@@ -14,7 +14,7 @@ product as picked up:
           Measured as the dark-pixel area inside the box (a box alone
           changes with rotation: a square turned 45 degrees has a 2x box).
 
-A taken product stays in the list until it comes back: detected again at
+A taken product stays in the list (at most PICKED_MAX_S) until it comes back: detected again at
 its spot, or another product of the same class settling down anywhere --
 or a product of another class settling where the taken one was last seen
 (look-alikes like AM62x and AM62x DSC swap class when put down).
@@ -40,8 +40,11 @@ FORGET_S = 1.5        # a never-resting track unseen this long is dropped
 AREA_EVERY_S = 0.5    # a still product's dark area is re-measured this often
                       # (only to keep learning its resting size) -- every
                       # frame while it could be lifted or is lifted
-TAKEN_MAX_S = 120.0   # give up on a taken product after this long (info panel closes;
-                      # a guest's module that never comes back must not stay forever)
+PICKED_MAX_S = 30.0   # a lifted or taken product is forgotten after this long, with
+                      # the info panel (show_s): no orange frame left over from a
+                      # module slid out of detection or never brought back -- a
+                      # clean table again; one still lying there starts afresh
+TAKEN_MAX_S = 120.0   # a resting product unseen this long is dropped
 
 
 def dark_area(gray, box):
@@ -210,11 +213,13 @@ class TableTracker:
                 t.taken, t.lifted = True, False
                 t.picked_at = t.picked_at or now
         # Keep: taken products (for a while), resting products (a resting one
-        # whose spot is not empty is just covered or missed), and recent ones.
+        # whose spot is not empty is just covered or missed), and recent ones;
+        # nothing picked longer than PICKED_MAX_S.
         self.tracks = [t for t in self.tracks
-                       if (t.taken and now - t.picked_at < TAKEN_MAX_S)
-                       or (not t.taken and t.rest_box is not None and now - t.seen < TAKEN_MAX_S)
-                       or (not t.taken and now - t.seen < FORGET_S)]
+                       if not (t.picked and now - t.picked_at >= PICKED_MAX_S)
+                       and (t.taken
+                            or (t.rest_box is not None and now - t.seen < TAKEN_MAX_S)
+                            or now - t.seen < FORGET_S)]
         self._learn_class_rest()
         return self.tracks
 
