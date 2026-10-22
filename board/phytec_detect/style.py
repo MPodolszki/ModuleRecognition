@@ -19,6 +19,7 @@ PETROL_LIGHT = (207, 205, 160)   # breadcrumb separators on phytec.de
 ORANGE = (8, 151, 255)
 WHITE = (255, 255, 255)
 GREEN = (60, 160, 40)
+BLUE = (200, 120, 0)             # card zone (#0078C8)
 HEADER_H = 58                    # same as the info panel's breadcrumb bar
 TITLE = ("PHYTEC", "KI-Produkterkennung")
 

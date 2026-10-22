@@ -389,13 +389,13 @@ def straight_crop(frame, quad, out_w=300):
     return cv2.cvtColor(crop, cv2.COLOR_GRAY2BGR) if crop.ndim == 2 else crop[..., :3]
 
 
-def draw_zone(canvas, zone, busy):
-    """The drop zone: dashed orange frame and a label, solid while a product
-    lies in it."""
+def draw_zone(canvas, zone, busy, color=style.ORANGE,
+              text=("Produkt hier ablegen", "Erkannt")):
+    """A drop zone: dashed frame and a label, solid while something lies in it."""
     x0, y0, x1, y1 = zone
-    color = style.ORANGE + (255,)
+    bgra = color + (255,)
     if busy:
-        cv2.rectangle(canvas, (x0, y0), (x1, y1), color, 5)
+        cv2.rectangle(canvas, (x0, y0), (x1, y1), bgra, 5)
     else:
         for a, b, horizontal in (((x0, y0), (x1, y0), True), ((x0, y1), (x1, y1), True),
                                  ((x0, y0), (x0, y1), False), ((x1, y0), (x1, y1), False)):
@@ -404,10 +404,12 @@ def draw_zone(canvas, zone, busy):
                 e = min(t + 20, length)
                 p = (a[0] + t, a[1]) if horizontal else (a[0], a[1] + t)
                 q = (a[0] + e, a[1]) if horizontal else (a[0], a[1] + e)
-                cv2.line(canvas, p, q, color, 4)
-    tag = style.text_patch("Produkt hier ablegen" if not busy else "Erkannt", 20, "Medium",
-                           bg=style.ORANGE, pad=(10, 5))
+                cv2.line(canvas, p, q, bgra, 4)
+    tag = style.text_patch(text[1] if busy else text[0], 20, "Medium", bg=color, pad=(10, 5))
     style.blit(canvas, tag, x0, y0 - tag.shape[0])
+
+
+CARD_ZONE_TEXT = ("Produkt + Visitenkarte hier ablegen", "Erkannt")
 
 
 def display_labels(labels, products):
@@ -525,6 +527,9 @@ def main(argv=None):
     parser.add_argument("--zone", default="0.74,0.6,0.98,0.96",
                         help="drop zone x0,y0,x1,y1 as fractions of the screen (a product laid "
                              "there shows its info at once, with its live picture), 'off' = none")
+    parser.add_argument("--card-zone", default="0.74,0.12,0.98,0.48",
+                        help="card zone x0,y0,x1,y1 as fractions of the screen (blue: a product "
+                             "and a business card laid there), 'off' = none")
     parser.add_argument("--no-panel", action="store_true",
                         help="never slide in product info (products.json) for lifted products")
     parser.add_argument("-n", "--frames", type=int, help="stop after N screen frames")
@@ -647,7 +652,7 @@ def main(argv=None):
     search = SearchState([(l, products.get(l, {}).get("name") or l) for l in labels])
     resets = 0
     canvas = panel = None
-    zone = None
+    zone = card_zone = None
     zone_classes, live_result = [], None
     screen_tries = 0
     frames, shown_seq, last_draw, last_state = 0, -1, 0.0, None
@@ -740,6 +745,7 @@ def main(argv=None):
                     screen = Screen(canvas.shape[1], h)
                 panel = None if args.no_panel else InfoPanel(products, workers[0].detector.labels)
                 zone = zone_rect(args.zone, w_, canvas.shape[0])
+                card_zone = zone_rect(args.card_zone, w_, canvas.shape[0])
             # panel fully in and unchanged: its half of the layer stays as it is
             keep_from = panel.static_from(canvas.shape[1]) \
                 if panel is not None and base is None and len(workers) == 1 else None
@@ -797,6 +803,10 @@ def main(argv=None):
                             panel.set_live(int(dets[k, 5]), crop)
                     draw_zone(half, zone, bool(inside))
                     sig.append(bool(inside))
+                if i == 0 and card_zone is not None:
+                    in_card = in_zone(dets, card_zone)
+                    draw_zone(half, card_zone, bool(in_card), style.BLUE, CARD_ZONE_TEXT)
+                    sig.append(bool(in_card))
                 t_ = tick("zone + live crop", t_)
                 sig.append((np.round(dets).astype(np.int32).tobytes(),
                             np.round(quads).astype(np.int32).tobytes(),
