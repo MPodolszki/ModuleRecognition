@@ -791,22 +791,24 @@ def main(argv=None):
                     dets, lifted = (to_view(d, det_source.cam, view, plane)
                                     for d in (dets, lifted))
                 t_ = tick("map to view", t_)
-                if i == 0 and zone is not None:
+                if i == 0 and (zone is not None or card_zone is not None):
+                    # both zones show a product's info at once, with its live picture
                     inside = in_zone(dets, zone)
-                    zone_classes = [int(dets[k, 5]) for k in inside]
-                    if panel is not None and inside and live_result is not result:
+                    in_card = in_zone(dets, card_zone)
+                    shown_now = inside + [k for k in in_card if k not in inside]
+                    zone_classes = [int(dets[k, 5]) for k in shown_now]
+                    if panel is not None and shown_now and live_result is not result:
                         live_result = result  # one new crop per detection result
-                        k = inside[0]
+                        k = shown_now[0]
                         crop = straight_crop(result[0], det_quads[k]) \
                             if result[0] is not None and k < len(det_quads) else None
                         if crop is not None:
                             panel.set_live(int(dets[k, 5]), crop)
-                    draw_zone(half, zone, bool(inside))
-                    sig.append(bool(inside))
-                if i == 0 and card_zone is not None:
-                    in_card = in_zone(dets, card_zone)
-                    draw_zone(half, card_zone, bool(in_card), style.BLUE, CARD_ZONE_TEXT)
-                    sig.append(bool(in_card))
+                    if zone is not None:
+                        draw_zone(half, zone, bool(inside))
+                    if card_zone is not None:
+                        draw_zone(half, card_zone, bool(in_card), style.BLUE, CARD_ZONE_TEXT)
+                    sig.append((bool(inside), bool(in_card)))
                 t_ = tick("zone + live crop", t_)
                 sig.append((np.round(dets).astype(np.int32).tobytes(),
                             np.round(quads).astype(np.int32).tobytes(),
