@@ -290,7 +290,11 @@ class TableTracker:
             return
         ratio = t.area / ref
         box_ref = _box_area(t.rest_box) if t.rest_box is not None else t.rest_box_area
-        box_ratio = _box_area(t.box) / box_ref if box_ref else LIFT_BOX
+        # only a product that has rested itself can be lifted: without its own
+        # box on the table there is nothing to have grown from (the class's
+        # usual size alone made a module at the picture's edge "lifted" anew
+        # in every frame)
+        box_ratio = _box_area(t.box) / box_ref if box_ref else 1.0
         want = (ratio > LIFT_ON and box_ratio >= LIFT_BOX) if not t.lifted else ratio > LIFT_OFF
         if want != t.lifted:
             t._votes += 1
