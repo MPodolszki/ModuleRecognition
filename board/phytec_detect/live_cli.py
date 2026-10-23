@@ -411,6 +411,7 @@ def draw_zone(canvas, zone, busy, color=style.ORANGE,
 
 
 CARD_ZONE_TEXT = ("Produkt + Visitenkarte hier ablegen", "Erkannt")
+DROP_ZONE_TEXT = ("Produkt hier ablegen \u00b7 zwei zum Vergleich", "Erkannt")
 
 
 def draw_card(canvas, quad, name):
@@ -528,6 +529,10 @@ def main(argv=None):
     parser.add_argument("--det-fps", type=int, default=20,
                         help="with --isp: frames per second the ISP delivers for detection "
                              "(the accelerator takes ~16; every frame read costs CPU), 0 = 30")
+    parser.add_argument("--lift", action="store_true",
+                        help="picking a product up shows its info (thick orange frame, still "
+                             "picture); default: only the zones do -- one product laid in "
+                             "the orange zone its info, two the comparison")
     parser.add_argument("--track-thread", action="store_true",
                         help="tracking in a thread of the demo instead of a process of its own "
                              "(on the Hailo board: ~1-2 fps more detection, but tracking "
@@ -802,6 +807,8 @@ def main(argv=None):
                     style.header(half, f"{NAMES[worker.detector.backend_name]} startet \u2026")
                     continue
                 dets, lifted, quads = result[1], result[3], result[4]
+                if not args.lift:  # picking up does nothing: only the zones
+                    lifted = lifted[:0]
                 if i == 0 and quality is not None and result is not quality_result:
                     quality_result = result  # once per detection result
                     quality.observe(result[0], worker.smoother.spots)
@@ -845,7 +852,9 @@ def main(argv=None):
                         if crop is not None:
                             panel.set_live(int(dets[k, 5]), crop)
                     if zone is not None:
-                        draw_zone(half, zone, bool(inside))
+                        two = len({int(dets[k, 5]) for k in inside}) >= 2
+                        draw_zone(half, zone, bool(inside), text=DROP_ZONE_TEXT[:1] + (
+                            "Vergleich" if two else "Erkannt",))
                     if card_zone is not None:
                         draw_zone(half, card_zone, bool(in_card), style.BLUE, CARD_ZONE_TEXT)
                     if cards is not None and result[0] is not None:
@@ -898,7 +907,7 @@ def main(argv=None):
             t_ = tick("lifted + header", t_)
             if panel is not None:
                 primary = workers[0].result
-                snaps = workers[0].snaps
+                snaps = workers[0].snaps if args.lift else {}
                 for cls in list(panel._live):  # left the zone / put back: the photo again
                     if cls not in zone_classes and cls not in snaps and \
                             cls not in panel.shown():  # (not on one missed frame)
@@ -906,7 +915,8 @@ def main(argv=None):
                 for cls, still in snaps.items():  # (not `snap`: that is the USR1 event)
                     if cls not in zone_classes and panel.picture_of(cls) is not still:
                         panel.set_live(cls, still, tag="AUFGENOMMEN")
-                panel.update([int(c) for c in primary[3][:, 5]] if primary else [], zone_classes)
+                panel.update([int(c) for c in primary[3][:, 5]] if primary and args.lift else [],
+                             zone_classes)
                 t_ = tick("panel update", t_)
                 panel.compose(canvas, intact=keep_from is not None)
                 sig.append(panel.state())
