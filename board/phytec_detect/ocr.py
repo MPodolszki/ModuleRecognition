@@ -36,6 +36,7 @@ MODEL_DIR = "/opt/phytec-detect/models/ocr"
 DET_H, DET_W = 320, 512           # card, long side horizontal (85 x 55 mm ~ 1.55)
 REC_H, REC_W = 48, 320            # one text line
 DET_UP = 1.75                     # smallest det scale (small print)
+_CLAHE = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
 VX_DELEGATE = "/usr/lib/libvx_delegate.so"
 
 
@@ -139,7 +140,10 @@ class CardReader:
         ((cx, cy), (w, h), angle) in card pixels. A picture larger than the
         det input is not scaled down (small print would get lost) but read
         in overlapping DET_H x DET_W tiles; smaller ones are scaled up."""
-        bgr = card if card.ndim == 3 else cv2.cvtColor(card, cv2.COLOR_GRAY2BGR)
+        # local contrast (CLAHE): thin, pale print (light grey on white) is
+        # found far more often; the PHYTEC cards read the same either way
+        gray = card if card.ndim == 2 else cv2.cvtColor(card, cv2.COLOR_BGR2GRAY)
+        bgr = cv2.cvtColor(_CLAHE.apply(gray), cv2.COLOR_GRAY2BGR)
         h, w = bgr.shape[:2]
         s = min(DET_W / w, DET_H / h)
         if s >= DET_UP:
@@ -222,7 +226,8 @@ class CardReader:
 
     def read(self, card, rects):
         """Text of each line box: [(text, confidence)]."""
-        bgr = card if card.ndim == 3 else cv2.cvtColor(card, cv2.COLOR_GRAY2BGR)
+        gray = card if card.ndim == 2 else cv2.cvtColor(card, cv2.COLOR_BGR2GRAY)
+        bgr = cv2.cvtColor(_CLAHE.apply(gray), cv2.COLOR_GRAY2BGR)
         batch = np.zeros((len(rects), 3, REC_H, REC_W), np.float32)  # 0 = mid grey
         for i, rect in enumerate(rects):
             line = self._line_image(bgr, rect)
@@ -249,7 +254,7 @@ class CardReader:
         for part in (order[:first], order[first:]):
             for i, line in zip(part, self.read(card, [rects[i] for i in part])):
                 texts[i] = line
-            if name_from(texts):
+            if name_from(texts, rects):
                 break
         self.times["rec"] = time.perf_counter() - t
         return texts, rects  # aligned: texts[i] is rects[i] ("" = not read)
@@ -272,27 +277,76 @@ def _simple(text):
             .replace("ß", "ss"))
 
 
-def name_from(lines):
-    """(first name, surname) or None, from [(text, confidence)] of a card."""
+def _stacked(a, b):
+    """Line b right below line a on the card (first name over surname):
+    parallel, about one line apart, starting near the same place."""
+    (ax, ay), (aw, ah), _ = a
+    (bx, by), (bw, bh), _ = b
+    pa, pb = cv2.boxPoints(a), cv2.boxPoints(b)
+    ea, fa = pa[1] - pa[0], pa[2] - pa[1]
+    u = ea if np.hypot(*ea) >= np.hypot(*fa) else fa
+    u = u / max(np.hypot(*u), 1e-6)
+    v = np.array([-u[1], u[0]])
+    h = max(min(aw, ah), min(bw, bh))
+    d = np.array([bx - ax, by - ay])
+    along, across = abs(d @ u), abs(d @ v)
+    starts = abs((pa @ u).min() - (pb @ u).min())
+    return 0.5 * h < across < 2.6 * h and (along < max(aw, ah, bw, bh) or starts < 2 * h)
+
+
+def _words(text):
+    return [w for w in text.replace(",", " ").split() if not TITLES.match(w)]
+
+
+def name_from(lines, rects=None):
+    """(first name, surname) or None, from [(text, confidence)] of a card --
+    a line of two to four name words, or (with the line boxes `rects`) a
+    first name with the surname right below it in a line of its own."""
     emails = [m.group(1) for t, _ in lines
               for m in [re.search(r"([\w.\-]+)@[\w.\-]+\.\w+", t.replace(" ", ""))] if m]
-    best, best_score = None, 0.0
+    candidates = []  # (words, confidence)
     for text, conf in lines:
-        words = [w for w in text.replace(",", " ").split() if not TITLES.match(w)]
-        if not 2 <= len(words) <= 4 or NOT_A_NAME.search(text) or any(c.isdigit() for c in text):
-            continue
-        if not all(NAME_WORD.match(w) for w in words):
-            continue
+        words = _words(text)
+        if 2 <= len(words) <= 4 and not NOT_A_NAME.search(text) and \
+                not any(c.isdigit() for c in text) and all(NAME_WORD.match(w) for w in words):
+            candidates.append((words, conf))
+    if rects is not None and len(rects) == len(lines):
+        single = [i for i, (t, c) in enumerate(lines)
+                  if len(_words(t)) == 1 and NAME_WORD.match(_words(t)[0])
+                  and len(_words(t)[0]) >= 3 and not NOT_A_NAME.search(t)]
+        for i in single:
+            for j in single:
+                hi, hj = min(rects[i][1]), min(rects[j][1])
+                if i < j and _stacked(rects[i], rects[j]) and 0.7 < hi / max(hj, 1e-6) < 1.4 \
+                        and min(lines[i][1], lines[j][1]) >= 0.9:
+                    # same font size, read with confidence: not a name over small print
+                    # i above j: order along the card's height
+                    a, b = (i, j) if _below(rects[i], rects[j]) else (j, i)
+                    words = [_words(lines[a][0])[0], _words(lines[b][0])[0]]
+                    candidates.append((words, (lines[a][1] + lines[b][1]) / 2 - 0.05))
+    best, best_score = None, 0.0
+    for words, conf in candidates:
         score = conf
         last = _simple(words[-1])
-        confirmed = any(last in _simple(local) for local in emails)  # m.podolszki@
-        if confirmed:
+        if any(last in _simple(local) for local in emails):  # m.podolszki@
             score += 1.0
         elif min(len(w) for w in words) < 3:
             continue  # "Martin Po": a cut-off line, not a name
         if score > best_score:
             best, best_score = (" ".join(words[:-1]), words[-1]), score
     return best
+
+
+def _below(a, b):
+    """True when b lies below a across the lines (the card may be turned)."""
+    p = cv2.boxPoints(a)
+    e, f = p[1] - p[0], p[2] - p[1]
+    u = e if np.hypot(*e) >= np.hypot(*f) else f
+    u = u / max(np.hypot(*u), 1e-6)
+    if u[0] < 0:
+        u = -u
+    v = np.array([-u[1], u[0]])  # down the text
+    return float((np.array(b[0]) - np.array(a[0])) @ v) > 0
 
 
 def main(argv=None):
@@ -311,7 +365,7 @@ def main(argv=None):
     for text, conf in lines:
         if text:
             print(f"  {conf:.2f}  {text}")
-    print(f"name: {name_from(lines)}   ({reader.det.kind}/{reader.rec.kind}: "
+    print(f"name: {name_from(lines, _)}   ({reader.det.kind}/{reader.rec.kind}: "
           f"det {reader.times.get('det', 0) * 1000:.0f} ms, rec {reader.times.get('rec', 0) * 1000:.0f} ms, "
           f"total {dt * 1000:.0f} ms)")
     return 0

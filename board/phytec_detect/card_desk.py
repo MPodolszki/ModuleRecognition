@@ -109,7 +109,7 @@ class CardDesk:
             from .ocr import name_from
             t = time.perf_counter()
             lines, rects = self.reader(crop)
-            name = name_from(lines)
+            name = name_from(lines, rects)
             print(f"card: {name or 'no name'} in {time.perf_counter() - t:.1f} s "
                   f"({' | '.join(t for t, _ in lines if t)})", flush=True)
             if not name:

@@ -842,7 +842,9 @@ def main(argv=None):
                     # both zones show a product's info at once, with its live picture
                     inside = in_zone(dets, zone)
                     in_card = in_zone(dets, card_zone)
-                    shown_now = inside + [k for k in in_card if k not in inside]
+                    # the orange zone decides (one: info, two: comparison); the
+                    # blue one shows its product only while the orange one is empty
+                    shown_now = inside if inside else in_card
                     zone_classes = [int(dets[k, 5]) for k in shown_now]
                     if panel is not None and shown_now and live_result is not result:
                         live_result = result  # one new crop per detection result
@@ -877,7 +879,7 @@ def main(argv=None):
                             q = q * view_scale if view_source is None and view_geo is None \
                                 else quads_to_view(q, det_source.cam, view, plane)
                             draw_card(half, q[0], cards.name)
-                        if cards.name is not None:  # visitor greeted: their product's info,
+                        if cards.name is not None and not inside:  # visitor greeted: their product's info,
                             zone_classes += [c for c in cards.product_classes()  # even when
                                              if c not in zone_classes]  # the card hides it
                     sig.append((bool(inside), bool(in_card)))
