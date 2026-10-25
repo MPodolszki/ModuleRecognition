@@ -42,7 +42,11 @@ REC_H, REC_W = 48, 320            # one text line
 DET_UP = 1.75                     # smallest det scale (small print)
 _CLAHE = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
 VX_DELEGATE = "/usr/lib/libvx_delegate.so"
-NEUTRON_DELEGATE = "/usr/lib/libneutron_delegate.so"
+# One Neutron delegate per TFLite runtime, each built against its own ABI:
+# tensorflow-lite-neutron-delegate for tflite_runtime (TF 2.19),
+# litert-neutron-delegate for ai_edge_litert.
+NEUTRON_DELEGATE = {"tflite_runtime": "/usr/lib/libneutron_delegate.so",
+                    "ai_edge_litert": "/usr/lib/liblitert_neutron_delegate.so"}
 
 
 class _Net:
@@ -64,13 +68,14 @@ class _Net:
             from tflite_runtime.interpreter import Interpreter, load_delegate
         except ImportError:
             from ai_edge_litert.interpreter import Interpreter, load_delegate
+        neutron = NEUTRON_DELEGATE[Interpreter.__module__.split(".")[0]]
         delegates = []
         if npu and soc() == "imx95" and path.endswith("_neutron.tflite") \
-                and os.path.exists(NEUTRON_DELEGATE):
+                and os.path.exists(neutron):
             # The Neutron delegate only runs what neutron-converter turned
             # into NeutronGraph nodes, compiled offline -- nothing to compile
             # at start; the rest of the graph stays on the CPU.
-            delegates = [load_delegate(NEUTRON_DELEGATE)]
+            delegates = [load_delegate(neutron)]
         elif npu and soc() != "imx95" and os.path.exists(VX_DELEGATE):
             # no NBG cache file: with one, the delegate failed ("Create node
             # NBG fail") -- the graph is compiled at every start (~15 s, in
