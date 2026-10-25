@@ -52,9 +52,36 @@ SENSORS = {
 }
 
 
+@functools.lru_cache(maxsize=1)
+def soc():
+    """'imx95', 'imx8mp' or '' -- from the device tree's compatible list."""
+    try:
+        compatible = open("/proc/device-tree/compatible", "rb").read().split(b"\0")
+    except OSError:
+        return ""
+    for name in ("imx95", "imx8mp"):
+        if f"fsl,{name}".encode() in compatible:
+            return name
+    return ""
+
+
+# The i.MX95 has no imx8-phycam-isp service with modes: its Neo ISP runs
+# behind libcamera, which scales to whatever size is asked for. 1920x1080 is
+# what the i.MX8MP demo runs in (ISP mode 1), so the model sees the same
+# picture size; PHYTEC_ISP_SIZE=WxH overrides it.
+IMX95_ISP_SIZE = (1920, 1080)
+
+
 def isp_size(csi):
-    """Output size of the ISP mode imx8-phycam-isp runs on CSI1/CSI2, from
-    its SensorN_Entry.cfg (mode = N, [mode.N] xml = ..._WxH.xml)."""
+    """Output size of the ISP on CSI1/CSI2. i.MX8MP: the mode imx8-phycam-isp
+    runs, from its SensorN_Entry.cfg (mode = N, [mode.N] xml = ..._WxH.xml);
+    i.MX95: IMX95_ISP_SIZE or PHYTEC_ISP_SIZE."""
+    if soc() == "imx95":
+        try:
+            width, height = os.environ["PHYTEC_ISP_SIZE"].split("x")
+            return int(width), int(height)
+        except (KeyError, ValueError):
+            return IMX95_ISP_SIZE
     try:
         cfg = open(f"/opt/imx8-isp/bin/Sensor{csi - 1}_Entry.cfg").read()
         mode = cfg.split("mode=")[1].split()[0]
@@ -88,6 +115,32 @@ def find_sensor(csi):
         port = int(path.rsplit("port", 1)[1]) if "-port" in path else None
         return path, name, port
     return None
+
+
+def libcamera_id(csi):
+    """libcamera's name for the sensor on CSI `csi`: its device tree path,
+    e.g. /base/soc/bus@42000000/i2c@42530000/camera@36 -- or None."""
+    found = find_sensor(csi)
+    if not found:
+        return None
+    subdev = os.path.basename(os.path.realpath(found[0]))
+    node = os.path.realpath(f"/sys/class/video4linux/{subdev}/device/of_node")
+    base = "/sys/firmware/devicetree"
+    return node[len(base):] if node.startswith(base + "/base/") else None
+
+
+def isp_source(csi, caps):
+    """GStreamer source for the ISP's picture on CSI `csi`, ending in `caps`.
+
+    i.MX8MP: imx8-phycam-isp's V4L2 node. i.MX95: libcamerasrc on the Neo ISP
+    (the imx95-phyflex-libra-rdk-neoisp overlay), which also scales -- there
+    is no mode to set up beforehand."""
+    if soc() == "imx95":
+        name = libcamera_id(csi)
+        if not name:
+            raise RuntimeError(f"no camera on CSI{csi}")
+        return f'libcamerasrc camera-name="{name}" ! {caps}'
+    return f"v4l2src device=/dev/video-isp-csi{csi} ! {caps}"
 
 
 class WhiteBalance:
@@ -212,7 +265,10 @@ class Camera:
             sensor_w, sensor_h = cfg["size"]
             if isp:
                 # the ISP's mode decides the size: 2592x1944 is the whole
-                # sensor, 1920x1080 a 1:1 window from its centre
+                # sensor, 1920x1080 a 1:1 window from its centre. On the
+                # i.MX95 libcamera picks the sensor window itself; whether it
+                # is that same centre window (and so the same framing the
+                # model was trained on) is still to be checked on the board.
                 sensor_w, sensor_h = isp_size(csi) or (sensor_w, sensor_h)
                 self.crop = ((cfg["size"][0] - sensor_w) // 2, (cfg["size"][1] - sensor_h) // 2,
                              sensor_w, sensor_h)
@@ -229,18 +285,18 @@ class Camera:
                     # x and y scale differ a little (544 / 1080 vs 960 / 1920)
                     self.scale = np.array([out_w / sensor_w, out_h / sensor_h])
                 self._cap = cv2.VideoCapture(
-                    f"v4l2src device=/dev/video-isp-csi{csi} ! "
-                    f"video/x-raw,width={out_w},height={out_h},format={fmt}"
-                    + (f",framerate={isp_fps}/1" if isp_fps else "") + " ! "
-                    f"appsink drop=true max-buffers=1", cv2.CAP_GSTREAMER)
+                    isp_source(csi, f"video/x-raw,width={out_w},height={out_h},format={fmt}"
+                               + (f",framerate={isp_fps}/1" if isp_fps else ""))
+                    + " ! appsink drop=true max-buffers=1", cv2.CAP_GSTREAMER)
                 if self._nv12:
                     self._cap.set(cv2.CAP_PROP_CONVERT_RGB, 0)
                 if not mono:
                     self._cap.set(cv2.CAP_PROP_CONVERT_RGB, 0)
                     self._yuy2 = True
                 if not self._cap.isOpened():
-                    raise RuntimeError(f"could not open the ISP on CSI{csi} "
-                                       f"(imx8-phycam-isp running, mode 2?)")
+                    hint = ("libcamera, neoisp overlay loaded?" if soc() == "imx95"
+                            else "imx8-phycam-isp running, mode 2?")
+                    raise RuntimeError(f"could not open the ISP on CSI{csi} ({hint})")
                 self.is_camera = False  # frames come out finished
                 return
             crop_w, crop_h = sensor_w, sensor_h
@@ -395,8 +451,8 @@ class OverlayScreen:
             f"imxcompositor_g2d name=c sink_0::width={sw} sink_0::height={sh} "
             f"sink_1::width={sw} sink_1::height={sh} sink_1::zorder=1 ! "
             f"waylandsink fullscreen=true sync=false "
-            f"v4l2src device=/dev/video-isp-csi{csi} ! "
-            f"video/x-raw,format=YUY2,width={w},height={h},framerate={fps}/1 ! {leaky} ! c.sink_0 "
+            + isp_source(csi, f"video/x-raw,format=YUY2,width={w},height={h},framerate={fps}/1")
+            + f" ! {leaky} ! c.sink_0 "
             f"appsrc name=layer is-live=true do-timestamp=true format=time "
             f"caps=video/x-raw,format=BGRA,width={sw},height={sh},framerate={fps}/1 ! "
             # The G2D only blends DMA buffers: a wrapped Python buffer is

@@ -4,8 +4,10 @@ PaddleOCR -- only onnxruntime or TFLite and OpenCV, which the board has.
     python3 -m phytec_detect.ocr card.png [--models /opt/phytec-detect/models/ocr] [--cpu]
 
 Two networks, each either an ONNX model (CPU, onnxruntime) or a full-integer
-TFLite model (export/ocr), the latter on the i.MX8MP NPU (VX delegate) or
-the CPU. det runs on the NPU (~100 ms; the first run compiles the graph,
+TFLite model (export/ocr), the latter on the NPU or the CPU: on the i.MX8MP
+the VX delegate takes det_int8.tflite, on the i.MX95 the Neutron delegate
+takes det_neutron.tflite (det_int8.tflite run through NXP's
+neutron-converter, see export/ocr/to_neutron.sh). det runs on the NPU (~100 ms; the first run compiles the graph,
 ~15 s); rec does not -- the VX delegate fails on its SVTR part -- and INT8
 misread names ("Khalld"), so it runs FP32 ONNX on the CPU (~0.5 s a line),
 and the tallest lines, where the name is, first:
@@ -32,12 +34,15 @@ import time
 import cv2
 import numpy as np
 
+from .camera import soc
+
 MODEL_DIR = "/opt/phytec-detect/models/ocr"
 DET_H, DET_W = 320, 512           # card, long side horizontal (85 x 55 mm ~ 1.55)
 REC_H, REC_W = 48, 320            # one text line
 DET_UP = 1.75                     # smallest det scale (small print)
 _CLAHE = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
 VX_DELEGATE = "/usr/lib/libvx_delegate.so"
+NEUTRON_DELEGATE = "/usr/lib/libneutron_delegate.so"
 
 
 class _Net:
@@ -60,7 +65,13 @@ class _Net:
         except ImportError:
             from ai_edge_litert.interpreter import Interpreter, load_delegate
         delegates = []
-        if npu and os.path.exists(VX_DELEGATE):
+        if npu and soc() == "imx95" and path.endswith("_neutron.tflite") \
+                and os.path.exists(NEUTRON_DELEGATE):
+            # The Neutron delegate only runs what neutron-converter turned
+            # into NeutronGraph nodes, compiled offline -- nothing to compile
+            # at start; the rest of the graph stays on the CPU.
+            delegates = [load_delegate(NEUTRON_DELEGATE)]
+        elif npu and soc() != "imx95" and os.path.exists(VX_DELEGATE):
             # no NBG cache file: with one, the delegate failed ("Create node
             # NBG fail") -- the graph is compiled at every start (~15 s, in
             # the background)
@@ -94,8 +105,10 @@ class _Net:
 
 
 def _find(model_dir, stem, cpu):
-    """<stem>_int8.tflite (NPU) unless cpu, else <stem>.onnx."""
-    for name in ([] if cpu else [f"{stem}_int8.tflite"]) + [f"{stem}.onnx"]:
+    """<stem>_int8.tflite (NPU) unless cpu, else <stem>.onnx -- on the
+    i.MX95 <stem>_neutron.tflite first, the model converted for its NPU."""
+    npu = [f"{stem}_neutron.tflite"] if soc() == "imx95" else []
+    for name in ([] if cpu else npu + [f"{stem}_int8.tflite"]) + [f"{stem}.onnx"]:
         path = os.path.join(model_dir, name)
         if os.path.exists(path):
             return path
