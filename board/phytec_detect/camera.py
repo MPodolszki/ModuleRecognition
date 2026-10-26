@@ -34,6 +34,7 @@ on stale pictures.
 import functools
 import glob
 import os
+import re
 import subprocess
 import sys
 
@@ -139,6 +140,25 @@ def isp_source(csi, caps):
         name = libcamera_id(csi)
         if not name:
             raise RuntimeError(f"no camera on CSI{csi}")
+        # The ISI pipeline handler claims the sensors too and then fails
+        # ("Cannot find a supported YUV/RGB format"): the Neo ISP's only.
+        os.environ.setdefault("LIBCAMERA_PIPELINES_MATCH_LIST", "nxp/neo")
+        # "Image0 frame loss!" several times a second when the demo takes
+        # fewer frames than the sensor delivers: warnings only, not errors
+        os.environ.setdefault("LIBCAMERA_LOG_LEVELS", "*:ERROR")
+        # libcamerasrc only negotiates the sensor's full size (2592x1944 for
+        # the AR0521). The i.MX8MP's ISP mode 1 is a 1:1 1920x1080 window from
+        # the sensor's centre -- the picture scale the model was trained on
+        # -- so the same window is cut out here, not scaled.
+        size = re.search(r"width=(\d+),height=(\d+)", caps)
+        sw, sh = (int(v) for v in os.environ.get("PHYTEC_SENSOR_SIZE", "2592x1944").split("x"))
+        if size and (int(size.group(1)), int(size.group(2))) != (sw, sh):
+            w, h = int(size.group(1)), int(size.group(2))
+            fmt = re.search(r"format=(\w+)", caps)
+            full = f"video/x-raw,width={sw},height={sh}" + (f",format={fmt.group(1)}" if fmt else "")
+            left, top = (sw - w) // 2 // 2 * 2, (sh - h) // 2 // 2 * 2
+            return (f'libcamerasrc camera-name="{name}" ! {full} ! videocrop left={left} top={top} '
+                    f'right={sw - w - left} bottom={sh - h - top} ! {caps}')
         return f'libcamerasrc camera-name="{name}" ! {caps}'
     return f"v4l2src device=/dev/video-isp-csi{csi} ! {caps}"
 
