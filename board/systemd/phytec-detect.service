@@ -3,6 +3,8 @@ Description=PHYTEC module detection demo (phyCAM -> Hailo-8 / i.MX8MP NPU -> HDM
 After=weston.service imx8-phycam-isp.service
 Wants=weston.service
 Conflicts=phytec-trial.service
+# runs unattended at the stand: never give up restarting
+StartLimitIntervalSec=0
 
 [Service]
 User=weston
@@ -17,7 +19,7 @@ ExecStartPre=/bin/sh -c 'for i in $(seq 60); do [ -S /run/user/1000/wayland-0 ] 
 # right after a restart the live picture's G2D pools sometimes found none.
 ExecStartPre=/bin/sleep 3
 ExecStart=/bin/sh -c 'exec /usr/bin/python3 -m phytec_detect.live_cli $PHYTEC_DETECT_ARGS'
-Restart=on-failure
+Restart=always
 RestartSec=3
 
 [Install]

@@ -49,6 +49,7 @@ from .tracking import TableTracker, _iou
 DEFAULT_MODEL_DIR = "/usr/share/phytec-detect/model"
 DEFAULT_CALIB = "/etc/phytec-detect/plane_map.json"
 DEFAULT_CALIB_ISP = "/etc/phytec-detect/plane_map_isp.json"
+STALL_S = 20.0  # neither camera nor accelerator moved on for this long: exit, systemd restarts
 # The detection picture, shown without a live camera, is scaled straight to
 # the screen width: scaling to 1296 and letting the G2D blow it up to 1920
 # again made it look softer than the camera is.
@@ -703,6 +704,21 @@ def main(argv=None):
     timing = os.environ.get("PHYTEC_DETECT_TIMING") == "1"
     tsum = {}
 
+    # A hung camera or accelerator raises nothing: the picture just stands
+    # still. Exit then, systemd starts the demo over.
+    watch = {"t": time.monotonic(), "state": None}
+
+    def stalled():
+        now = time.monotonic()
+        if now - watch["t"] < 1:
+            return None
+        state = [det_source.seq] + [len(w._done) and w._done[-1] for w in workers]
+        if state != watch["state"]:
+            watch.update(t=now, state=state, seen=now)
+            return None
+        watch["t"] = now
+        return now - watch.get("seen", now) > STALL_S
+
     def tick(name, t0):
         if timing:
             tsum[name] = tsum.get(name, 0.0) + time.perf_counter() - t0
@@ -712,6 +728,8 @@ def main(argv=None):
             for s in sources:
                 if s.error:
                     die(s.error)
+            if stalled():
+                die(f"no new camera frame or detection for {STALL_S:.0f} s", code=4)
             if voice_pending and screen.frames > 150 and not screen.error \
                     and time.monotonic() - t_screen > 5:
                 listener, voice_pending = start_voice(), False
