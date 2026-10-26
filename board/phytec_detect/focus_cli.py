@@ -31,7 +31,7 @@ import time
 import cv2
 import numpy as np
 
-from .camera import (Camera, Screen, die, find_sensor, is_mono, isp_size, screen_size,
+from .camera import (Camera, Screen, die, find_sensor, is_mono, isp_size, isp_source, screen_size,
                      to_bgrx)
 
 NAMES = {"csi1": "S/W (CSI1)", "csi2": "Farbe (CSI2)"}
@@ -135,8 +135,7 @@ class IspReader:
             f"sink_1::xpos={tx} sink_1::ypos={ty} sink_1::width={tw} sink_1::height={th} "
             f"sink_1::zorder=1 ! video/x-raw,format=BGRx,width={pw},height={ph} ! "
             f"appsink drop=true max-buffers=1 sync=false "
-            f"v4l2src device=/dev/video-isp-csi{csi} ! "
-            f"video/x-raw,format=YUY2,width={w},height={h} ! tee name=t "
+            + isp_source(csi, f"video/x-raw,format=YUY2,width={w},height={h}") + " ! tee name=t "
             f"t. ! {leaky} ! videocrop left={x0} top={y0} right={w - x0 - dw} "
             f"bottom={h - y0 - dh} ! c.sink_0 "
             f"t. ! {leaky} ! c.sink_1", cv2.CAP_GSTREAMER)
