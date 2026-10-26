@@ -47,6 +47,9 @@ from phytec_detect.isp960 import boxes_to_isp960, to_isp960  # noqa: E402
 EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".heic", ".heif"}
 REAL_SIZE = 1600      # long side of the real photos in the dataset
 SYNTH_SIZE = 1280     # long side of synthetic scenes
+# pictures from the demo setup's detection camera (phytec-photo): VM-017,
+# and the VM-117 (same AR0521 sensor, other lens and view) from 2026-10-23
+SETUP_FOLDERS = ("vm017", "vm017_isp", "vm117", "vm117_isp")
 
 
 def read_image(path):
@@ -182,7 +185,7 @@ def main():
     parser.add_argument("--max-size", type=float, default=0.45)
     parser.add_argument("--color", action="store_true", help="keep colour (default: gray)")
     parser.add_argument("--setup-repeat", type=int, default=5,
-                        help="training copies of each demo-setup picture (vm017/, vm017_isp/ folders)")
+                        help="training copies of each demo-setup picture (vm017*/, vm117*/ folders)")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--isp960", action="store_true",
                         help="also every ISP picture (1920x1080: photos, scenes, negatives) as "
@@ -239,7 +242,7 @@ def main():
             # Pictures from the demo setup itself (phytec-photo, in vm017/)
             # are what the model will see -- weight them up against the
             # thousands of synthetic scenes.
-            copies = args.setup_repeat if (split == "train" and path.parent.name in ("vm017", "vm017_isp")) else 1
+            copies = args.setup_repeat if (split == "train" and path.parent.name in SETUP_FOLDERS) else 1
             for c in range(copies):
                 write(out, split, f"real_{art}_{path.stem}" + (f"_r{c}" if c else ""),
                       to_out(small, gray), [(cid, x0, y0, x1, y1)])
