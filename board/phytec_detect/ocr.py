@@ -40,6 +40,11 @@ MODEL_DIR = "/opt/phytec-detect/models/ocr"
 DET_H, DET_W = 320, 512           # card, long side horizontal (85 x 55 mm ~ 1.55)
 REC_H, REC_W = 48, 320            # one text line
 DET_UP = 1.75                     # smallest det scale (small print)
+# i.MX95: the card camera sees a card ~210 px wide (i.MX8MP ~280 px), print
+# ~7 px high. det INT8 -- Neutron NPU or CPU -- finds hardly a line of it
+# ("PHYTEC"), even scaled up 3.5 x; FP32 det on the CPU at 1.25 x reads the
+# name (~2 s det, ~1 s rec while the demo runs; 1.75 x: 7.5 s)
+DET_UP_IMX95 = 1.25
 _CLAHE = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
 VX_DELEGATE = "/usr/lib/libvx_delegate.so"
 # One Neutron delegate per TFLite runtime, each built against its own ABI:
@@ -112,6 +117,8 @@ class _Net:
 def _find(model_dir, stem, cpu):
     """<stem>_int8.tflite (NPU) unless cpu, else <stem>.onnx -- on the
     i.MX95 <stem>_neutron.tflite first, the model converted for its NPU."""
+    if soc() == "imx95" and stem == "det":
+        cpu = True  # see DET_UP_IMX95; det_neutron.tflite kept for a better INT8 det
     npu = [f"{stem}_neutron.tflite"] if soc() == "imx95" else []
     for name in ([] if cpu else npu + [f"{stem}_int8.tflite"]) + [f"{stem}.onnx"]:
         path = os.path.join(model_dir, name)
@@ -147,6 +154,7 @@ class CardReader:
         # CTC classes: blank, the dictionary, space (PaddleOCR's order)
         self.chars = ["\0"] + chars.splitlines() + [" "]
         self.times = {}
+        self.det_up = DET_UP_IMX95 if soc() == "imx95" else DET_UP
 
     # -- det -------------------------------------------------------------------
     @staticmethod
@@ -164,11 +172,11 @@ class CardReader:
         bgr = cv2.cvtColor(_CLAHE.apply(gray), cv2.COLOR_GRAY2BGR)
         h, w = bgr.shape[:2]
         s = min(DET_W / w, DET_H / h)
-        if s >= DET_UP:
+        if s >= self.det_up:
             return self._det_tile(bgr, 0, 0, s)
         # print ~10 px high is too small for det: scale up first, as
         # PaddleOCR does (shorter side >= 736), then tiles
-        up = DET_UP
+        up = self.det_up
         bgr = cv2.resize(bgr, None, fx=up, fy=up, interpolation=cv2.INTER_CUBIC)
         h, w = bgr.shape[:2]
         rects = []
