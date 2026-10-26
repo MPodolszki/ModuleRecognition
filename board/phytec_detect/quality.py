@@ -55,7 +55,7 @@ class QualityRecorder:
         Smoother's [box, {class: score}, frames since seen]."""
         now = time.monotonic()
         active = set()
-        for box, scores, missing in list(spots):
+        for box, scores, missing, *_ in list(spots):
             if missing or not scores:
                 continue
             ranked = sorted(scores.items(), key=lambda kv: -kv[1])
@@ -99,7 +99,7 @@ class QualityRecorder:
                 "spots": [{"box": [float(v) for v in b],
                            "scores": {self._art(c): round(float(s), 3)
                                       for c, s in sorted(sc.items(), key=lambda kv: -kv[1])[:3]}}
-                          for b, sc, m in list(spots) if not m and sc],
+                          for b, sc, m, *_ in list(spots) if not m and sc],
                 "size": [int(frame.shape[1]), int(frame.shape[0])]}
         picture = frame.copy()
         self._busy = True

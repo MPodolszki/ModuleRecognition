@@ -215,11 +215,14 @@ class Smoother:
     jump from frame to frame (0.6 / 0.95 / missed on a module the float
     model rates 0.92 every time); per spot on the table this keeps a
     running score per class, shows the best class, and holds a module a
-    few frames when it drops out."""
+    few frames when it drops out. Hysteresis: a module appears at `conf`
+    but stays until its running score falls below `off` x conf -- one
+    whose score swings around the threshold (stacked, half hidden) does
+    not blink on and off."""
 
-    def __init__(self, alpha=0.4, hold=4, iou=0.3):
-        self.alpha, self.hold, self.iou = alpha, hold, iou
-        self.spots = []  # [box(4), {class: score}, frames since seen]
+    def __init__(self, alpha=0.4, hold=4, iou=0.3, off=0.7):
+        self.alpha, self.hold, self.iou, self.off = alpha, hold, iou, off
+        self.spots = []  # [box(4), {class: score}, frames since seen, shown]
 
     @staticmethod
     def _iou(a, b):
@@ -241,20 +244,24 @@ class Smoother:
                     if v > best_iou:
                         best, best_iou = i, v
             scores = {} if best is None else self.spots[best][1]
+            shown = best is not None and self.spots[best][3]
             if best is not None:
                 used.add(best)
             scores = {c: (1 - self.alpha) * s for c, s in scores.items()}
             scores[int(cls)] = scores.get(int(cls), 0.0) + self.alpha * float(score)
             if best is None:  # new spot: start from the raw score
                 scores = {int(cls): float(score)}
-            spots.append([box, scores, 0])
+            spots.append([box, scores, 0, shown])
         for i, spot in enumerate(self.spots):  # dropped out: hold a few frames
             if i not in used and spot[2] < self.hold:
-                spots.append([spot[0], {c: s * 0.9 for c, s in spot[1].items()}, spot[2] + 1])
+                spots.append([spot[0], {c: s * 0.9 for c, s in spot[1].items()}, spot[2] + 1,
+                              spot[3]])
         self.spots = spots
         out = []
-        for box, scores, _ in spots:
+        for spot in spots:
+            box, scores, _, shown = spot
             cls, score = max(scores.items(), key=lambda kv: kv[1])
-            if score >= conf:
+            spot[3] = score >= (conf * self.off if shown else conf)
+            if spot[3]:
                 out.append([*box, score, cls])
         return np.array(out, np.float32).reshape(-1, 6)
