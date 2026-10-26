@@ -200,6 +200,32 @@ class WhiteBalance:
         return cv2.LUT(frame, self._lut)
 
 
+class AutoLevel:
+    """Brightness for a monochrome sensor behind the i.MX95's Neo ISP.
+
+    The ISP's auto exposure does not act on the b/w AR0521 (exposure value,
+    analogue and digital gain are all ignored), and its picture comes out
+    about half as bright as the i.MX8MP's -- the table near 125 instead of
+    ~200. The model was trained on the i.MX8MP's pictures, so this gain
+    brings the bright end (the 99th percentile: the table) to `target`,
+    measured every `every` frames on every 4th pixel, smoothed; applied as
+    one cv2.LUT (~1 ms at 1920x1080).
+    """
+
+    def __init__(self, every=15, target=205.0, smooth=0.3, max_gain=4.0):
+        self.every, self.target, self.smooth, self.max_gain = every, target, smooth, max_gain
+        self.gain, self._lut, self._n = None, None, 0
+
+    def __call__(self, gray):
+        if self._n % self.every == 0:
+            top = float(np.percentile(gray[::4, ::4], 99)) + 1e-3
+            g = float(np.clip(self.target / top, 1.0, self.max_gain))
+            self.gain = g if self.gain is None else (1 - self.smooth) * self.gain + self.smooth * g
+            self._lut = np.clip(np.arange(256, dtype=np.float32) * self.gain, 0, 255).astype(np.uint8)
+        self._n += 1
+        return cv2.LUT(gray, self._lut)
+
+
 def white_balance(bgr):
     """One-shot WhiteBalance for a single (training) picture."""
     return WhiteBalance(every=1, smooth=1.0)(bgr)
@@ -266,6 +292,7 @@ class Camera:
         self.mono = False
         self.sensor = None
         self._wb = self._ae = None
+        self._level = None
         self._yuy2 = False
         self._nv12 = None  # (w, h) when the ISP scales the mono picture
         if not self.is_camera:
@@ -318,6 +345,8 @@ class Camera:
                             else "imx8-phycam-isp running, mode 2?")
                     raise RuntimeError(f"could not open the ISP on CSI{csi} ({hint})")
                 self.is_camera = False  # frames come out finished
+                if mono and soc() == "imx95":
+                    self._level = AutoLevel()
                 return
             crop_w, crop_h = sensor_w, sensor_h
             offset = None
@@ -380,6 +409,8 @@ class Camera:
                 raw = raw[..., 0]
             if self._ae:
                 self._ae(raw)
+            if self._level:
+                raw = self._level(raw)
             return True, raw
         if self.is_camera:
             if raw.ndim == 3:
