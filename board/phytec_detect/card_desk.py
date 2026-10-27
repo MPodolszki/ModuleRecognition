@@ -12,7 +12,8 @@ or after SHOW_S at the latest; the same card lying on is not greeted again.
 A visit is saved in LEADS_DIR only with a name and a product in the zone
 (detected there within SEEN_S of the read -- the card may hide it): the
 zone picture (JPEG) and a line in leads.csv (time; first name; surname;
-article; product; all text read). That is personal data of visitors: delete it after the
+article; product; all text read). The same person with the same product
+is saved once (leads.csv is checked, also after a restart). That is personal data of visitors: delete it after the
 fair, and say at the stand that cards laid there are kept for contact.
 """
 
@@ -135,14 +136,31 @@ class CardDesk:
         finally:
             self._busy = False
 
+    def _saved(self, path):
+        """(first name, surname, article) already in leads.csv."""
+        done = set()
+        try:
+            with open(path, encoding="utf-8", newline="") as f:
+                for row in list(csv.reader(f, delimiter=";"))[1:]:
+                    if len(row) >= 4:
+                        done.add((row[1].lower(), row[2].lower(), row[3]))
+        except OSError:
+            pass
+        return done
+
     def _save(self, crop, name, classes, lines):
         try:
             os.makedirs(self.leads_dir, exist_ok=True)
             stamp = time.strftime("%Y%m%d-%H%M%S")
-            arts = [self.labels[c] if c < len(self.labels) else str(c) for c in classes]
+            path = os.path.join(self.leads_dir, "leads.csv")
+            done = self._saved(path)
+            arts = [a for a in (self.labels[c] if c < len(self.labels) else str(c) for c in classes)
+                    if (name[0].lower(), name[1].lower(), a) not in done]
+            if not arts:
+                print(f"card: {name[0]} {name[1]} with this product saved before", flush=True)
+                return
             cv2.imwrite(os.path.join(self.leads_dir, f"{stamp}_{'+'.join(arts)}.jpg"), crop,
                         [cv2.IMWRITE_JPEG_QUALITY, 92])
-            path = os.path.join(self.leads_dir, "leads.csv")
             new = not os.path.exists(path)
             with open(path, "a", encoding="utf-8", newline="") as f:
                 w = csv.writer(f, delimiter=";")
