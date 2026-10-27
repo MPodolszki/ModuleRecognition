@@ -878,14 +878,8 @@ def main(argv=None):
                     if panel is not None and shown_now and live_result is not result:
                         live_result = result  # one new crop per detection result
                         k = shown_now[0]
-                        color = screen.color() if view_geo is not None \
-                            and hasattr(screen, "color") else None
-                        if color is not None and k < len(quads):
-                            # the colour live picture (screen -> ISP pixels)
-                            crop = straight_crop(color, quads[k] / view_geo.scale)
-                        else:
-                            crop = straight_crop(result[0], det_quads[k]) \
-                                if result[0] is not None and k < len(det_quads) else None
+                        crop = straight_crop(result[0], det_quads[k]) \
+                            if result[0] is not None and k < len(det_quads) else None
                         if crop is not None:
                             panel.set_live(int(dets[k, 5]), crop)
                     if zone is not None:
