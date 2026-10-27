@@ -413,6 +413,8 @@ def draw_zone(canvas, zone, busy, color=style.ORANGE,
 
 CARD_ZONE_TEXT = ("Produkt + Visitenkarte hier ablegen", "Erkannt")
 DROP_ZONE_TEXT = ("Produkt hier ablegen \u00b7 zwei zum Vergleich", "Erkannt")
+BOTH_ZONE_TEXT = ("Produkt hier ablegen \u00b7 zwei zum Vergleich \u00b7 "
+                  "mit Visitenkarte: Kontakt", "Erkannt")
 
 
 def draw_card(canvas, quad, name):
@@ -557,12 +559,13 @@ def main(argv=None):
                              "plane_map_isp_w960.json). Off by default until a model is "
                              "trained on ISP-scaled pictures: products_v6_n (CPU-scaled "
                              "training) lost confidence on some boards with it")
-    parser.add_argument("--zone", default="0.02,0.6,0.24,0.96",
+    parser.add_argument("--zone", default="0.02,0.6,0.48,0.96",
                         help="drop zone x0,y0,x1,y1 as fractions of the screen (a product laid "
                              "there shows its info at once, with its live picture), 'off' = none")
-    parser.add_argument("--card-zone", default="0.26,0.6,0.48,0.96",
+    parser.add_argument("--card-zone", default="zone",
                         help="card zone x0,y0,x1,y1 as fractions of the screen (blue: a product "
-                             "and a business card laid there), 'off' = none")
+                             "and a business card laid there), 'zone' = the drop zone itself "
+                             "(one zone for both), 'off' = none")
     parser.add_argument("--ocr-models", default="/opt/phytec-detect/models/ocr",
                         help="business card reader models (phytec_detect.ocr) for the card zone")
     parser.add_argument("--leads-dir", default="/var/lib/phytec-detect/leads",
@@ -690,6 +693,7 @@ def main(argv=None):
     resets = 0
     canvas = panel = None
     zone = card_zone = card_region = cards = None
+    one_zone = False
     banner_seen = None
     zone_classes, live_result = [], None
     screen_tries = 0
@@ -801,7 +805,9 @@ def main(argv=None):
                     screen = Screen(canvas.shape[1], h)
                 panel = None if args.no_panel else InfoPanel(products, workers[0].detector.labels)
                 zone = zone_rect(args.zone, w_, canvas.shape[0])
-                card_zone = zone_rect(args.card_zone, w_, canvas.shape[0])
+                card_zone = zone if args.card_zone == "zone" else \
+                    zone_rect(args.card_zone, w_, canvas.shape[0])
+                one_zone = zone is not None and card_zone == zone
                 if card_zone is not None and os.path.isdir(args.ocr_models):
                     from .card_desk import CardDesk
                     cards = CardDesk(workers[0].detector.labels,
@@ -862,25 +868,32 @@ def main(argv=None):
                     # both zones show a product's info at once, with its live picture
                     inside = in_zone(dets, zone)
                     in_card = in_zone(dets, card_zone)
-                    # the blue zone decides: a product there (with a visitor's
-                    # card) puts the orange zone's products aside; else the
-                    # orange one (one: info, two: comparison)
-                    if in_card:
+                    # two zones: the blue one decides, a product there (with a
+                    # visitor's card) puts the orange zone's products aside; else
+                    # the orange one (one: info, two: comparison). One zone: both
+                    if in_card and not one_zone:
                         inside = []
                     shown_now = in_card if in_card else inside
                     zone_classes = [int(dets[k, 5]) for k in shown_now]
                     if panel is not None and shown_now and live_result is not result:
                         live_result = result  # one new crop per detection result
                         k = shown_now[0]
-                        crop = straight_crop(result[0], det_quads[k]) \
-                            if result[0] is not None and k < len(det_quads) else None
+                        color = screen.color() if view_geo is not None \
+                            and hasattr(screen, "color") else None
+                        if color is not None and k < len(quads):
+                            # the colour live picture (screen -> ISP pixels)
+                            crop = straight_crop(color, quads[k] / view_geo.scale)
+                        else:
+                            crop = straight_crop(result[0], det_quads[k]) \
+                                if result[0] is not None and k < len(det_quads) else None
                         if crop is not None:
                             panel.set_live(int(dets[k, 5]), crop)
                     if zone is not None:
                         two = len({int(dets[k, 5]) for k in inside}) >= 2
-                        draw_zone(half, zone, bool(inside), text=DROP_ZONE_TEXT[:1] + (
+                        draw_zone(half, zone, bool(inside), text=(
+                            BOTH_ZONE_TEXT if one_zone else DROP_ZONE_TEXT)[:1] + (
                             "Vergleich" if two else "Erkannt",))
-                    if card_zone is not None:
+                    if card_zone is not None and not one_zone:
                         draw_zone(half, card_zone, bool(in_card), style.BLUE, CARD_ZONE_TEXT)
                     if cards is not None and result[0] is not None:
                         if card_region is None:  # the zone in the detection picture, once

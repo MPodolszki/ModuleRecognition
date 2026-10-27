@@ -1,5 +1,6 @@
-"""The blue card zone: a visitor lays a product and a business card there,
-the demo reads the name and thanks the visitor; sales gets the contact.
+"""The card zone (by default the drop zone itself): a visitor lays a
+product and a business card there, the demo reads the name and thanks the
+visitor; sales gets the contact.
 
 Whenever the zone's part of the detection picture has changed and then
 lain still for HOLD_S, it goes to the card reader (phytec_detect.ocr) in a
@@ -106,6 +107,8 @@ class CardDesk:
             return
         if self._busy or self.reader is None:
             return
+        if self.name is None and not any(now - t < SEEN_S for t in self._seen.values()):
+            return  # no product in the zone: no visit to read (the OCR costs ~4 s CPU)
         if self._read_small is not None and np.abs(small - self._read_small).mean() <= MOVED:
             # read this picture already: again only while no name came out
             if self.name is not None or self._tries >= RETRIES or now - self._last_read < RETRY_S:

@@ -503,7 +503,7 @@ class OverlayScreen:
             f"sink_1::width={sw} sink_1::height={sh} sink_1::zorder=1 ! "
             f"waylandsink fullscreen=true sync=false "
             + isp_source(csi, f"video/x-raw,format=YUY2,width={w},height={h},framerate={fps}/1")
-            + f" ! {leaky} ! c.sink_0 "
+            + f" ! queue name=live max-size-buffers=2 leaky=downstream ! c.sink_0 "
             f"appsrc name=layer is-live=true do-timestamp=true format=time "
             f"caps=video/x-raw,format=BGRA,width={sw},height={sh},framerate={fps}/1 ! "
             # The G2D only blends DMA buffers: a wrapped Python buffer is
@@ -517,6 +517,29 @@ class OverlayScreen:
         self._last = None
 
         self.grab_to = None  # path: save the next composed frame there (snapshot)
+        self._live_size = (w, h)
+        self._want_color, self._color = True, None  # the live picture, raw YUY2
+        self._color_caps = None
+
+        def keep_color(pad, info):
+            if self._want_color:  # copied only when asked for (4 MB)
+                self._want_color = False
+                buf = info.get_buffer()
+                ok, m = buf.map(Gst.MapFlags.READ)
+                if ok:
+                    try:
+                        st = pad.get_current_caps().get_structure(0)
+                        self._color = (bytes(m.data), st.get_value("width"),
+                                       st.get_value("height"), st.get_value("format"))
+                        if self._color_caps is None:
+                            self._color_caps = st.to_string()
+                            print(f"live picture: {self._color_caps}", flush=True)
+                    finally:
+                        buf.unmap(m)
+            return Gst.PadProbeReturn.OK
+
+        self._pipeline.get_by_name("live").get_static_pad("src").add_probe(
+            Gst.PadProbeType.BUFFER, keep_color)
 
         def count(pad, info):
             self.frames += 1
@@ -562,6 +585,18 @@ class OverlayScreen:
             cv2.imwrite(self.grab_to, img[..., 2::-1] if rgb else img[..., :3])
         finally:
             buf.unmap(m)
+
+    def color(self):
+        """The newest colour live picture copied (BGR, ISP size), None before
+        the first; asks for the next one."""
+        got, self._want_color = self._color, True
+        if got is None:
+            return None
+        raw, w, h, fmt = got
+        a = np.frombuffer(raw, np.uint8)
+        stride = w * 2 if a.size % (w * 2) == 0 else a.size // h
+        yuy2 = a[:stride * h].reshape(h, stride)[:, :w * 2].reshape(h, w, 2)
+        return cv2.cvtColor(yuy2, cv2.COLOR_YUV2BGR_YUY2)
 
     def show(self, bgra):
         """Replace the layer. The caller draws only when something changed
