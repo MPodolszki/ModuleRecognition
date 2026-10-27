@@ -812,7 +812,8 @@ def main(argv=None):
                     from .card_desk import CardDesk
                     cards = CardDesk(workers[0].detector.labels,
                                      {a: p.get("name", a) for a, p in products.items()},
-                                     args.ocr_models, args.leads_dir)
+                                     args.ocr_models, args.leads_dir,
+                                     {a: p.get("image") for a, p in products.items()})
             # panel fully in and unchanged: its half of the layer stays as it is
             banner = cards.banner() if cards is not None else None
             keep_from = panel.static_from(canvas.shape[1]) \

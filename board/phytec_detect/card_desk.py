@@ -32,6 +32,8 @@ import time
 import cv2
 import numpy as np
 
+from . import lead_mail
+
 HOLD_S = 1.0               # still for this long: read
 MOVED, CHANGED = 4.0, 8.0  # mean grey difference (0..255) of the zone, 64 x 64
 RETRIES, RETRY_S = 3, 3.0  # no name: read the still zone again (exposure settling, a hand)
@@ -39,11 +41,14 @@ SHOW_S = 30.0              # the banner at most this long
 TAKEN = 0.03               # this share of the zone changed by > 25 grey levels: taken out
 SEEN_S = 3.0               # a product detected in the zone this recently lies there
 LEADS_DIR = "/var/lib/phytec-detect/leads"
+LEAD_COLUMNS = ["Zeit", "Vorname", "Nachname", "E-Mail", "Artikelnummer", "Produkt",
+                "Text der Karte"]
 
 
 class CardDesk:
-    def __init__(self, labels, names, model_dir, leads_dir=LEADS_DIR):
+    def __init__(self, labels, names, model_dir, leads_dir=LEADS_DIR, images=None):
         self.labels, self.names, self.leads_dir = labels, names, leads_dir
+        self.images = images or {}  # article -> product photo, for the mail to sales
         self.reader = None
         self.error = None
         self.name = None          # (first, last) of the visitor now at the zone
@@ -230,19 +235,26 @@ class CardDesk:
             if not arts:
                 print(f"card: {name[0]} {name[1]} with this product saved before", flush=True)
                 return
-            cv2.imwrite(os.path.join(self.leads_dir, f"{stamp}_{'+'.join(arts)}.jpg"), crop,
-                        [cv2.IMWRITE_JPEG_QUALITY, 92])
+            zone_jpg = os.path.join(self.leads_dir, f"{stamp}_{'+'.join(arts)}.jpg")
+            cv2.imwrite(zone_jpg, crop, [cv2.IMWRITE_JPEG_QUALITY, 92])
             new = not os.path.exists(path)
             with open(path, "a", encoding="utf-8", newline="") as f:
                 w = csv.writer(f, delimiter=";")
                 if new:
                     w.writerow(["Zeit", "Vorname", "Nachname", "E-Mail", "Artikelnummer", "Produkt",
                                 "Text der Karte"])
+                leads = []
                 for art in arts:
-                    w.writerow([time.strftime("%Y-%m-%d %H:%M:%S"), name[0], name[1], email or "",
-                                art, self.names.get(art, art), " | ".join(t for t, _ in lines if t)])
+                    row = [time.strftime("%Y-%m-%d %H:%M:%S"), name[0], name[1], email or "",
+                           art, self.names.get(art, art), " | ".join(t for t, _ in lines if t)]
+                    w.writerow(row)
+                    leads.append(dict(zip(LEAD_COLUMNS, row)))
             print(f"lead saved: {name[0]} {name[1]} <{email or 'no e-mail read'}> {'+'.join(arts)}",
                   flush=True)
+            for lead in leads:  # to sales (lead_mail; off without an address)
+                threading.Thread(target=lead_mail.send, daemon=True, name="pd-lead-mail", args=(
+                    lead, zone_jpg, [(lead["Artikelnummer"], self.images.get(lead["Artikelnummer"]))]),
+                    kwargs={"log": lambda m: print(m, flush=True)}).start()
         except OSError as error:
             print(f"lead not saved: {error}", flush=True)
 
