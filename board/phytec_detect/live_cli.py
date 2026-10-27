@@ -555,10 +555,10 @@ def main(argv=None):
                              "plane_map_isp_w960.json). Off by default until a model is "
                              "trained on ISP-scaled pictures: products_v6_n (CPU-scaled "
                              "training) lost confidence on some boards with it")
-    parser.add_argument("--zone", default="0.02,0.6,0.26,0.96",
+    parser.add_argument("--zone", default="0.02,0.6,0.24,0.96",
                         help="drop zone x0,y0,x1,y1 as fractions of the screen (a product laid "
                              "there shows its info at once, with its live picture), 'off' = none")
-    parser.add_argument("--card-zone", default="0.02,0.12,0.26,0.48",
+    parser.add_argument("--card-zone", default="0.26,0.6,0.48,0.96",
                         help="card zone x0,y0,x1,y1 as fractions of the screen (blue: a product "
                              "and a business card laid there), 'off' = none")
     parser.add_argument("--ocr-models", default="/opt/phytec-detect/models/ocr",
