@@ -12,7 +12,7 @@
 Layout and fields: marketing's "Datensatz pro Produkt: Overlay und
 Vergleich" (tools/product_info.py builds products.json from it). The overlay
 covers `single` of the screen width (960 px of 1920), the comparison
-`compare` (1240 px, the camera stays visible left); it eases in/out over
+`compare` (also half: the drop zone stays visible left); it eases in/out over
 `slide_s`. Its picture is rendered only when its content changes; every
 screen frame just blends the cached picture in at the current offset.
 """
@@ -150,7 +150,7 @@ def _put(img, text, x, y, scale, color, thickness=1):
 
 
 class InfoPanel:
-    def __init__(self, products, labels, single=0.5, compare=1240 / 1920, slide_s=0.35,
+    def __init__(self, products, labels, single=0.5, compare=0.5, slide_s=0.35,
                  show_s=30.0):
         self.products, self.labels = products, labels
         self.single, self.compare = single, compare
@@ -653,8 +653,9 @@ def _render_compare(page, a, b):
     and QR code per product at the bottom."""
     _header(page, ["Produkte", "Vergleich"])
     w, m = page.w, 32
-    label_w = 150
+    label_w = 110 if w < 1100 else 150   # half the screen: narrower
     col = (w - 2 * m - label_w - 24) // 2
+    thumb_w, thumb_h = (120, 84) if w < 1100 else (THUMB_W, THUMB_H)
     xs = (m + label_w, m + label_w + col + 24)
     infos = (a, b)
     # column heads: colour bar, category + NEU, name, article number, picture
@@ -662,9 +663,9 @@ def _render_compare(page, a, b):
     for x, (art, info), color in zip(xs, infos, COLUMN_COLORS):
         page.rect((x, y0, x + col, y0 + 4), fill=color)
         y = y0 + 18
-        box = (x + col - THUMB_W, y, x + col, y + THUMB_H)
+        box = (x + col - thumb_w, y, x + col, y + thumb_h)
         _picture(page, info, box)
-        tw = col - THUMB_W - 14
+        tw = col - thumb_w - 12
         category = info.get("category", "")
         if category:
             page.text(x, y, category, 16, fill=MUTED)
@@ -676,7 +677,7 @@ def _render_compare(page, a, b):
             page.mark("Neu", (tx, y - 1, tx + 44, y + 21))
         y += 26
         name = info.get("name") or art
-        size = next((s for s in (30, 26, 22) if page.width(name, s, "Bold") <= tw), 22)
+        size = next((s for s in (28, 24, 20) if page.width(name, s, "Bold") <= tw), 20)
         y_name = y
         for line in page.wrap(name, tw, size, "Bold")[:2]:
             page.text(x, y, line, size, "Bold")

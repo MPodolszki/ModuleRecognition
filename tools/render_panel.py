@@ -35,7 +35,7 @@ from product_info import FEATURES, FIELDS, INFO_FILE, build, product_list, read_
 
 SCREEN_W, SCREEN_H = 1920, 1080
 PANEL_W = SCREEN_W // 2          # InfoPanel single 0.5
-COMPARE_W = 1240                 # InfoPanel compare 1240 / 1920
+COMPARE_W = SCREEN_W // 2        # InfoPanel compare 0.5
 FONTS = pathlib.Path(info_panel.FONTS)
 MARK = (230, 90, 20)             # RGB, frames and numbers
 SCREENSHOT = ROOT / "runs" / "sim" / "demo_v6.png"
@@ -154,8 +154,8 @@ def compare_page(a, b):
     x, y = 40, 50
     draw.text((x, y), "Vergleich", font=font(40, "Bold"), fill=(20, 20, 20))
     y += 64
-    for line in ("Zwei Produkte im Feld. 1240 px breit,",
-                 "die Kamera bleibt links sichtbar.",
+    for line in ("Zwei Produkte im Feld. Halbe Breite",
+                 "(960 px), das Feld bleibt sichtbar.",
                  "",
                  "Kopf: Kategorie, NEU, Bezeichnung,",
                  "Artikelnummer. Zeilen: Kerne und die",
