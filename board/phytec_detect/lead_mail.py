@@ -5,10 +5,12 @@ picture of the zone (card and product) as it was read.
 Configured in /etc/default/phytec-detect (no address, no mail):
 
     PHYTEC_LEAD_MAIL_TO=sales@example.com      (several: comma-separated)
+    PHYTEC_LEAD_MAIL_CC=me@example.com         (optional, comma-separated)
     PHYTEC_LEAD_SMTP=relay.example.com[:25]    (a relay without login)
     PHYTEC_LEAD_MAIL_FROM=demo@example.com     (default: the first recipient)
 
-card_desk.CardDesk sends each new lead in a thread of its own; a mail that
+card_desk.CardDesk sends each new lead in a thread of its own -- once per
+person and product, as it saves them once (leads.csv); a mail that
 cannot go out is only logged (the lead is in leads.csv anyway). By hand:
 
     python3 -m phytec_detect.lead_mail --last     # the newest lead in leads.csv
@@ -28,18 +30,22 @@ LEADS_DIR = "/var/lib/phytec-detect/leads"
 TIMEOUT_S = 20
 
 
+def _addresses(name):
+    return [a.strip() for a in os.environ.get(name, "").split(",") if a.strip()]
+
+
 def config():
-    """(recipients, smtp host, port, sender) from the environment, None if off."""
-    to = [a.strip() for a in os.environ.get("PHYTEC_LEAD_MAIL_TO", "").split(",") if a.strip()]
+    """(recipients, cc, smtp host, port, sender) from the environment, None if off."""
+    to = _addresses("PHYTEC_LEAD_MAIL_TO")
     relay = os.environ.get("PHYTEC_LEAD_SMTP", "").strip()
     if not to or not relay:
         return None
     host, _, port = relay.partition(":")
     sender = os.environ.get("PHYTEC_LEAD_MAIL_FROM", "").strip() or to[0]
-    return to, host, int(port or 25), sender
+    return to, _addresses("PHYTEC_LEAD_MAIL_CC"), host, int(port or 25), sender
 
 
-def message(lead, zone_jpg=None, product_images=(), to=(), sender=""):
+def message(lead, zone_jpg=None, product_images=(), to=(), sender="", cc=()):
     """lead: dict with Zeit, Vorname, Nachname, E-Mail, Artikelnummer, Produkt,
     Text der Karte (a leads.csv row); product_images: (article, path) pairs."""
     name = f"{lead.get('Vorname', '')} {lead.get('Nachname', '')}".strip() or "unbekannt"
@@ -47,6 +53,8 @@ def message(lead, zone_jpg=None, product_images=(), to=(), sender=""):
     msg["Subject"] = f"Messe-Lead: {name} – {lead.get('Produkt', '')}"
     msg["From"] = sender
     msg["To"] = ", ".join(to)
+    if cc:
+        msg["Cc"] = ", ".join(cc)
     if lead.get("E-Mail"):
         msg["Reply-To"] = lead["E-Mail"]
     card = [t.strip() for t in lead.get("Text der Karte", "").split("|") if t.strip()]
@@ -84,16 +92,16 @@ def send(lead, zone_jpg=None, product_images=(), log=print):
     cfg = config()
     if cfg is None:
         return False
-    to, host, port, sender = cfg
+    to, cc, host, port, sender = cfg
     try:
-        msg = message(lead, zone_jpg, product_images, to, sender)
+        msg = message(lead, zone_jpg, product_images, to, sender, cc)
         with smtplib.SMTP(host, port, timeout=TIMEOUT_S) as smtp:
             smtp.ehlo()
             if smtp.has_extn("starttls"):
                 smtp.starttls()
                 smtp.ehlo()
             smtp.send_message(msg)
-        log(f"lead mailed to {', '.join(to)}: {lead.get('Vorname', '')} "
+        log(f"lead mailed to {', '.join(to + cc)}: {lead.get('Vorname', '')} "
             f"{lead.get('Nachname', '')} {lead.get('Artikelnummer', '')}")
         return True
     except (OSError, smtplib.SMTPException, socket.timeout) as error:
