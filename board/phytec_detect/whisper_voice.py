@@ -108,7 +108,8 @@ class Listener:
 
     def _named_in(self, heard):
         """Product names in the free transcript, spelled loosely: a word with a
-        digit (alone or with the word before: "AM 57x") that holds a
+        digit (alone or with the word before or after: "AM 57x", "i.MX8M
+        Plus") that holds a
         product's short name ("Polli.MX7" -> i.MX7) or nearly is one ("RM57X"
         -> AM57x). Words without digits -- "Libra", noise -- never count."""
         import difflib
@@ -116,24 +117,28 @@ class Listener:
         from .search import _FAMILY, squeeze
         if self._names is None:
             from .photo_cli import read_products
+            from .whisper_grammar import OTHER_NAMES
             self._names = [(n, _FAMILY.sub("", squeeze(n)))
                            for _, n in read_products(self.products_csv)]
+            # known, not on the table: "i.MX8M Mini" must not become the i.MX8M Plus
+            self._names += [(None, _FAMILY.sub("", squeeze(n))) for n in OTHER_NAMES]
         words = heard.split()
         best, best_ratio = None, NAME_RATIO
         for i, w in enumerate(words):
             if not re.search(r"\d", w):
                 continue
-            for key in {squeeze(w), squeeze(" ".join(words[max(0, i - 1):i + 1]))}:
+            for key in {squeeze(w), squeeze(" ".join(words[max(0, i - 1):i + 1])),
+                        squeeze(" ".join(words[i:i + 2]))}:
                 if len(key) < 3 or not re.search(r"[a-z]", key):
                     continue
                 for name, short in self._names:
                     if len(short) >= 3 and short in key:
-                        ratio = 1.0
+                        ratio = 1.0 + len(short) / 100  # the longest name held wins
                     else:
                         ratio = difflib.SequenceMatcher(None, key, short).ratio()
                     if ratio > best_ratio:
                         best, best_ratio = name, ratio
-        return [best] if best else []
+        return [best] if best else []  # None: a product not on the table
 
     def transcribe(self, audio, awake):
         """Score the wake word; after it -- in this utterance or the one

@@ -83,6 +83,13 @@ def written_forms(name):
     return sorted(f for f in forms if f)
 
 
+# Products said that are not on the demo table: as names of their own, so
+# that "i.MX8M Mini" does not end up as the table's i.MX8M Plus (spotting
+# needs "Plus" then) -- but nothing is shown for them.
+OTHER_NAMES = ["phyCORE-i.MX8M Mini", "phyCORE-i.MX8M Nano", "phyCORE-i.MX 8X",
+               "phyCORE-i.MX8M", "phyCORE-i.MX 91"]
+
+
 PREFIXES = ["wo ist der", "Wo ist der", "wo ist das", "Wo ist das", "wo ist", "Wo ist",
             "zeig mir den", "Zeig mir den", "zeig den", "Zeig den", "such den", "Such den"]
 OTHER = ["alle zeigen", "Alle zeigen", "alles zeigen", "Alles zeigen", "zurücksetzen",
@@ -203,15 +210,16 @@ class Spotter:
     def __init__(self, encoder, products):
         # token -> child dict; None: a name ends here -> its text;
         # "f": the shortest name through here, "p": the products through here
+        # (OTHER_NAMES as "-" + name: known, not on the table)
         self.trie = {}
-        for _, name in products:
+        for tag, name in [(n, n) for _, n in products] + [("-" + n, n) for n in OTHER_NAMES]:
             for form in written_forms(name):
                 for lead in (" ", ""):
                     node = self.trie
                     for t in encoder.encode(lead + form):
                         node = node.setdefault(t, {"p": set()})
-                        node["p"].add(name)
-                        if len(form) < len(node.get("f", form + "_")):
+                        node["p"].add(tag)
+                        if not tag.startswith("-") and len(form) < len(node.get("f", form + "_")):
                             node["f"] = form
                     node[None] = form
         self.starts = np.array([t for t in self.trie if isinstance(t, int)])
@@ -226,6 +234,8 @@ class Spotter:
 
     def _name(self, node, path):
         """(name text, score) for the trie position reached, or None."""
+        if any(p.startswith("-") for p in node["p"]):
+            return None  # "i.MX8M (Mini)": a PHYTEC product, but none of the table's
         if None in node:
             return node[None], float(np.mean(path))
         if len(path) >= self.MIN_TOKENS and len(node["p"]) <= self.MAX_PRODUCTS:

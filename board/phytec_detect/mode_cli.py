@@ -25,6 +25,10 @@ pads' IOMUXC SW_PAD_CTL registers, and the pull is switched to up at start
 
 Without them the service waits (and says so) -- switching by hand works
 anyway.
+
+A line whose interrupt is taken (phyVIP i.MX95: GPIO2 shares its IRQ with
+the pwm-fan tachometer, gpiomon gets "Device or resource busy") is read
+every POLL_S instead, through the GPIO character device directly.
 """
 
 import os
@@ -34,6 +38,7 @@ import threading
 import time
 
 UNITS = {"demo": "phytec-detect.service", "training": "phytec-trial.service"}
+POLL_S = 0.05
 
 
 def switch(mode):
@@ -73,6 +78,48 @@ def pad_pullup(addresses):
         os.close(fd)
 
 
+def _pressed(mode, lock, last):
+    with lock:
+        now = time.monotonic()
+        if now - last[0] < 2.0:  # a service just started: let it come up
+            return
+        last[0] = now
+        switch(mode)
+
+
+def poll(mode, chip, line, active_low, lock, last):
+    """The line read every POLL_S (GPIO v2 uAPI, no interrupt): pressed when
+    it turns active and stays so for two reads."""
+    import ctypes
+    import fcntl
+    import struct
+
+    def iowr(nr, size):
+        return (3 << 30) | (size << 16) | (0xB4 << 8) | nr
+    flags = (1 << 2) | (1 << 8) | ((1 << 1) if active_low else 0)  # input, pull-up, active low
+    req = bytearray(592)
+    struct.pack_into("<I", req, 0, int(line))                       # offsets[0]
+    req[256:256 + 11] = b"phytec-mode"                              # consumer
+    struct.pack_into("<Q", req, 288, flags)                          # config.flags
+    struct.pack_into("<I", req, 560, 1)                              # num_lines
+    buf = ctypes.create_string_buffer(bytes(req), len(req))
+    with open(f"/dev/{chip}", "rb") as dev:
+        fcntl.ioctl(dev.fileno(), iowr(0x07, 592), buf)
+    fd = struct.unpack_from("<i", buf.raw, 588)[0]
+    print(f"{mode} button: {chip} line {line} (read every {POLL_S * 1000:.0f} ms)", flush=True)
+    values, before = bytearray(struct.pack("<QQ", 0, 1)), [False, False]
+    try:
+        while True:
+            fcntl.ioctl(fd, iowr(0x0E, 16), values)
+            on = bool(struct.unpack_from("<Q", values, 0)[0] & 1)
+            if on and before[-1] and not before[-2]:
+                _pressed(mode, lock, last)
+            before = [before[-1], on]
+            time.sleep(POLL_S)
+    finally:
+        os.close(fd)
+
+
 def watch(mode, spec, bias, active_low, lock, last):
     chip, line = spec.split()
     # pressed = the line becomes active; with -l (active low) that is the
@@ -80,16 +127,16 @@ def watch(mode, spec, bias, active_low, lock, last):
     cmd = ["gpiomon", "-c", chip, "-e", "rising", "-b", bias,
            "--debounce-period", "30ms", "-F", "%o"] + (["-l"] if active_low else []) + [line]
     while True:
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, text=True)
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         print(f"{mode} button: {chip} line {line}", flush=True)
         for _ in proc.stdout:
-            with lock:
-                now = time.monotonic()
-                if now - last[0] < 2.0:  # a service just started: let it come up
-                    continue
-                last[0] = now
-                switch(mode)
+            _pressed(mode, lock, last)
         proc.wait()
+        if "busy" in proc.stderr.read():  # its interrupt belongs to another driver
+            try:
+                poll(mode, chip, line, active_low, lock, last)
+            except OSError as error:
+                print(f"{mode} button: reading {chip} line {line} failed: {error}", flush=True)
         print(f"gpiomon for {mode} ended ({proc.returncode}), again in 5 s", flush=True)
         time.sleep(5)
 
