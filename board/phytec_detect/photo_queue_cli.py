@@ -41,6 +41,8 @@ def main(argv=None):
                         help="2, 3, ...: photograph the products again (marker DONE_R<n>)")
     parser.add_argument("--once", action="store_true",
                         help="end when the list is done instead of waiting for new rows")
+    parser.add_argument("--model", default=photo_cli.MODEL,
+                        help="model that must recognise a known product before its shots")
     args = parser.parse_args(argv)
 
     done_marker = "DONE" if args.round == 1 else f"DONE_R{args.round}"
@@ -81,7 +83,8 @@ def main(argv=None):
         resume = ["--start", str(shots + 1)] if shots >= 1 else []
         rc = photo_cli.main(["--article", article, "--name", name, "--intro", "4",
                              "--wait-start", "--previous", previous, "--list-csv", args.csv,
-                             "--out", args.out, "--done-marker", done_marker] + resume
+                             "--out", args.out, "--done-marker", done_marker,
+                             "--model", args.model] + resume
                             + ([] if args.raw else ["--isp"]))
         if rc != 0:
             print("stopped", flush=True)
