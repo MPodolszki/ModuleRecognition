@@ -10,6 +10,12 @@ the product is new); once it lies on the target and holds still, the
 camera fires by itself. Lifted shots ("ca. 25 cm anheben") fire after a
 countdown.
 
+A product the model already knows (its article in --model's labels.txt)
+must first be recognised: the shots start only when the model sees exactly
+that product in the middle (best class there, >= --verify-conf, for
+VERIFY_S) -- so a wrong module never ends up labelled as this one. A new
+product is not checked.
+
 Saved per shot, in --out/<article>/:
   <article>_NNN.jpg    full-resolution GRAY8 picture
   <article>_NNN.txt    YOLO label, class 0, box of the found product
@@ -33,6 +39,83 @@ import cv2
 import numpy as np
 
 from .camera import Camera, Screen, die, screen_size, to_bgrx
+
+MODEL = "/opt/phytec-detect/models/products_v8_n"
+VERIFY_S = 1.0   # the right product recognised this long before the first shot
+
+
+class Verifier:
+    """Is the product in the middle the one asked for? The demo's model
+    looks (Hailo, in a thread of its own on the newest frame); for a
+    product it does not know, every product passes."""
+
+    def __init__(self, model_dir, article, conf, names=None):
+        self.conf, self.names = conf, names or {}
+        try:
+            with open(os.path.join(model_dir, "labels.txt")) as f:
+                self.labels = [l.strip() for l in f if l.strip()]
+        except OSError:
+            self.labels = []
+        self.cls = self.labels.index(article) if article in self.labels else None
+        self.model_dir, self.done = model_dir, self.cls is None
+        self.text, self._ok_since, self._frame, self._rect = "", None, None, None
+        self._lock, self._thread, self._det = threading.Lock(), None, None
+
+    def feed(self, gray, rect):
+        """The newest frame and the found product's rectangle; True once the
+        right product was recognised long enough (then the model is closed)."""
+        if self.done:
+            return True
+        with self._lock:
+            self._frame, self._rect = gray, rect
+        if self._thread is None:
+            self._thread = threading.Thread(target=self._run, daemon=True, name="pd-verify")
+            self._thread.start()
+        return self.done
+
+    def _run(self):
+        from .detector import Detector
+        try:
+            self._det = Detector("hailo", self.model_dir, conf=0.2)
+        except Exception as error:  # noqa: BLE001 -- no model: no check, as before
+            print(f"verify: model not loaded ({error}) -- not checked", flush=True)
+            self.done = True
+            return
+        print(f"verify: {self.labels[self.cls]} must be recognised first", flush=True)
+        try:
+            while not self.done:
+                with self._lock:
+                    gray, rect = self._frame, self._rect
+                    self._frame = None
+                if gray is None:
+                    time.sleep(0.02)
+                    continue
+                self._judge(self._det(gray), rect)
+        finally:
+            self._det.close()
+
+    def _judge(self, dets, rect):
+        now = time.monotonic()
+        mine = None
+        if rect is not None and len(dets):
+            (cx, cy), _, _ = rect
+            inside = [d for d in dets if d[0] <= cx <= d[2] and d[1] <= cy <= d[3]]
+            if inside:  # the best class where the product lies
+                mine = max(inside, key=lambda d: d[4])
+        name = lambda c: self.names.get(self.labels[c], self.labels[c])
+        if mine is not None and int(mine[5]) == self.cls and mine[4] >= self.conf:
+            self._ok_since = self._ok_since or now
+            self.text = f"{name(self.cls)} erkannt ({mine[4] * 100:.0f} %)"
+            if now - self._ok_since >= VERIFY_S:
+                print(f"verify: {self.text}", flush=True)
+                self.done = True
+            return
+        self._ok_since = None
+        if mine is not None and int(mine[5]) != self.cls and mine[4] >= 0.5:
+            self.text = (f"FALSCHES PRODUKT: {name(int(mine[5]))} erkannt -- "
+                         f"bitte {name(self.cls)} hinlegen")
+        else:
+            self.text = f"Warte, bis {name(self.cls)} erkannt ist ..."
 
 VIEW_W = 1296
 POSITIONS = [  # (name, x, y) as fractions of the frame
@@ -294,6 +377,15 @@ def main(argv=None):
     parser.add_argument("--isp", action="store_true",
                         help="through the ISP in its current mode (as phytec-detect --isp); "
                              "--aspect/--crop-y do not apply")
+    parser.add_argument("--model", default=MODEL,
+                        help="the demo's model: a product it knows must be recognised "
+                             "before the first shot")
+    parser.add_argument("--verify-conf", type=float, default=0.3,
+                        help="score the asked product needs there (best class), "
+                             "default 0.3 -- low, since products are re-photographed "
+                             "where the model is weak")
+    parser.add_argument("--no-verify", action="store_true",
+                        help="do not check which product lies there")
     parser.add_argument("--start", type=int, default=None,
                         help="continue at this shot number of the plan (2 = first table "
                              "shot), skipping the background and reference shots; the "
@@ -345,6 +437,10 @@ def main(argv=None):
     plist = ProductList(args.list_csv, args.out, args.article,
                         done_marker=args.done_marker) if args.list_csv else None
     finished = False
+    verifier = Verifier(args.model, args.article, args.verify_conf,
+                        {a: n for a, n in read_products(args.list_csv)} if args.list_csv else None)
+    if args.no_verify or args.dry_run:
+        verifier.done = True
     try:
         while not stop.is_set() and step < len(plan):
             ok, gray = cam.read()
@@ -443,6 +539,10 @@ def main(argv=None):
             else:
                 moving = step != -2
                 last_c = None
+            if step >= -1 and not verifier.done:  # a known product: the right one?
+                if not verifier.feed(gray, rect):
+                    fire = False
+                    lines = lines + [verifier.text or "Produkt wird geprueft ..."]
             if fire and not moving:
                 stable_since = stable_since or now
             else:
