@@ -43,6 +43,7 @@ MIN_SCORE = -2.5  # mean log-probability a restricted command needs
 WAKE_MIN = -2.0   # mean log-probability of "Phytec" at the start of an utterance
 SPOT_MIN = -4.5   # mean log-probability (no bonus) of a product name said in passing
 SPOT_S = 5.0      # a product named in passing: only its frame this long
+NAME_RATIO = 0.79 # free transcript: a word this close to a product's short name
 # <|startoftranscript|> <|de|> <|transcribe|> <|notimestamps|>
 GERMAN_PROMPT = [50258, 50261, 50359, 50363]
 
@@ -69,7 +70,7 @@ class Listener:
         self.encoder = Encoder(f"{DATA}/assets/vocab.json")
         self.wake = Wake(self.encoder)
         self.products_csv, self._csv_mtime, self.grammar = products, None, None
-        self.spot, self.spotter = spot, None
+        self.spot, self.spotter, self._names = spot, None, None
         self.device = None
         for i, d in enumerate(sd.query_devices()):
             if device.lower() in d["name"].lower() and d["max_input_channels"] > 0:
@@ -104,6 +105,35 @@ class Listener:
             self.log(f"voice: {self.grammar.size} command token paths, "
                      f"{self.spotter.size} spoken product names")
         return self.grammar
+
+    def _named_in(self, heard):
+        """Product names in the free transcript, spelled loosely: a word with a
+        digit (alone or with the word before: "AM 57x") that holds a
+        product's short name ("Polli.MX7" -> i.MX7) or nearly is one ("RM57X"
+        -> AM57x). Words without digits -- "Libra", noise -- never count."""
+        import difflib
+
+        from .search import _FAMILY, squeeze
+        if self._names is None:
+            from .photo_cli import read_products
+            self._names = [(n, _FAMILY.sub("", squeeze(n)))
+                           for _, n in read_products(self.products_csv)]
+        words = heard.split()
+        best, best_ratio = None, NAME_RATIO
+        for i, w in enumerate(words):
+            if not re.search(r"\d", w):
+                continue
+            for key in {squeeze(w), squeeze(" ".join(words[max(0, i - 1):i + 1]))}:
+                if len(key) < 3 or not re.search(r"[a-z]", key):
+                    continue
+                for name, short in self._names:
+                    if len(short) >= 3 and short in key:
+                        ratio = 1.0
+                    else:
+                        ratio = difflib.SequenceMatcher(None, key, short).ratio()
+                    if ratio > best_ratio:
+                        best, best_ratio = name, ratio
+        return [best] if best else []
 
     def transcribe(self, audio, awake):
         """Score the wake word; after it -- in this utterance or the one
@@ -209,6 +239,10 @@ class Listener:
                          + "".join(f" [{t} {sc:.2f}]" for t, sc in spotted)
                          + f" ({self.last_ms:.0f} ms)")
                 named = [t for t, sc in sorted(spotted, key=lambda x: -x[1]) if sc >= SPOT_MIN]
+                if not named and heard:
+                    named = self._named_in(heard)
+                    if named:
+                        self.log(f"voice: '{heard}' sounds like {named[0]}")
                 if named:
                     self.awake_until = time.monotonic() + 1.5  # the red dot: heard
                     try:
