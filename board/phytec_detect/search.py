@@ -136,11 +136,11 @@ def _matches(request, products, fuzzy):
     return [i for i, sc in enumerate(scores) if sc >= fuzzy and sc >= top - 0.05], top
 
 
-def write_request(text, path=SEARCH_FILE):
+def write_request(text, path=SEARCH_FILE, seconds=SEARCH_S):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     tmp = path + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
-        json.dump({"text": text, "time": time.time()}, f)
+        json.dump({"text": text, "time": time.time(), "seconds": seconds}, f)
     os.chmod(tmp, 0o666)
     try:
         os.replace(tmp, path)
@@ -182,7 +182,7 @@ class SearchState:
                     what = request_of(req.get("text", ""))
                     if what:
                         self.text, self.classes = what, set(matches(what, self.products))
-                        self.until = now + SEARCH_S
+                        self.until = now + req.get("seconds", SEARCH_S)
                     else:
                         self.text, self.classes = "", None
         if self.classes is not None and now > self.until:

@@ -12,6 +12,10 @@ utterances (start: clearly above the background, end: 0.6 s quiet, at most
 word "Phytec" -- which Whisper writes in many ways (Fytek, Feitek, Vitec,
 ...), so it is matched loosely. The rest goes to search.py like a typed
 phytec-find request.
+
+Without the wake word (spot=True, the default) a product named anywhere in
+an utterance -- "... das ist der i.MX 8M Plus ..." -- frames only that
+product for SPOT_S seconds (whisper_grammar.Spotter).
 """
 
 import queue
@@ -21,13 +25,15 @@ import time
 
 import numpy as np
 
-from .whisper_grammar import Encoder, Grammar, Wake
+from .whisper_grammar import Encoder, Grammar, Spotter, Wake
 
 DATA = "/usr/share/demo-whisper-benchmark"
 RATE = 16000
 WAKE_S = 6.0
 MIN_SCORE = -2.5  # mean log-probability a restricted command needs
 WAKE_MIN = -2.0   # mean log-probability of "Phytec" at the start of an utterance
+SPOT_MIN = -4.5   # mean log-probability (no bonus) of a product name said in passing
+SPOT_S = 5.0      # a product named in passing: only its frame this long
 # <|startoftranscript|> <|de|> <|transcribe|> <|notimestamps|>
 GERMAN_PROMPT = [50258, 50261, 50359, 50363]
 
@@ -36,7 +42,7 @@ class Listener:
     """Microphone -> utterances -> Whisper on the Hailo-8 -> search requests."""
 
     def __init__(self, device="Jabra", log=print,
-                 products="/var/lib/phytec-detect/products.csv"):
+                 products="/var/lib/phytec-detect/products.csv", spot=True):
         import sounddevice as sd
         from whisper_bench import audio as wa
         from whisper_bench import tokenizer as tok
@@ -53,6 +59,7 @@ class Listener:
         self.encoder = Encoder(f"{DATA}/assets/vocab.json")
         self.wake = Wake(self.encoder)
         self.products_csv, self._csv_mtime, self.grammar = products, None, None
+        self.spot, self.spotter = spot, None
         self.device = None
         for i, d in enumerate(sd.query_devices()):
             if device.lower() in d["name"].lower() and d["max_input_channels"] > 0:
@@ -81,14 +88,18 @@ class Listener:
             mtime = 0
         if mtime != self._csv_mtime:
             self._csv_mtime = mtime
-            self.grammar = Grammar(self.encoder, read_products(self.products_csv))
-            self.log(f"voice: {self.grammar.size} command token paths")
+            products = read_products(self.products_csv)
+            self.grammar = Grammar(self.encoder, products)
+            self.spotter = Spotter(self.encoder, products)
+            self.log(f"voice: {self.grammar.size} command token paths, "
+                     f"{self.spotter.size} spoken product names")
         return self.grammar
 
     def transcribe(self, audio, awake):
         """Score the wake word; after it -- in this utterance or the one
         before -- the command the restricted decoder picks:
-        (wake score, wake word seen, command or None, its mean log-probability)."""
+        (wake score, wake word seen, command or None, its mean log-probability,
+        product names said in passing [(name, score)], the free transcript)."""
         wa = self._wa
         audio = wa.normalize_peak(audio)
         window = wa.pad_or_trim(audio, self.backend.chunk_length * RATE)
@@ -97,12 +108,18 @@ class Listener:
         encoded = self.backend.encode(mel)
         wake_score, wake_ids = self.wake.score(self.backend, encoded, GERMAN_PROMPT)
         woke = wake_score >= WAKE_MIN
-        command, score = None, -99.0
+        command, score, spotted, heard = None, -99.0, [], ""
         if woke or awake:
             prefix = list(GERMAN_PROMPT) + (wake_ids if woke else [])
             command, score = self._grammar().decode(self.backend, encoded, prefix)
+        elif self.spot:
+            self._grammar()
+            # ~6 tokens a second of speech at most: more is Whisper making things up
+            spotted, free = self.spotter.spot(self.backend, encoded, GERMAN_PROMPT,
+                                              max_tokens=8 + int(6 * len(audio) / RATE))
+            heard = self.tokenizer.decode(free).strip()
         self.last_ms = (time.perf_counter() - t0) * 1000
-        return wake_score, woke, command, score
+        return wake_score, woke, command, score, spotted, heard
 
     def _utterances(self):
         """Yield float32 utterances from the energy detector."""
@@ -136,27 +153,59 @@ class Listener:
     def _run(self):
         from .search import is_reset, write_request
 
-        def callback(data, frames, t, status):
+        # Whisper wants 16 kHz mono; USB microphones such as the SC420 offer
+        # only 44.1/48 kHz stereo (PortAudio's check passes 16 kHz anyway,
+        # opening fails): then 48 kHz, every 3 samples averaged
+        def callback_for(step):
+            def callback(data, frames, t, status):
+                mono = data[:, 0]
+                if step > 1:
+                    mono = mono[:len(mono) // step * step].reshape(-1, step).mean(1)
+                try:
+                    self._chunks.put_nowait(mono.astype(np.float32))
+                except queue.Full:
+                    pass
+            return callback
+
+        stream, rate = None, RATE
+        channels = min(2, int(self._sd.query_devices(self.device, "input")["max_input_channels"]))
+        for rate, ch in ((RATE, 1), (3 * RATE, 1), (3 * RATE, channels)):
             try:
-                self._chunks.put_nowait(data[:, 0].copy())
-            except queue.Full:
-                pass
+                stream = self._sd.InputStream(device=self.device, samplerate=rate, channels=ch,
+                                              dtype="float32", blocksize=rate // 10,
+                                              callback=callback_for(rate // RATE))
+                break
+            except self._sd.PortAudioError:
+                continue
+        if stream is None:
+            self.log("voice: the microphone opens neither at 16 nor at 48 kHz")
+            return
 
         woken_until = 0.0
-        with self._sd.InputStream(device=self.device, samplerate=RATE, channels=1,
-                                  dtype="float32", blocksize=RATE // 10, callback=callback):
-            self.log(f"voice: listening (Whisper-tiny on the Hailo-8, German)")
+        with stream:
+            self.log(f"voice: listening at {rate} Hz (Whisper-tiny on the Hailo-8, German"
+                     + (", product names without wake word)" if self.spot else ")"))
             for audio in self._utterances():
                 awake = time.monotonic() < woken_until
                 try:
-                    wake_score, woke, command, score = self.transcribe(audio, awake)
+                    wake_score, woke, command, score, spotted, heard = self.transcribe(audio, awake)
                 except Exception as error:  # noqa: BLE001 -- keep listening
                     self.log(f"voice: {type(error).__name__}: {error}")
                     continue
                 self.log(f"voice: {len(audio) / RATE:.1f} s, Phytec {wake_score:.2f}"
                          + (" [Phytec]" if woke else "")
                          + (f" -> '{command}' ({score:.2f})" if command else "")
+                         + (f" '{heard}'" if heard else "")
+                         + "".join(f" [{t} {sc:.2f}]" for t, sc in spotted)
                          + f" ({self.last_ms:.0f} ms)")
+                named = [t for t, sc in sorted(spotted, key=lambda x: -x[1]) if sc >= SPOT_MIN]
+                if named:
+                    self.awake_until = time.monotonic() + 1.5  # the red dot: heard
+                    try:
+                        write_request(named[0], seconds=SPOT_S)
+                    except OSError as error:
+                        self.log(f"voice: {error}")
+                    continue
                 if woke:
                     woken_until = time.monotonic() + WAKE_S
                     self.awake_until = woken_until

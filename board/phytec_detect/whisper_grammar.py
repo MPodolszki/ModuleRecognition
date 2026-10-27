@@ -78,6 +78,8 @@ def written_forms(name):
     m = re.match(r"(.*?\d+)[xX]\b(.*)", base)  # "AM62x" also as "AM62"
     if m:
         forms |= {m.group(1), m.group(1).upper(), re.sub(r"(?<=[A-Za-z])(?=\d)", " ", m.group(1))}
+    for f in list(forms):  # Whisper writes "Am 68x", "Imx 8M"
+        forms.add(re.sub(r"^([A-Z])([A-Z]+)(?=[\s\d.]|$)", lambda m: m.group(1) + m.group(2).lower(), f))
     return sorted(f for f in forms if f)
 
 
@@ -179,3 +181,98 @@ class Grammar:
             token_ids[0, pos] = best
         text = self.texts.get(tuple(chosen))
         return text, (float(np.mean(logps)) if logps else -99.0)
+
+
+class Spotter:
+    """A product named anywhere in what is said ("... der i.MX 8M Plus hat
+    ..."), no wake word. Free Whisper-tiny writes "Einlingsauf" for
+    "i.MX 8" -- so the transcript is written with the product names
+    favoured (contextual biasing): every token that starts a name, or
+    continues the one begun, gets a bonus on its log-probability. Where
+    the sound is close, the name wins. A name counts whole, or begun when
+    MIN_TOKENS of it fit and they name at most MAX_PRODUCTS products
+    ("I.MX8" + "+HP4" -> the i.MX8M Plus ones); its tokens' mean
+    log-probability without the bonus decides whether it was said at all.
+    """
+
+    START_BONUS = 3.0   # log-probability bonus for a name's first token
+    INSIDE_BONUS = 7.0  # ... and for its next tokens once begun
+    MIN_TOKENS = 3      # a begun name: at least this many of its tokens heard
+    MAX_PRODUCTS = 2    # ... and naming no more products than this
+
+    def __init__(self, encoder, products):
+        # token -> child dict; None: a name ends here -> its text;
+        # "f": the shortest name through here, "p": the products through here
+        self.trie = {}
+        for _, name in products:
+            for form in written_forms(name):
+                for lead in (" ", ""):
+                    node = self.trie
+                    for t in encoder.encode(lead + form):
+                        node = node.setdefault(t, {"p": set()})
+                        node["p"].add(name)
+                        if len(form) < len(node.get("f", form + "_")):
+                            node["f"] = form
+                    node[None] = form
+        self.starts = np.array([t for t in self.trie if isinstance(t, int)])
+        self.size = sum(1 for _ in self._ends(self.trie))
+
+    def _ends(self, node):
+        for k, child in node.items():
+            if k is None:
+                yield child
+            elif isinstance(k, int):
+                yield from self._ends(child)
+
+    def _name(self, node, path):
+        """(name text, score) for the trie position reached, or None."""
+        if None in node:
+            return node[None], float(np.mean(path))
+        if len(path) >= self.MIN_TOKENS and len(node["p"]) <= self.MAX_PRODUCTS:
+            return node["f"], float(np.mean(path))
+        return None
+
+    def spot(self, backend, encoded, prompt, max_tokens=None):
+        """Biased greedy transcript -> ([(name text, mean log-probability
+        without bonus)], transcript token ids). Stops at the end of text or
+        when Whisper starts repeating itself."""
+        seq_len = backend.sequence_length
+        token_ids = np.zeros((1, seq_len), dtype=np.int64)
+        token_ids[0, :len(prompt)] = prompt
+        pos, free = len(prompt) - 1, []
+        node, path, found, begun = self.trie, [], {}, 0
+        limit = min(seq_len - 1, pos + (max_tokens or seq_len))
+        while pos < limit:
+            logp = _logp(backend, encoded, token_ids, pos)
+            biased = logp.copy()
+            biased[self.starts] += self.START_BONUS
+            inside = [t for t in node if isinstance(t, int)] if node is not self.trie else []
+            if inside:
+                biased[inside] += self.INSIDE_BONUS
+            t = int(np.argmax(biased))
+            if t == EOT:
+                break
+            if t in inside:
+                node, path = node[t], path + [float(logp[t])]
+            elif t in self.trie:
+                node, path, begun = self.trie[t], [float(logp[t])], len(free)
+            else:
+                node, path = self.trie, []
+            if path:  # the longest fit from this start counts
+                hit = self._name(node, path)
+                if hit:
+                    found[begun] = hit
+            free.append(t)
+            pos += 1
+            token_ids[0, pos] = t
+            if _repeats(free):
+                break
+        return list(found.values()), free
+
+
+def _repeats(tokens, n=4):
+    """The last n tokens already came before: Whisper loops."""
+    if len(tokens) < 2 * n:
+        return False
+    tail = tokens[-n:]
+    return any(tokens[i:i + n] == tail for i in range(len(tokens) - n))
