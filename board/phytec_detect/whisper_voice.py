@@ -8,7 +8,7 @@ whisper_bench package and HEFs of demo-whisper-benchmark (encoder for a
 
 Always listening on the USB microphone: a simple energy detector cuts out
 utterances (start: clearly above the background, end: 0.6 s quiet, at most
-8 s), Whisper writes them down, and a command counts only after the wake
+the encoder's window: 10 s tiny, 5 s base), Whisper writes them down, and a command counts only after the wake
 word "Phytec" -- which Whisper writes in many ways (Fytek, Feitek, Vitec,
 ...), so it is matched loosely. The rest goes to search.py like a typed
 phytec-find request.
@@ -28,6 +28,15 @@ import numpy as np
 from .whisper_grammar import Encoder, Grammar, Spotter, Wake
 
 DATA = "/usr/share/demo-whisper-benchmark"
+# Whisper on the Hailo-8: the HEFs (encoder window in s) and the decoder's
+# host-side tokenization arrays. base: Hailo's precompiled hailo-apps
+# models (resources_config.yaml, whisper_h8), copied to /opt/phytec-detect.
+MODELS = {
+    "tiny": (f"{DATA}/hailo", "tiny-whisper-encoder-10s_15dB.hef",
+             "tiny-whisper-decoder-fixed-sequence-matmul-split.hef", "tiny", 10),
+    "base": ("/opt/phytec-detect/whisper-base", "base-whisper-encoder-5s.hef",
+             "base-whisper-decoder-fixed-sequence-matmul-split.hef", "base", 5),
+}
 RATE = 16000
 WAKE_S = 6.0
 MIN_SCORE = -2.5  # mean log-probability a restricted command needs
@@ -42,7 +51,7 @@ class Listener:
     """Microphone -> utterances -> Whisper on the Hailo-8 -> search requests."""
 
     def __init__(self, device="Jabra", log=print,
-                 products="/var/lib/phytec-detect/products.csv", spot=True):
+                 products="/var/lib/phytec-detect/products.csv", spot=True, model="tiny"):
         import sounddevice as sd
         from whisper_bench import audio as wa
         from whisper_bench import tokenizer as tok
@@ -50,10 +59,11 @@ class Listener:
 
         tok.FORCED_DECODER_IDS = GERMAN_PROMPT  # generate() reads it at call time
         self._sd, self._wa, self._tok, self.log = sd, wa, tok, log
-        self.backend = HailoBackend(f"{DATA}/hailo/tiny-whisper-encoder-10s_15dB.hef",
-                                    f"{DATA}/hailo/tiny-whisper-decoder-fixed-sequence-matmul-split.hef",
-                                    f"{DATA}/hailo/token_embedding_weight_tiny.npy",
-                                    f"{DATA}/hailo/onnx_add_input_tiny.npy")
+        folder, encoder, decoder, size, window = MODELS[model]
+        self.model = model
+        self.backend = HailoBackend(f"{folder}/{encoder}", f"{folder}/{decoder}",
+                                    f"{folder}/token_embedding_weight_{size}.npy",
+                                    f"{folder}/onnx_add_input_{size}.npy", chunk_length=window)
         self.filters = wa.load_mel_filters(f"{DATA}/assets/mel_filters.npz")
         self.tokenizer = tok.WhisperTokenizer(f"{DATA}/assets/vocab.json")
         self.encoder = Encoder(f"{DATA}/assets/vocab.json")
@@ -145,7 +155,7 @@ class Listener:
                     continue
                 buf.append(f)
                 quiet = 0 if loud else quiet + 1
-                if quiet >= 30 or len(buf) >= 8 * 50:  # 0.6 s quiet, or 8 s
+                if quiet >= 30 or len(buf) >= self.backend.chunk_length * 50:  # 0.6 s quiet, or the window
                     if len(buf) - quiet >= 35:  # at least ~0.7 s of sound
                         yield np.concatenate(buf)
                     active, buf = False, []
@@ -183,7 +193,7 @@ class Listener:
 
         woken_until = 0.0
         with stream:
-            self.log(f"voice: listening at {rate} Hz (Whisper-tiny on the Hailo-8, German"
+            self.log(f"voice: listening at {rate} Hz (Whisper-{self.model} on the Hailo-8, German"
                      + (", product names without wake word)" if self.spot else ")"))
             for audio in self._utterances():
                 awake = time.monotonic() < woken_until

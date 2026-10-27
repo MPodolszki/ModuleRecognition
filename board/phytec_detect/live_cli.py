@@ -525,6 +525,8 @@ def main(argv=None):
     parser.add_argument("--voice", nargs="?", const="Jabra", default=None, metavar="MIC",
                         help="voice commands ('Phytec, wo ist der i.MX6?') with Whisper on the "
                              "Hailo-8, from this microphone (default: Jabra)")
+    parser.add_argument("--voice-model", choices=("tiny", "base"), default="tiny",
+                        help="Whisper model for --voice (base: more exact, 5 s window, slower)")
     parser.add_argument("--axis-boxes", action="store_true",
                         help="plain axis-aligned boxes instead of frames turned like the module")
     parser.add_argument("--det-fps", type=int, default=20,
@@ -666,7 +668,7 @@ def main(argv=None):
     def start_voice():
         try:
             from .whisper_voice import Listener
-            return Listener(args.voice, log=lambda m: print(m, flush=True))
+            return Listener(args.voice, log=lambda m: print(m, flush=True), model=args.voice_model)
         except Exception as error:  # noqa: BLE001 -- the demo runs without voice
             print(f"voice: not available: {type(error).__name__}: {error}", flush=True)
             return None
