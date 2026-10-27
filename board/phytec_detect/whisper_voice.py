@@ -13,6 +13,10 @@ word "Phytec" -- which Whisper writes in many ways (Fytek, Feitek, Vitec,
 ...), so it is matched loosely. The rest goes to search.py like a typed
 phytec-find request.
 
+With listen_s (a button at the stand, live_cli --voice-listen) the
+microphone is closed until listen() and open only listen_s seconds after
+it: nothing is heard before someone presses the button.
+
 Without the wake word (spot=True, the default) a product named anywhere in
 an utterance -- "... das ist der i.MX 8M Plus ..." -- frames only that
 product for SPOT_S seconds (whisper_grammar.Spotter).
@@ -52,7 +56,8 @@ class Listener:
     """Microphone -> utterances -> Whisper on the Hailo-8 -> search requests."""
 
     def __init__(self, device="Jabra", log=print,
-                 products="/var/lib/phytec-detect/products.csv", spot=True, model="tiny"):
+                 products="/var/lib/phytec-detect/products.csv", spot=True, model="tiny",
+                 listen_s=0.0):
         import sounddevice as sd
         from whisper_bench import audio as wa
         from whisper_bench import tokenizer as tok
@@ -78,10 +83,20 @@ class Listener:
                 break
         self.last_ms = 0.0
         self.awake_until = 0.0  # "Phytec" heard: the demo shows a red dot until then
+        # microphone open until then (listen_s 0: always)
+        self.listen_s = listen_s
+        self.open_until = float("inf") if not listen_s else 0.0
+        self._woken_until = 0.0
         self._chunks = queue.Queue(maxsize=200)
         self._stop = threading.Event()
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
+
+    def listen(self):
+        """Open the microphone for listen_s seconds (from now, again if open)."""
+        if self.listen_s:
+            self.open_until = time.monotonic() + self.listen_s
+            self.log(f"voice: listening for {self.listen_s:.0f} s")
 
     def stop(self):
         self._stop.set()
@@ -170,7 +185,7 @@ class Listener:
         """Yield float32 utterances from the energy detector."""
         frame = RATE // 50  # 20 ms
         floor, active, quiet, buf = None, False, 0, []
-        while not self._stop.is_set():
+        while not self._stop.is_set() and time.monotonic() < self.open_until:
             try:
                 block = self._chunks.get(timeout=0.5)
             except queue.Empty:
@@ -212,59 +227,74 @@ class Listener:
                     pass
             return callback
 
-        stream, rate = None, RATE
-        channels = min(2, int(self._sd.query_devices(self.device, "input")["max_input_channels"]))
-        for rate, ch in ((RATE, 1), (3 * RATE, 1), (3 * RATE, channels)):
-            try:
-                stream = self._sd.InputStream(device=self.device, samplerate=rate, channels=ch,
-                                              dtype="float32", blocksize=rate // 10,
-                                              callback=callback_for(rate // RATE))
-                break
-            except self._sd.PortAudioError:
-                continue
-        if stream is None:
-            self.log("voice: the microphone opens neither at 16 nor at 48 kHz")
-            return
+        def open_stream():
+            channels = min(2, int(self._sd.query_devices(self.device, "input")["max_input_channels"]))
+            for rate, ch in ((RATE, 1), (3 * RATE, 1), (3 * RATE, channels)):
+                try:
+                    return self._sd.InputStream(device=self.device, samplerate=rate, channels=ch,
+                                                dtype="float32", blocksize=rate // 10,
+                                                callback=callback_for(rate // RATE)), rate
+                except self._sd.PortAudioError:
+                    continue
+            return None, RATE
 
-        woken_until = 0.0
-        with stream:
-            self.log(f"voice: listening at {rate} Hz (Whisper-{self.model} on the Hailo-8, German"
-                     + (", product names without wake word)" if self.spot else ")"))
-            for audio in self._utterances():
-                awake = time.monotonic() < woken_until
-                try:
-                    wake_score, woke, command, score, spotted, heard = self.transcribe(audio, awake)
-                except Exception as error:  # noqa: BLE001 -- keep listening
-                    self.log(f"voice: {type(error).__name__}: {error}")
-                    continue
-                self.log(f"voice: {len(audio) / RATE:.1f} s, Phytec {wake_score:.2f}"
-                         + (" [Phytec]" if woke else "")
-                         + (f" -> '{command}' ({score:.2f})" if command else "")
-                         + (f" '{heard}'" if heard else "")
-                         + "".join(f" [{t} {sc:.2f}]" for t, sc in spotted)
-                         + f" ({self.last_ms:.0f} ms)")
-                named = [t for t, sc in sorted(spotted, key=lambda x: -x[1]) if sc >= SPOT_MIN]
-                if not named and heard:
-                    named = self._named_in(heard)
-                    if named:
-                        self.log(f"voice: '{heard}' sounds like {named[0]}")
-                if named:
-                    self.awake_until = time.monotonic() + 1.5  # the red dot: heard
-                    try:
-                        write_request(named[0], seconds=SPOT_S)
-                    except OSError as error:
-                        self.log(f"voice: {error}")
-                    continue
-                if woke:
-                    woken_until = time.monotonic() + WAKE_S
-                    self.awake_until = woken_until
-                if not (woke or awake) or command is None:
-                    continue
-                if score < MIN_SCORE:  # talk forced into a command, or only "Phytec"
-                    continue
-                woken_until = 0.0
-                self.awake_until = time.monotonic() + 1.5  # keep the dot a moment
-                try:
-                    write_request("reset" if is_reset(command) else command)
-                except OSError as error:
-                    self.log(f"voice: {error}")
+        if self.listen_s:
+            self.log(f"voice: microphone closed until the button ({self.listen_s:.0f} s per press)")
+        while not self._stop.is_set():
+            if time.monotonic() >= self.open_until:
+                time.sleep(0.1)
+                continue
+            stream, rate = open_stream()
+            if stream is None:
+                self.log("voice: the microphone opens neither at 16 nor at 48 kHz")
+                return
+            with stream:
+                self.log(f"voice: listening at {rate} Hz (Whisper-{self.model} on the Hailo-8, "
+                         "German" + (", product names without wake word)" if self.spot else ")"))
+                for audio in self._utterances():
+                    self._handle(audio, write_request, is_reset)
+            while not self._chunks.empty():  # nothing heard stays behind
+                self._chunks.get_nowait()
+            if self.listen_s and not self._stop.is_set():
+                self.log("voice: microphone closed")
+
+    def _handle(self, audio, write_request, is_reset):
+        """One utterance: transcribed, a product named or a command after
+        the wake word -> a search request."""
+        awake = time.monotonic() < self._woken_until
+        try:
+            wake_score, woke, command, score, spotted, heard = self.transcribe(audio, awake)
+        except Exception as error:  # noqa: BLE001 -- keep listening
+            self.log(f"voice: {type(error).__name__}: {error}")
+            return
+        self.log(f"voice: {len(audio) / RATE:.1f} s, Phytec {wake_score:.2f}"
+                 + (" [Phytec]" if woke else "")
+                 + (f" -> '{command}' ({score:.2f})" if command else "")
+                 + (f" '{heard}'" if heard else "")
+                 + "".join(f" [{t} {sc:.2f}]" for t, sc in spotted)
+                 + f" ({self.last_ms:.0f} ms)")
+        named = [t for t, sc in sorted(spotted, key=lambda x: -x[1]) if sc >= SPOT_MIN]
+        if not named and heard:
+            named = self._named_in(heard)
+            if named:
+                self.log(f"voice: '{heard}' sounds like {named[0]}")
+        if named:
+            self.awake_until = time.monotonic() + 1.5  # the red dot: heard
+            try:
+                write_request(named[0], seconds=SPOT_S)
+            except OSError as error:
+                self.log(f"voice: {error}")
+            return
+        if woke:
+            self._woken_until = time.monotonic() + WAKE_S
+            self.awake_until = self._woken_until
+        if not (woke or awake) or command is None:
+            return
+        if score < MIN_SCORE:  # talk forced into a command, or only "Phytec"
+            return
+        self._woken_until = 0.0
+        self.awake_until = time.monotonic() + 1.5  # keep the dot a moment
+        try:
+            write_request("reset" if is_reset(command) else command)
+        except OSError as error:
+            self.log(f"voice: {error}")

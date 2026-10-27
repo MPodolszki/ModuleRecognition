@@ -529,6 +529,9 @@ def main(argv=None):
                              "Hailo-8, from this microphone (default: Jabra)")
     parser.add_argument("--voice-model", choices=("tiny", "base"), default="tiny",
                         help="Whisper model for --voice (base: more exact, 5 s window, slower)")
+    parser.add_argument("--voice-listen", type=float, default=0, metavar="S",
+                        help="microphone closed until the voice button (phytec-mode sends "
+                             "SIGUSR2), then open S seconds; 0 = always listening")
     parser.add_argument("--axis-boxes", action="store_true",
                         help="plain axis-aligned boxes instead of frames turned like the module")
     parser.add_argument("--det-fps", type=int, default=20,
@@ -671,7 +674,8 @@ def main(argv=None):
     def start_voice():
         try:
             from .whisper_voice import Listener
-            return Listener(args.voice, log=lambda m: print(m, flush=True), model=args.voice_model)
+            return Listener(args.voice, log=lambda m: print(m, flush=True), model=args.voice_model,
+                            listen_s=args.voice_listen)
         except Exception as error:  # noqa: BLE001 -- the demo runs without voice
             print(f"voice: not available: {type(error).__name__}: {error}", flush=True)
             return None
@@ -687,6 +691,8 @@ def main(argv=None):
         signal.signal(signum, lambda *_: stop.set())
     snap = threading.Event()  # kill -USR1: save the screen to /tmp/phytec-detect.png
     signal.signal(signal.SIGUSR1, lambda *_: snap.set())
+    # kill -USR2 (the voice button, phytec-mode): open the microphone
+    signal.signal(signal.SIGUSR2, lambda *_: listener.listen() if listener is not None else None)
 
     labels = workers[0].detector.labels
     search = SearchState([(l, products.get(l, {}).get("name") or l) for l in labels])
@@ -960,6 +966,13 @@ def main(argv=None):
                 sig.append(banner)
                 t_ = tick("panel compose", t_)
             sig.append((search.text, listener is not None and time.monotonic() < listener.awake_until))
+            left = listener.open_until - time.monotonic() \
+                if listener is not None and listener.listen_s else 0
+            if left > 0:  # the voice button pressed: the microphone is open
+                tag = style.text_patch(f"Ich h\u00f6re zu \u00b7 {int(left) + 1} s", 22, "Medium",
+                                       bg=style.ORANGE, pad=(14, 7))
+                style.blit(canvas, tag, canvas.shape[1] - tag.shape[1] - 100, 76)
+                sig.append(int(left))
             if listener is not None and time.monotonic() < listener.awake_until:
                 # "Phytec" heard: red dot top right while it listens for the command
                 cx, cy = canvas.shape[1] - 50, 100

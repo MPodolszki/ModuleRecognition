@@ -1,4 +1,5 @@
-"""Two push buttons switch the trade-fair setup between its two modes.
+"""Two push buttons switch the trade-fair setup between its two modes, a
+third one opens the demo's microphone.
 
     phytec-mode              # watch the buttons (phytec-mode.service, as root)
     phytec-mode demo         # switch by hand
@@ -12,11 +13,15 @@
              the monitor; none open: phytec-trial, the guided photo procedure
              as a show -- nothing saved, nothing trained
 
+  voice      while the demo runs: it listens (phytec-detect --voice-listen S,
+             SIGUSR2) -- before that the microphone is closed
+
 The two services conflict, so starting one stops the other. The buttons
 are GPIO lines, set in /etc/default/phytec-mode:
 
     PHYTEC_MODE_DEMO_GPIO="gpiochip3 5"       # chip and line offset
     PHYTEC_MODE_TRAINING_GPIO="gpiochip3 6"
+    PHYTEC_MODE_VOICE_GPIO="gpiochip0 24"
     PHYTEC_MODE_BIAS=pull-up                  # pull-up / pull-down / disabled
     PHYTEC_MODE_ACTIVE_LOW=1                  # button pulls the line to GND
     PHYTEC_MODE_PAD_PULLUP="0x3033043C 0x3033047C"  # i.MX8MP pad registers
@@ -41,6 +46,7 @@ import threading
 import time
 
 UNITS = {"demo": "phytec-detect.service", "training": "phytec-trial.service"}
+BUTTONS = list(UNITS) + ["voice"]
 QUEUE_UNIT = "phytec-photo-queue.service"
 PRODUCTS_CSV = "/var/lib/phytec-detect/products.csv"
 CAPTURE = "/var/lib/phytec-detect/capture"
@@ -109,6 +115,12 @@ def pad_pullup(addresses):
 
 
 def _pressed(mode, lock, last):
+    if mode == "voice":  # no switch: the demo opens its microphone
+        if _active(UNITS["demo"]):
+            subprocess.run(["systemctl", "kill", "-s", "USR2", "--kill-whom=main",
+                            UNITS["demo"]], check=False)
+            print("-> voice (demo listens)", flush=True)
+        return
     with lock:
         now = time.monotonic()
         if now - last[0] < 2.0:  # a service just started: let it come up
@@ -187,7 +199,7 @@ def main(argv=None):
     bias = os.environ.get("PHYTEC_MODE_BIAS", "pull-up")
     active_low = os.environ.get("PHYTEC_MODE_ACTIVE_LOW", "1") not in ("0", "", "no")
     lock, last, threads = threading.Lock(), [0.0], []
-    for mode in UNITS:
+    for mode in BUTTONS:
         spec = os.environ.get(f"PHYTEC_MODE_{mode.upper()}_GPIO", "").strip()
         if not spec:
             print(f"no button for {mode} (PHYTEC_MODE_{mode.upper()}_GPIO in "
