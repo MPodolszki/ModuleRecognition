@@ -1,0 +1,17 @@
+[Unit]
+Description=PHYTEC trade fair: photograph the products of the list that have no pictures yet
+After=weston.service imx8-phycam-isp.service
+Wants=weston.service
+Conflicts=phytec-detect.service phytec-trial.service
+
+[Service]
+User=weston
+WorkingDirectory=/tmp
+Environment=XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0
+Environment=PYTHONPATH=/opt/phytec-detect PYTHONUNBUFFERED=1
+EnvironmentFile=-/etc/default/phytec-photo-queue
+ExecStartPre=/bin/sh -c 'for i in $(seq 60); do [ -S /run/user/1000/wayland-0 ] && exit 0; sleep 1; done; exit 1'
+# all done: back to the demo (not when stopped by a button: that starts the other unit)
+ExecStart=/bin/sh -c '/usr/bin/python3 -m phytec_detect.photo_queue_cli --once $PHYTEC_QUEUE_ARGS && systemctl start --no-block phytec-detect.service'
+# photo_cli exits 1 when stopped before the end
+SuccessExitStatus=1

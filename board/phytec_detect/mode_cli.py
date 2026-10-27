@@ -6,8 +6,11 @@
 
   demo       phytec-detect: products on the table, framed in the live picture;
              pressed again while the demo runs: reset (forget the table)
-  training   phytec-trial: the guided photo procedure for a new product, as
-             it is really done -- but nothing is saved and nothing trained
+  training   products of the list without pictures yet (phytec-photo-queue:
+             products.csv, no capture/<article>/DONE): phytec-photo-queue
+             photographs them one after the other, the open ones listed on
+             the monitor; none open: phytec-trial, the guided photo procedure
+             as a show -- nothing saved, nothing trained
 
 The two services conflict, so starting one stops the other. The buttons
 are GPIO lines, set in /etc/default/phytec-mode:
@@ -38,12 +41,39 @@ import threading
 import time
 
 UNITS = {"demo": "phytec-detect.service", "training": "phytec-trial.service"}
+QUEUE_UNIT = "phytec-photo-queue.service"
+PRODUCTS_CSV = "/var/lib/phytec-detect/products.csv"
+CAPTURE = "/var/lib/phytec-detect/capture"
 POLL_S = 0.05
+
+
+def open_products():
+    """[(article, name)] of the list without pictures yet (as phytec-photo-queue)."""
+    from .photo_cli import read_products
+    try:
+        products = read_products(PRODUCTS_CSV)
+    except OSError:
+        return []
+    return [(a, n) for a, n in products
+            if not any(os.path.exists(os.path.join(CAPTURE, a, m)) for m in ("DONE", "SKIP"))]
+
+
+def _active(unit):
+    return subprocess.run(["systemctl", "is-active", "-q", unit]).returncode == 0
 
 
 def switch(mode):
     unit = UNITS[mode]
-    active = subprocess.run(["systemctl", "is-active", "-q", unit]).returncode == 0
+    if mode == "training":
+        if _active(QUEUE_UNIT) or _active(unit):
+            print("training: already running", flush=True)
+            return
+        todo = open_products()
+        if todo:  # real work to do: the products still without pictures
+            print(f"training: {len(todo)} products without pictures -- "
+                  + ", ".join(n or a for a, n in todo), flush=True)
+            unit = QUEUE_UNIT
+    active = _active(unit)
     if active:
         if mode == "demo":  # demo button while the demo runs: start afresh
             from .search import write_request
