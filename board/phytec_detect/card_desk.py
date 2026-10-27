@@ -13,11 +13,13 @@ A visit is saved in LEADS_DIR only with a name and a product in the zone
 (detected there within SEEN_S of the read -- the card may hide it): the
 zone picture (JPEG) and a line in leads.csv (time; first name; surname;
 article; product; all text read). The same person with the same product
-is saved once (leads.csv is checked, also after a restart). That is personal data of visitors: delete it after the
+is saved once (leads.csv is checked, also after a restart; names as the
+reader spells them differently -- "Neu", "Neumann" -- count as one). That is personal data of visitors: delete it after the
 fair, and say at the stand that cards laid there are kept for contact.
 """
 
 import csv
+import difflib
 import os
 import threading
 import time
@@ -155,7 +157,7 @@ class CardDesk:
             path = os.path.join(self.leads_dir, "leads.csv")
             done = self._saved(path)
             arts = [a for a in (self.labels[c] if c < len(self.labels) else str(c) for c in classes)
-                    if (name[0].lower(), name[1].lower(), a) not in done]
+                    if not any(art == a and _same_name(name, (f, l)) for f, l, art in done)]
             if not arts:
                 print(f"card: {name[0]} {name[1]} with this product saved before", flush=True)
                 return
@@ -179,6 +181,19 @@ class CardDesk:
 
     def banner(self):
         return None if self.name is None else self.name
+
+
+def _same_word(a, b):
+    """One name as the reader spells it twice: one begins the other
+    ("Neu", "Neumann") or they differ by a letter or two."""
+    a, b = a.lower(), b.lower()
+    if min(len(a), len(b)) >= 3 and (a.startswith(b) or b.startswith(a)):
+        return True
+    return difflib.SequenceMatcher(None, a, b).ratio() >= 0.8
+
+
+def _same_name(a, b):
+    return _same_word(a[0], b[0]) and _same_word(a[1], b[1])
 
 
 def _line_axis(rect):

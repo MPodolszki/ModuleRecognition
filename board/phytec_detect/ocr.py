@@ -294,6 +294,21 @@ NOT_A_NAME = re.compile(
     r"phone|www|http|@|engineer|manager|leitung|leiter|head|director|sales|support|vertrieb|"
     r"geschäftsführ|ceo|cto|cfo|vp\b|president|consultant|berater|ingenieur|entwickl|"
     r"developer|assistant|team|department|abteilung|marketing|account|application)", re.I)
+# job words the reader cut off at the line's end ("Field Applic"): a word
+# of 4+ letters that begins one of these is no name either
+_JOB_WORDS = ("application", "engineer", "messtechnik", "technik", "manager", "developer",
+              "consultant", "assistant", "department", "marketing", "systems", "solutions",
+              "support", "director", "president", "geschaeftsfuehrer", "geschäftsführer",
+              "entwickler", "ingenieur", "vertrieb", "abteilung", "account", "embedded")
+
+
+def _not_a_name(text):
+    if NOT_A_NAME.search(text):
+        return True
+    return any(len(w) >= 4 and any(j.startswith(w) for j in _JOB_WORDS)
+               for w in re.findall(r"[a-zäöüß]+", text.lower()))
+
+
 NAME_WORD = re.compile(r"^(?:[A-ZÄÖÜÀ-Þ][a-zäöüßà-ÿ'\-]+|[A-ZÄÖÜ]\.|von|van|de|der|den|zu|di|da|le)$")
 TITLES = re.compile(r"^(dr\.?|prof\.?|dipl\.?-?\w*\.?|ing\.?|mba|msc|bsc|m\.sc\.?|b\.sc\.?)$", re.I)
 
@@ -333,13 +348,13 @@ def name_from(lines, rects=None):
     candidates = []  # (words, confidence)
     for text, conf in lines:
         words = _words(text)
-        if 2 <= len(words) <= 4 and not NOT_A_NAME.search(text) and \
+        if 2 <= len(words) <= 4 and not _not_a_name(text) and \
                 not any(c.isdigit() for c in text) and all(NAME_WORD.match(w) for w in words):
             candidates.append((words, conf))
     if rects is not None and len(rects) == len(lines):
         single = [i for i, (t, c) in enumerate(lines)
                   if len(_words(t)) == 1 and NAME_WORD.match(_words(t)[0])
-                  and len(_words(t)[0]) >= 3 and not NOT_A_NAME.search(t)]
+                  and len(_words(t)[0]) >= 3 and not _not_a_name(t)]
         for i in single:
             for j in single:
                 hi, hj = min(rects[i][1]), min(rects[j][1])
