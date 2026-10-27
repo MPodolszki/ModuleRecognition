@@ -43,6 +43,9 @@ def main(argv=None):
                         help="end when the list is done instead of waiting for new rows")
     parser.add_argument("--model", default=photo_cli.MODEL,
                         help="model that must recognise a known product before its shots")
+    parser.add_argument("--skip-above", type=float, default=None,
+                        help="products the model recognises this sure get no pictures "
+                             "(with --round 2: photograph only the weak ones)")
     args = parser.parse_args(argv)
 
     done_marker = "DONE" if args.round == 1 else f"DONE_R{args.round}"
@@ -84,7 +87,9 @@ def main(argv=None):
         rc = photo_cli.main(["--article", article, "--name", name, "--intro", "4",
                              "--wait-start", "--previous", previous, "--list-csv", args.csv,
                              "--out", args.out, "--done-marker", done_marker,
-                             "--model", args.model] + resume
+                             "--model", args.model]
+                            + (["--skip-above", str(args.skip_above)] if args.skip_above else [])
+                            + resume
                             + ([] if args.raw else ["--isp"]))
         if rc != 0:
             print("stopped", flush=True)

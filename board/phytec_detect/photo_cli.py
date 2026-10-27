@@ -14,7 +14,10 @@ A product the model already knows (its article in --model's labels.txt)
 must first be recognised: the shots start only when the model sees exactly
 that product in the middle (best class there, >= --verify-conf, for
 VERIFY_S) -- so a wrong module never ends up labelled as this one. A new
-product is not checked.
+product is not checked. With --skip-above the same look decides whether the
+product needs pictures at all: recognised that sure (mean over MEASURE_S)
+it is marked done without any shot ("gut erkannt") -- a round 2 over the
+whole list then photographs only the weak ones.
 
 Saved per shot, in --out/<article>/:
   <article>_NNN.jpg    full-resolution GRAY8 picture
@@ -42,6 +45,7 @@ from .camera import Camera, Screen, die, screen_size, to_bgrx
 
 MODEL = "/opt/phytec-detect/models/products_v8_n"
 VERIFY_S = 1.0   # the right product recognised this long before the first shot
+MEASURE_S = 2.0  # with --skip-above: its score averaged this long
 
 
 class Verifier:
@@ -49,8 +53,9 @@ class Verifier:
     looks (Hailo, in a thread of its own on the newest frame); for a
     product it does not know, every product passes."""
 
-    def __init__(self, model_dir, article, conf, names=None):
-        self.conf, self.names = conf, names or {}
+    def __init__(self, model_dir, article, conf, names=None, hold=VERIFY_S):
+        self.conf, self.names, self.hold = conf, names or {}, hold
+        self.score, self._scores = None, []  # mean score of the asked product
         try:
             with open(os.path.join(model_dir, "labels.txt")) as f:
                 self.labels = [l.strip() for l in f if l.strip()]
@@ -105,12 +110,15 @@ class Verifier:
         name = lambda c: self.names.get(self.labels[c], self.labels[c])
         if mine is not None and int(mine[5]) == self.cls and mine[4] >= self.conf:
             self._ok_since = self._ok_since or now
+            self._scores.append(float(mine[4]))
             self.text = f"{name(self.cls)} erkannt ({mine[4] * 100:.0f} %)"
-            if now - self._ok_since >= VERIFY_S:
-                print(f"verify: {self.text}", flush=True)
+            if now - self._ok_since >= self.hold:
+                self.score = float(np.mean(self._scores))
+                print(f"verify: {name(self.cls)} recognised, mean {self.score:.2f} "
+                      f"over {len(self._scores)} looks", flush=True)
                 self.done = True
             return
-        self._ok_since = None
+        self._ok_since, self._scores = None, []
         if mine is not None and int(mine[5]) != self.cls and mine[4] >= 0.5:
             self.text = (f"FALSCHES PRODUKT: {name(int(mine[5]))} erkannt -- "
                          f"bitte {name(self.cls)} hinlegen")
@@ -384,6 +392,10 @@ def main(argv=None):
                         help="score the asked product needs there (best class), "
                              "default 0.3 -- low, since products are re-photographed "
                              "where the model is weak")
+    parser.add_argument("--skip-above", type=float, default=None,
+                        help="a known product recognised at least this sure (mean over "
+                             "2 s, e.g. 0.9) gets no pictures, only the done marker "
+                             "(phytec-photo-queue --round 2 over the whole list)")
     parser.add_argument("--no-verify", action="store_true",
                         help="do not check which product lies there")
     parser.add_argument("--start", type=int, default=None,
@@ -438,7 +450,8 @@ def main(argv=None):
                         done_marker=args.done_marker) if args.list_csv else None
     finished = False
     verifier = Verifier(args.model, args.article, args.verify_conf,
-                        {a: n for a, n in read_products(args.list_csv)} if args.list_csv else None)
+                        {a: n for a, n in read_products(args.list_csv)} if args.list_csv else None,
+                        hold=MEASURE_S if args.skip_above else VERIFY_S)
     if args.no_verify or args.dry_run:
         verifier.done = True
     try:
@@ -543,6 +556,32 @@ def main(argv=None):
                 if not verifier.feed(gray, rect):
                     fire = False
                     lines = lines + [verifier.text or "Produkt wird geprueft ..."]
+            if args.skip_above and verifier.score is not None \
+                    and verifier.score >= args.skip_above:
+                # recognised sure enough: no pictures needed
+                print(f"skip: {args.article} recognised {verifier.score:.2f} >= "
+                      f"{args.skip_above}", flush=True)
+                os.makedirs(out_dir, exist_ok=True)
+                with open(os.path.join(out_dir, args.done_marker), "w") as f:
+                    f.write(time.strftime("%Y-%m-%d %H:%M:%S") +
+                            f" gut erkannt {verifier.score:.2f}, keine Bilder\n")
+                banner = f"GUT ERKANNT ({verifier.score * 100:.0f} %) - kein Nachtraining noetig"
+                show_until = now + 3.0
+                while time.monotonic() < show_until and not stop.is_set():
+                    ok, gray = cam.read()
+                    v = to_bgrx(np.ascontiguousarray(gray[::step_px, ::step_px]))
+                    vh, vw = v.shape[:2]
+                    cv2.rectangle(v, (0, vh // 4 - 70), (vw, vh // 4 + 70), (0, 140, 0, 255), -1)
+                    tw = cv2.getTextSize(banner, cv2.FONT_HERSHEY_SIMPLEX, 1.4, 4)[0][0]
+                    cv2.putText(v, banner, ((vw - tw) // 2, vh // 4 + 20), cv2.FONT_HERSHEY_SIMPLEX,
+                                1.4, (255, 255, 255, 255), 4, cv2.LINE_AA)
+                    if plist is not None:
+                        v = plist.compose(v, screen_size())
+                    if screen is None:
+                        screen = Screen(v.shape[1], v.shape[0])
+                    screen.show(v)
+                finished = True
+                break
             if fire and not moving:
                 stable_since = stable_since or now
             else:
