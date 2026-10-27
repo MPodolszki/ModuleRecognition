@@ -1,15 +1,16 @@
-# Produktinfo für das Info-Fenster der Messe-Demo -- phyBOARD-Polis
+# Produktinfo für Overlay und Vergleich der Messe-Demo -- phyBOARD-Polis
 #
 # Eine Angabe pro Zeile:  Feld: Wert   (Zeilen mit # sind Kommentare)
-# Leere Felder bleiben im Fenster einfach weg.
-# Wo welches Feld erscheint ([1]..[15]): dataset/products/Info-Fenster_Aufbau.pdf
+# Leer heißt "nicht angegeben": das Overlay lässt die Zeile weg, der Vergleich
+# zeigt "–". Ein echtes Nein als "nein" eintragen.
+# Aufbau [1]..[20]: Datensatz_Overlay_Vergleich.pdf (Marketing)
 # Vorschau ohne Hardware:  uv run tools/render_panel.py
 # Aufs Board:  uv run tools/product_info.py models/<modell> und tools/deploy.sh
 
-# [1] Titel (groß) und letzter Teil im Kopfbalken
+# [1] Titel (groß) und letzter Teil im Kopfbalken; Vergleich: Spaltenkopf
 Bezeichnung: phyBOARD-Polis
 
-# [2] graue Zeile über dem Titel und Kopfbalken, z. B. System on Module, Development Kit
+# [2] graue Zeile über dem Titel und Kopfbalken, z. B. System on Module, Development Kit, KI-Beschleuniger -- sie entscheidet, welche Merkmale gelten
 Kategorie: Single Board Computer
 
 # [3] orangefarbenes NEU neben der Kategorie: ja / nein
@@ -17,41 +18,45 @@ Neu: nein
 
 # [4] Artikelnummer phyBOARD-Polis -- kommt aus dem Ordnernamen, nicht eintragen
 
-# [5] 1-2 Sätze unter der Artikelnummer, höchstens 3 Zeilen (ca. 270 Zeichen)
+# [5] 1-2 Sätze unter der Artikelnummer, höchstens 3 Zeilen (ca. 230 Zeichen); nur im Overlay
 Kurzbeschreibung: Entwicklungsplattform für das phyCORE-i.MX 8M Mini/Nano oder industrietauglicher Einplatinencomputer; Referenzdesign für parallele Software- und Baseboard-Entwicklung.
 
-# [6] Kennzahl 1, kurz (ca. 16 Zeichen), z. B. 4 × A53 + M7
+# [6] Kennzahl, kurz (ca. 16 Zeichen), z. B. 4 × A53 + M7; auch im Vergleich
 Kerne: 4× A53 + M4
-# [7] Kennzahl 2, z. B. 40 × 37 × 6
+# [7] Kennzahl, z. B. 40 × 37 × 6
 Größe in mm: 100 × 100
-# [8] Kennzahl 3, z. B. -40 °C / +85 °C
+# [8] Kennzahl, z. B. -40 °C / +85 °C
 Temperatur: -40 °C / +85 °C
-# [9] Kennzahl 4, z. B. 2035
+# [9] Kennzahl, z. B. 2035
 Verfügbar bis:
 
-# [10] Highlights 1-4 (je ca. 55 Zeichen) für den Vergleich: bei allen Produkten dasselbe Thema auf demselben Platz, z. B. 1 CPU, 2 KI, 3 Speicher, 4 Schnittstellen
-Vergleich 1: Quad-Core Cortex-A53 bis 1,8 GHz + Cortex-M4
-Vergleich 2: 1080p-Videokodierung und -dekodierung
-Vergleich 3: 2D- und 3D-Grafik
-Vergleich 4: MIPI-DSI oder LVDS, 1× MIPI CSI-2 Kamera
+# [10]..[16] Merkmale, feste Reihenfolge: ja = Häkchen, Zahl oder Text = Wert, nein = nein
+# (Overlay: Highlight-Zeile "2,3 TOPS NPU", Vergleich: eigene Zeile)
+NPU:
+GPU:
+ISP:
+VPU:
+CAN-FD:
+RAM:
+Flash:
 
-# [11] Highlights 5-8 mit Häkchen -- was nur dieses Produkt kann, je ca. 55 Zeichen
+# [17] freie Zeilen mit Häkchen, je ca. 55 Zeichen -- nur im Overlay
 Alleinstellungsmerkmal 1: Gigabit-Ethernet, WLAN und BLE 4.2
 Alleinstellungsmerkmal 2: USB, RS-232/RS-485, miniPCIe, microSD
 Alleinstellungsmerkmal 3: Integrierter TPM-Chip, optional CAN FD
 Alleinstellungsmerkmal 4: Linux (Yocto) und Android
 
-# [12] Bild "Im Vergleich" unten links, Datei in diesem Ordner (z. B. chart.png)
-Diagramm-Datei:
-
-# [13] QR-Code "Zum Produkt" -- Produktseite auf phytec.de
+# [18] Knopf "Zum Produkt" + QR-Code (vollständig mit https://)
 Link Produktseite: https://www.phytec.de/produkte/single-board-computer/phyboard-polis-imx8m-mini/
 
-# [14] QR-Code ganz rechts -- Entwicklungskit
+# [19] Knopf mit Kit-Bezeichnung + QR-Code -- nur im Overlay
 Link Kit: https://www.phytec.de/produkte/development-kits/phyboard-polis-kit/
 Kit-Bezeichnung: phyBOARD-Polis Kit
 
-# [15] Foto oben rechts (Datei im Ordner, z. B. produkt.jpg); leer = Kamera-Referenzbild
+# [20] Bild "Im Vergleich" unten links, nur wenn die Datei im Ordner liegt (z. B. chart.png)
+Diagramm-Datei:
+
+# nicht im Layout -- Bild oben rechts, solange kein Kamerabild da ist (Datei im Ordner); leer = Kamera-Referenzbild
 Produktbild:
 
 # nicht angezeigt -- wie man den Namen spricht
@@ -59,3 +64,10 @@ Aussprache (Sprachsuche): fei board polis
 
 # nicht angezeigt -- nur für euch
 Bemerkung: Quelle phytec.de SBC- und Kitseite (KPB-02820-001), Stand 20.10.2026. Takt widersprüchlich (1,8 GHz Highlights / 1,6 GHz Technische Daten, je nach Temperaturklasse). Es gibt auch ein phyBOARD-Polis Imaging Kit.
+
+# Bisher "Vergleich 1-4" (gibt es nicht mehr -- Inhalt in die Merkmale
+# NPU … Flash oder als Alleinstellungsmerkmal übernehmen):
+#   Vergleich 1: Quad-Core Cortex-A53 bis 1,8 GHz + Cortex-M4
+#   Vergleich 2: 1080p-Videokodierung und -dekodierung
+#   Vergleich 3: 2D- und 3D-Grafik
+#   Vergleich 4: MIPI-DSI oder LVDS, 1× MIPI CSI-2 Kamera

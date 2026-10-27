@@ -1,15 +1,16 @@
-# Produktinfo für das Info-Fenster der Messe-Demo -- PCM-072-42F2DE11I.A1
+# Produktinfo für Overlay und Vergleich der Messe-Demo -- PCM-072-42F2DE11I.A1
 #
 # Eine Angabe pro Zeile:  Feld: Wert   (Zeilen mit # sind Kommentare)
-# Leere Felder bleiben im Fenster einfach weg.
-# Wo welches Feld erscheint ([1]..[15]): dataset/products/Info-Fenster_Aufbau.pdf
+# Leer heißt "nicht angegeben": das Overlay lässt die Zeile weg, der Vergleich
+# zeigt "–". Ein echtes Nein als "nein" eintragen.
+# Aufbau [1]..[20]: Datensatz_Overlay_Vergleich.pdf (Marketing)
 # Vorschau ohne Hardware:  uv run tools/render_panel.py
 # Aufs Board:  uv run tools/product_info.py models/<modell> und tools/deploy.sh
 
-# [1] Titel (groß) und letzter Teil im Kopfbalken
+# [1] Titel (groß) und letzter Teil im Kopfbalken; Vergleich: Spaltenkopf
 Bezeichnung: phyCORE-AM64x
 
-# [2] graue Zeile über dem Titel und Kopfbalken, z. B. System on Module, Development Kit
+# [2] graue Zeile über dem Titel und Kopfbalken, z. B. System on Module, Development Kit, KI-Beschleuniger -- sie entscheidet, welche Merkmale gelten
 Kategorie: System on Module
 
 # [3] orangefarbenes NEU neben der Kategorie: ja / nein
@@ -17,41 +18,45 @@ Neu: nein
 
 # [4] Artikelnummer PCM-072-42F2DE11I.A1 -- kommt aus dem Ordnernamen, nicht eintragen
 
-# [5] 1-2 Sätze unter der Artikelnummer, höchstens 3 Zeilen (ca. 270 Zeichen)
+# [5] 1-2 Sätze unter der Artikelnummer, höchstens 3 Zeilen (ca. 230 Zeichen); nur im Overlay
 Kurzbeschreibung: Headless System on Module mit TI AM64x für industrielle Kommunikation, Steuerungen und Smart Manufacturing: Linux auf Cortex-A53, Echtzeit auf bis zu vier Cortex-R5F.
 
-# [6] Kennzahl 1, kurz (ca. 16 Zeichen), z. B. 4 × A53 + M7
+# [6] Kennzahl, kurz (ca. 16 Zeichen), z. B. 4 × A53 + M7; auch im Vergleich
 Kerne: 2× A53, 4× R5F, M4F
-# [7] Kennzahl 2, z. B. 40 × 37 × 6
+# [7] Kennzahl, z. B. 40 × 37 × 6
 Größe in mm: 50 × 37
-# [8] Kennzahl 3, z. B. -40 °C / +85 °C
+# [8] Kennzahl, z. B. -40 °C / +85 °C
 Temperatur: -40 °C / +85 °C
-# [9] Kennzahl 4, z. B. 2035
+# [9] Kennzahl, z. B. 2035
 Verfügbar bis:
 
-# [10] Highlights 1-4 (je ca. 55 Zeichen) für den Vergleich: bei allen Produkten dasselbe Thema auf demselben Platz, z. B. 1 CPU, 2 KI, 3 Speicher, 4 Schnittstellen
-Vergleich 1: Bis zu 2× Cortex-A53 (1 GHz) für Linux
-Vergleich 2: Bis zu 4× Cortex-R5F (800 MHz) für Echtzeit
-Vergleich 3: Isolierte Cortex-M4F MCU für Sicherheit und Schutz
-Vergleich 4: 4× PRU-ICSSG Industrial Ethernet ohne Lizenzkosten
+# [10]..[16] Merkmale, feste Reihenfolge: ja = Häkchen, Zahl oder Text = Wert, nein = nein
+# (Overlay: Highlight-Zeile "2,3 TOPS NPU", Vergleich: eigene Zeile)
+NPU:
+GPU:
+ISP:
+VPU:
+CAN-FD:
+RAM:
+Flash:
 
-# [11] Highlights 5-8 mit Häkchen -- was nur dieses Produkt kann, je ca. 55 Zeichen
+# [17] freie Zeilen mit Häkchen, je ca. 55 Zeichen -- nur im Overlay
 Alleinstellungsmerkmal 1: 2× Gigabit-Ethernet und 2× CAN FD
 Alleinstellungsmerkmal 2: Bis zu 2 GB DDR4 mit Inline-ECC, eMMC bis 128 GB
 Alleinstellungsmerkmal 3: ePWM, eCAP und eQEP Unterstützung
 Alleinstellungsmerkmal 4: Samtec 2×140 Pins, +3,3 V / 2 A Ausgang am Modul
 
-# [12] Bild "Im Vergleich" unten links, Datei in diesem Ordner (z. B. chart.png)
-Diagramm-Datei:
-
-# [13] QR-Code "Zum Produkt" -- Produktseite auf phytec.de
+# [18] Knopf "Zum Produkt" + QR-Code (vollständig mit https://)
 Link Produktseite: https://www.phytec.de/produkte/system-on-modules/phycore-am64x/
 
-# [14] QR-Code ganz rechts -- Entwicklungskit
+# [19] Knopf mit Kit-Bezeichnung + QR-Code -- nur im Overlay
 Link Kit: https://www.phytec.de/produkte/development-kits/phycore-am64x-rapid-development-kit/
 Kit-Bezeichnung: Rapid Development Kit
 
-# [15] Foto oben rechts (Datei im Ordner, z. B. produkt.jpg); leer = Kamera-Referenzbild
+# [20] Bild "Im Vergleich" unten links, nur wenn die Datei im Ordner liegt (z. B. chart.png)
+Diagramm-Datei:
+
+# nicht im Layout -- Bild oben rechts, solange kein Kamerabild da ist (Datei im Ordner); leer = Kamera-Referenzbild
 Produktbild:
 
 # nicht angezeigt -- wie man den Namen spricht
@@ -59,3 +64,10 @@ Aussprache (Sprachsuche): a m vierundsechzig x
 
 # nicht angezeigt -- nur für euch
 Bemerkung: von phytec.de übernommen, 20.10.; Verfügbar bis und Bauhöhe stehen nicht auf der Seite
+
+# Bisher "Vergleich 1-4" (gibt es nicht mehr -- Inhalt in die Merkmale
+# NPU … Flash oder als Alleinstellungsmerkmal übernehmen):
+#   Vergleich 1: Bis zu 2× Cortex-A53 (1 GHz) für Linux
+#   Vergleich 2: Bis zu 4× Cortex-R5F (800 MHz) für Echtzeit
+#   Vergleich 3: Isolierte Cortex-M4F MCU für Sicherheit und Schutz
+#   Vergleich 4: 4× PRU-ICSSG Industrial Ethernet ohne Lizenzkosten

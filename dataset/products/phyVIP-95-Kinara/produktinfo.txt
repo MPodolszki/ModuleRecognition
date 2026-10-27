@@ -1,15 +1,16 @@
-# Produktinfo für das Info-Fenster der Messe-Demo -- phyVIP-95-Kinara
+# Produktinfo für Overlay und Vergleich der Messe-Demo -- phyVIP-95-Kinara
 #
 # Eine Angabe pro Zeile:  Feld: Wert   (Zeilen mit # sind Kommentare)
-# Leere Felder bleiben im Fenster einfach weg.
-# Wo welches Feld erscheint ([1]..[15]): dataset/products/Info-Fenster_Aufbau.pdf
+# Leer heißt "nicht angegeben": das Overlay lässt die Zeile weg, der Vergleich
+# zeigt "–". Ein echtes Nein als "nein" eintragen.
+# Aufbau [1]..[20]: Datensatz_Overlay_Vergleich.pdf (Marketing)
 # Vorschau ohne Hardware:  uv run tools/render_panel.py
 # Aufs Board:  uv run tools/product_info.py models/<modell> und tools/deploy.sh
 
-# [1] Titel (groß) und letzter Teil im Kopfbalken
+# [1] Titel (groß) und letzter Teil im Kopfbalken; Vergleich: Spaltenkopf
 Bezeichnung: phyVIP i.MX 95
 
-# [2] graue Zeile über dem Titel und Kopfbalken, z. B. System on Module, Development Kit
+# [2] graue Zeile über dem Titel und Kopfbalken, z. B. System on Module, Development Kit, KI-Beschleuniger -- sie entscheidet, welche Merkmale gelten
 Kategorie: Vision-Plattform
 
 # [3] orangefarbenes NEU neben der Kategorie: ja / nein
@@ -17,41 +18,45 @@ Neu: ja
 
 # [4] Artikelnummer phyVIP-95-Kinara -- kommt aus dem Ordnernamen, nicht eintragen
 
-# [5] 1-2 Sätze unter der Artikelnummer, höchstens 3 Zeilen (ca. 270 Zeichen)
+# [5] 1-2 Sätze unter der Artikelnummer, höchstens 3 Zeilen (ca. 230 Zeichen); nur im Overlay
 Kurzbeschreibung: Modulare Vision Integration Platform für maßgeschneiderte Embedded-Vision-Systeme – optional mit NXP Ara240 DNPU bis 40 TOPS.
 
-# [6] Kennzahl 1, kurz (ca. 16 Zeichen), z. B. 4 × A53 + M7
+# [6] Kennzahl, kurz (ca. 16 Zeichen), z. B. 4 × A53 + M7; auch im Vergleich
 Kerne: 6× A55 + M33 + M7
-# [7] Kennzahl 2, z. B. 40 × 37 × 6
+# [7] Kennzahl, z. B. 40 × 37 × 6
 Größe in mm: 60 × 73 / 83
-# [8] Kennzahl 3, z. B. -40 °C / +85 °C
+# [8] Kennzahl, z. B. -40 °C / +85 °C
 Temperatur: -40 °C / +85 °C
-# [9] Kennzahl 4, z. B. 2035
+# [9] Kennzahl, z. B. 2035
 Verfügbar bis: 2036
 
-# [10] Highlights 1-4 (je ca. 55 Zeichen) für den Vergleich: bei allen Produkten dasselbe Thema auf demselben Platz, z. B. 1 CPU, 2 KI, 3 Speicher, 4 Schnittstellen
-Vergleich 1: Modulares Plattformkonzept mit i.MX 95
-Vergleich 2: Hexa-Core Cortex-A55 mit 2 GHz
-Vergleich 3: Cortex-M33 (333 MHz) + Cortex-M7 (800 MHz)
-Vergleich 4: eIQ Neutron NPU 2 TOPS, opt. Ara240 bis 40 TOPS
+# [10]..[16] Merkmale, feste Reihenfolge: ja = Häkchen, Zahl oder Text = Wert, nein = nein
+# (Overlay: Highlight-Zeile "2,3 TOPS NPU", Vergleich: eigene Zeile)
+NPU:
+GPU:
+ISP:
+VPU:
+CAN-FD:
+RAM:
+Flash:
 
-# [11] Highlights 5-8 mit Häkchen -- was nur dieses Produkt kann, je ca. 55 Zeichen
+# [17] freie Zeilen mit Häkchen, je ca. 55 Zeichen -- nur im Overlay
 Alleinstellungsmerkmal 1: Zusätzliche Mali-G310 V2 GPU
 Alleinstellungsmerkmal 2: 2× phyCAM-M MIPI-CSI-2 Kameraeingänge
 Alleinstellungsmerkmal 3: 12–36 V Weitbereichsversorgung, passiv kühlbar
 Alleinstellungsmerkmal 4: GbE, CAN FD, USB, RS485, WLAN/BT, TPM
 
-# [12] Bild "Im Vergleich" unten links, Datei in diesem Ordner (z. B. chart.png)
-Diagramm-Datei:
-
-# [13] QR-Code "Zum Produkt" -- Produktseite auf phytec.de
+# [18] Knopf "Zum Produkt" + QR-Code (vollständig mit https://)
 Link Produktseite: https://www.phytec.de/produkte/embedded-vision/phyvip-vision-integration-platform-imx-95/
 
-# [14] QR-Code ganz rechts -- Entwicklungskit
+# [19] Knopf mit Kit-Bezeichnung + QR-Code -- nur im Overlay
 Link Kit:
 Kit-Bezeichnung:
 
-# [15] Foto oben rechts (Datei im Ordner, z. B. produkt.jpg); leer = Kamera-Referenzbild
+# [20] Bild "Im Vergleich" unten links, nur wenn die Datei im Ordner liegt (z. B. chart.png)
+Diagramm-Datei:
+
+# nicht im Layout -- Bild oben rechts, solange kein Kamerabild da ist (Datei im Ordner); leer = Kamera-Referenzbild
 Produktbild:
 
 # nicht angezeigt -- wie man den Namen spricht
@@ -59,3 +64,10 @@ Aussprache (Sprachsuche): fei vip i m x fünfundneunzig
 
 # nicht angezeigt -- nur für euch
 Bemerkung: Quelle phytec.de Produktseite (Label New, Longevity 2036), Stand 20.10.2026. Größe 60 × 73 bzw. 60 × 83 je nach KI-Ausstattung. Keine eigene phyVIP-Kitseite gefunden.
+
+# Bisher "Vergleich 1-4" (gibt es nicht mehr -- Inhalt in die Merkmale
+# NPU … Flash oder als Alleinstellungsmerkmal übernehmen):
+#   Vergleich 1: Modulares Plattformkonzept mit i.MX 95
+#   Vergleich 2: Hexa-Core Cortex-A55 mit 2 GHz
+#   Vergleich 3: Cortex-M33 (333 MHz) + Cortex-M7 (800 MHz)
+#   Vergleich 4: eIQ Neutron NPU 2 TOPS, opt. Ara240 bis 40 TOPS

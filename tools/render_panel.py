@@ -7,7 +7,8 @@ shows when a product is lifted.
 
 Writes dataset/products/Info-Fenster_Aufbau.pdf:
   page 1     the layout: the panel with every field framed and numbered
-             [1]..[13], the same numbers as in each produktinfo.txt
+             [1]..[20], the same numbers as in each produktinfo.txt and in
+             marketing's "Datensatz pro Produkt: Overlay und Vergleich"
   page 2     the panel on the monitor, over a demo screenshot
   then       one page per product: its produktinfo.txt on the left, the
              panel it gives on the right
@@ -30,10 +31,11 @@ sys.path.insert(0, str(ROOT / "board"))
 sys.path.insert(0, str(ROOT / "tools"))
 
 from phytec_detect import info_panel  # noqa: E402
-from product_info import FIELDS, INFO_FILE, build, product_list, read_info_file  # noqa: E402
+from product_info import FEATURES, FIELDS, INFO_FILE, build, product_list, read_info_file  # noqa: E402
 
 SCREEN_W, SCREEN_H = 1920, 1080
-PANEL_W = SCREEN_W // 2          # InfoPanel fraction 0.5
+PANEL_W = SCREEN_W // 2          # InfoPanel single 0.5
+COMPARE_W = 1240                 # InfoPanel compare 1240 / 1920
 FONTS = pathlib.Path(info_panel.FONTS)
 MARK = (230, 90, 20)             # RGB, frames and numbers
 SCREENSHOT = ROOT / "runs" / "sim" / "demo_v6.png"
@@ -74,29 +76,32 @@ def layout_page(panel, marks):
         if nr is None:
             continue
         draw.rectangle((x0 - 6, y0 - 4, x1 + 6, y1 + 4), outline=MARK, width=3)
-        if nr not in shown:
-            badge(draw, x0 - 16, y0 - 12, nr)
+        if nr not in shown:  # a one-line field: beside it, else on its corner
+            badge(draw, x0 - 16, (y0 + y1) // 2 if y1 - y0 < 40 else y0 - 12, nr)
             shown.add(nr)
     page.paste(framed, (SCREEN_W - PANEL_W, 0))
     draw = ImageDraw.Draw(page)
     x, y = 60, 50
     draw.text((x, y), "Info-Fenster: Aufbau", font=font(44, "Bold"), fill=(20, 20, 20))
     y += 64
-    for line in ("Rechte Bildschirmhälfte, fährt ein, wenn ein Produkt angehoben wird",
-                 f"(30 s). Eingetragen in dataset/products/<Artikelnummer>/{INFO_FILE}"):
+    for line in ("Rechte Bildschirmhälfte (960 × 1080), fährt ein, wenn ein Produkt im",
+                 f"Feld liegt. Eingetragen in dataset/products/<Artikelnummer>/{INFO_FILE}"):
         draw.text((x, y), line, font=font(21), fill=(90, 90, 90))
         y += 30
     y += 14
     for nr, field, where in FIELDS:
         if nr is None:
             continue
-        if field == "Kit-Bezeichnung":
-            continue  # with Link Kit
+        if field == "Kit-Bezeichnung" or field in FEATURES[1:]:
+            continue  # with Link Kit / NPU
         if field == "Link Kit":
             where += "; Kit-Bezeichnung = Aufschrift des Knopfs darüber"
+        if field == "NPU":
+            where = ("je eine Highlight-Zeile aus Wert + Name (2,3 TOPS NPU), feste "
+                     "Reihenfolge; ja = nur der Name, leer entfällt")
         badge(draw, x + 17, y + 16, nr)
-        label = {"Vergleich": "Vergleich 1–4  (Highlights 1–4)",
-                 "Alleinstellungsmerkmal": "Alleinstellungsmerkmal 1–4  (Highlights 5–8)",
+        label = {"Alleinstellungsmerkmal": "Alleinstellungsmerkmal 1–4  (nur im Overlay)",
+                 "NPU": "10–16  Merkmale: " + ", ".join(FEATURES),
                  "Link Kit": "Link Kit  +  Kit-Bezeichnung"}.get(field, field)
         draw.text((x + 50, y + 2), label, font=font(20, "Medium"), fill=(20, 20, 20))
         lines = wrap(draw, where, PANEL_W - 140, font(16))
@@ -104,7 +109,7 @@ def layout_page(panel, marks):
             draw.text((x + 50, y + 27 + 19 * i), line, font=font(16), fill=(100, 100, 100))
         y += 27 + 19 * len(lines) + 9
     draw.text((x, SCREEN_H - 44), "Nicht angezeigt: Aussprache (Sprachsuche), Bemerkung. "
-              "Leere Felder fallen weg.", font=font(19), fill=(100, 100, 100))
+              "Leer = nicht angegeben, fällt weg.", font=font(19), fill=(100, 100, 100))
     return page
 
 
@@ -126,26 +131,41 @@ def monitor_page(panel):
 
 
 def compare_page(a, b):
-    """Two products lifted: Vergleich 1-4 side by side, then their
-    Alleinstellungsmerkmale."""
-    page = info_panel.Page(PANEL_W, SCREEN_H)
+    """Two products in the zone: the comparison (1240 px), its fields
+    framed and numbered like the overlay's."""
+    page = info_panel.Page(COMPARE_W, SCREEN_H)
     info_panel._render_compare(page, a, b)
     panel = Image.fromarray(cv2.cvtColor(page.image()[..., :3], cv2.COLOR_BGR2RGB))
+    draw = ImageDraw.Draw(panel)
+    shown = set()
+    for field, (x0, y0, x1, y1) in page.marks:
+        nr = NUMBER.get(field)
+        if nr is None:
+            continue
+        draw.rectangle((x0 - 4, y0 - 3, x1 + 4, y1 + 3), outline=MARK, width=2)
+        if (nr, x0 > COMPARE_W // 2) not in shown and field not in ("Link Produktseite",):
+            badge(draw, x0 - 14, y0 - 8, nr, r=13)
+            shown.add((nr, x0 > COMPARE_W // 2))
+    for field, problem in page.overflow:
+        print(f"Vergleich: {field} passt nicht -- {problem}")
     out = Image.new("RGB", (SCREEN_W, SCREEN_H), (255, 255, 255))
-    out.paste(panel, (SCREEN_W - PANEL_W, 0))
+    out.paste(panel, (SCREEN_W - COMPARE_W, 0))
     draw = ImageDraw.Draw(out)
-    x, y = 60, 50
-    draw.text((x, y), "Zwei Produkte angehoben", font=font(44, "Bold"), fill=(20, 20, 20))
-    y += 70
-    for line in ("Vergleich 1–4 stehen Zeile für Zeile nebeneinander, Unterschiede",
-                 "orange markiert -- darum bei allen Produkten dasselbe Thema auf",
-                 "demselben Platz (z. B. 1 CPU, 2 KI, 3 Speicher, 4 Schnittstellen).",
+    x, y = 40, 50
+    draw.text((x, y), "Vergleich", font=font(40, "Bold"), fill=(20, 20, 20))
+    y += 64
+    for line in ("Zwei Produkte im Feld. 1240 px breit,",
+                 "die Kamera bleibt links sichtbar.",
                  "",
-                 "Darunter die Alleinstellungsmerkmale 1–4 jedes Produkts.",
+                 "Kopf: Kategorie, NEU, Bezeichnung,",
+                 "Artikelnummer. Zeilen: Kerne und die",
+                 "Merkmale NPU … Flash, für beide gleich;",
+                 "leer = „–“. Unten Zum Produkt + QR.",
                  "",
-                 f"Beispiel: {a[1].get('name', a[0])} und {b[1].get('name', b[0])}"):
-        draw.text((x, y), line, font=font(22), fill=(90, 90, 90))
-        y += 32
+                 f"{a[1].get('name', a[0])} /",
+                 f"{b[1].get('name', b[0])}"):
+        draw.text((x, y), line, font=font(21), fill=(90, 90, 90))
+        y += 30
     return out
 
 
@@ -207,14 +227,15 @@ def main():
     arts = args.articles or product_list(products)
     out = pathlib.Path(args.out) if args.out else products / "Info-Fenster_Aufbau.pdf"
     with tempfile.TemporaryDirectory() as tmp:
-        infos = build(products, sorted(set(arts) | {args.example}), pathlib.Path(tmp))
+        infos = build(products, sorted(set(arts) | {args.example, "PCL-071-5432DE11I.A0"}),
+                      pathlib.Path(tmp))
         for info in infos.values():  # charts, pictures: relative to the (temporary) model dir
             for key in ("chart", "image"):
                 if info.get(key):
                     info[key] = str(pathlib.Path(tmp) / info[key])
         example, marks = render(args.example, infos[args.example])
         pages = [layout_page(example, marks), monitor_page(example)]
-        pair = [a for a in ("PCM-071-5432DE11I.A0", "PCL-071-5432DE11I.A0") if a in infos]
+        pair = [a for a in ("PCM-070-0F3243I.A3", "PCL-071-5432DE11I.A0") if a in infos]
         if len(pair) == 2:
             pages.append(compare_page(*((a, infos[a]) for a in pair)))
         for art in arts:

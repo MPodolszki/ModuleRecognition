@@ -34,57 +34,76 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 INFO_FILE = "produktinfo.txt"
 
 # (number in the layout picture, field, where it shows up in the panel);
-# number None = not shown. tools/render_panel.py draws the same numbers.
+# number None = not shown. Marketing's "Datensatz pro Produkt" (Overlay und
+# Vergleich), tools/render_panel.py draws the same numbers.
 FIELDS = [
-    (1, "Bezeichnung", "Titel (groß) und letzter Teil im Kopfbalken"),
+    (1, "Bezeichnung", "Titel (groß) und letzter Teil im Kopfbalken; Vergleich: Spaltenkopf"),
     (2, "Kategorie", "graue Zeile über dem Titel und Kopfbalken, z. B. System on Module, "
-                     "Development Kit"),
+                     "Development Kit, KI-Beschleuniger -- sie entscheidet, welche "
+                     "Merkmale gelten"),
     (3, "Neu", "orangefarbenes NEU neben der Kategorie: ja / nein"),
     (4, "Artikelnummer", "unter dem Titel -- kommt aus dem Ordnernamen, nicht eintragen"),
     (5, "Kurzbeschreibung", "1-2 Sätze unter der Artikelnummer, höchstens 3 Zeilen "
-                            "(ca. 270 Zeichen)"),
-    (6, "Kerne", "Kennzahl 1, kurz (ca. 16 Zeichen), z. B. 4 × A53 + M7"),
-    (7, "Größe in mm", "Kennzahl 2, z. B. 40 × 37 × 6"),
-    (8, "Temperatur", "Kennzahl 3, z. B. -40 °C / +85 °C"),
-    (9, "Verfügbar bis", "Kennzahl 4, z. B. 2035"),
-    (10, "Vergleich", "Highlights 1-4 (je ca. 55 Zeichen) für den Vergleich: bei allen "
-                      "Produkten dasselbe Thema auf demselben Platz, z. B. 1 CPU, 2 KI, "
-                      "3 Speicher, 4 Schnittstellen"),
-    (11, "Alleinstellungsmerkmal", "Highlights 5-8 mit Häkchen -- was nur dieses Produkt "
-                                   "kann, je ca. 55 Zeichen"),
-    (12, "Diagramm-Datei", "Bild \"Im Vergleich\" unten links, Datei in diesem Ordner "
-                           "(z. B. chart.png)"),
-    (13, "Link Produktseite", "QR-Code \"Zum Produkt\" -- Produktseite auf phytec.de"),
-    (14, "Link Kit", "QR-Code ganz rechts -- Entwicklungskit"),
-    (14, "Kit-Bezeichnung", "Aufschrift des Kit-Knopfs über dem QR-Code (leer: \"Zum Kit\")"),
-    (15, "Produktbild", "Foto oben rechts (Datei im Ordner, z. B. produkt.jpg); leer = "
-                        "Kamera-Referenzbild"),
+                            "(ca. 230 Zeichen); nur im Overlay"),
+    (6, "Kerne", "Kennzahl, kurz (ca. 16 Zeichen), z. B. 4 × A53 + M7; auch im Vergleich"),
+    (7, "Größe in mm", "Kennzahl, z. B. 40 × 37 × 6"),
+    (8, "Temperatur", "Kennzahl, z. B. -40 °C / +85 °C"),
+    (9, "Verfügbar bis", "Kennzahl, z. B. 2035"),
+    (10, "NPU", "Merkmal: ja = Häkchen, sonst der Wert, z. B. 2,3 TOPS"),
+    (11, "GPU", "Merkmal: ja oder Wert, z. B. bis 8 GFLOPS"),
+    (12, "ISP", "Merkmal: ja oder Wert"),
+    (13, "VPU", "Merkmal: ja oder Wert"),
+    (14, "CAN-FD", "Merkmal: Anzahl, z. B. 2 (wird 2× CAN-FD), oder ja"),
+    (15, "RAM", "Merkmal: z. B. 2 GB LPDDR4"),
+    (16, "Flash", "Merkmal: z. B. 8 GB (MLC)"),
+    (17, "Alleinstellungsmerkmal", "freie Zeilen mit Häkchen, je ca. 55 Zeichen -- nur im "
+                                   "Overlay"),
+    (18, "Link Produktseite", "Knopf \"Zum Produkt\" + QR-Code (vollständig mit https://)"),
+    (19, "Link Kit", "Knopf mit Kit-Bezeichnung + QR-Code -- nur im Overlay"),
+    (19, "Kit-Bezeichnung", "Aufschrift des Kit-Knopfs (leer: \"Zum Kit\")"),
+    (20, "Diagramm-Datei", "Bild \"Im Vergleich\" unten links, nur wenn die Datei im Ordner "
+                           "liegt (z. B. chart.png)"),
+    (None, "Produktbild", "nicht im Layout -- Bild oben rechts, solange kein Kamerabild "
+                          "da ist (Datei im Ordner); leer = Kamera-Referenzbild"),
     (None, "Aussprache (Sprachsuche)", "nicht angezeigt -- wie man den Namen spricht"),
     (None, "Bemerkung", "nicht angezeigt -- nur für euch"),
 ]
 
+# Merkmale 10-16: fixed keys in a fixed order, so the comparison's rows never
+# slip. Empty = not given (the overlay leaves the line out, the comparison
+# shows "–"); a real "no" is entered as "nein".
+FEATURES = ["NPU", "GPU", "ISP", "VPU", "CAN-FD", "RAM", "Flash"]
+# Which apply depends on the category: an AI accelerator card has no cores
+# (its TOPS go to NPU), no GPU, ...
+NOT_FOR = {"KI-Beschleuniger": {"Kerne", "GPU", "ISP", "VPU", "CAN-FD", "Flash"}}
 
-SLOTS = {"Vergleich": 4, "Alleinstellungsmerkmal": 4}   # numbered fields, 4 places each
+SLOTS = {"Alleinstellungsmerkmal": 4}   # numbered fields, 4 places each
 KEYS = {field.lower(): field for _, field, _ in FIELDS
         if field != "Artikelnummer" and field not in SLOTS}
 KEYS.update({"neu (ja/nein)": "Neu", "artikelnummer": None})
 # what fits on the panel (characters, roughly); render_panel.py warns above it
 # (render_panel.py also measures what really fits)
-LIMITS = {"Bezeichnung": 30, "Kategorie": 30, "Kurzbeschreibung": 270, "Kit-Bezeichnung": 24}
+LIMITS = {"Bezeichnung": 30, "Kategorie": 30, "Kurzbeschreibung": 230, "Kit-Bezeichnung": 24}
+
+
+def applies(field, category):
+    """Whether Kerne / a Merkmal belongs to products of this category."""
+    return field not in NOT_FOR.get(category or "", ())
 
 
 def slot_keys():
-    """'Vergleich 1'..'Vergleich 4', 'Alleinstellungsmerkmal 1'..'4'."""
+    """'Alleinstellungsmerkmal 1'..'4'."""
     return [f"{name} {i}" for name, n in SLOTS.items() for i in range(1, n + 1)]
 
 
 def _slot(key):
-    """'vergleich 2' -> ('Vergleich', 2); 'vergleich' -> ('Vergleich', None);
-    the old 'highlight 5' -> ('Highlight', 5); anything else None."""
+    """'alleinstellungsmerkmal 2' -> ('Alleinstellungsmerkmal', 2), without
+    a number (next free place) None; the old 'vergleich 2' / 'highlight 5'
+    -> ('Vergleich', 2) / ('Highlight', 5); anything else None."""
     name, _, num = key.partition(" ")
     if num and not num.strip().isdigit():
         return None
-    for field in list(SLOTS) + ["Highlight"]:
+    for field in list(SLOTS) + ["Vergleich", "Highlight"]:
         if name == field.lower():
             return field, int(num) if num.strip() else None
     return None
@@ -92,11 +111,14 @@ def _slot(key):
 
 def read_info_file(path, problems=None):
     """produktinfo.txt -> the same dict as a produktinfos.csv row. Forgiving,
-    since people edit it by hand: field names in any case, "Vergleich 3:"
-    as well as "Vergleich:" (next free place), the old "Highlight:" (1-4 go
-    to Vergleich, 5-8 to Alleinstellungsmerkmal), and a line that is no
-    "Feld:" (a value wrapped by the editor) continues the field above.
-    Anything odd goes to `problems` (a list) if given."""
+    since people edit it by hand: field names in any case,
+    "Alleinstellungsmerkmal 3:" as well as "Alleinstellungsmerkmal:" (next
+    free place), the old "Highlight:" (5-8 are Alleinstellungsmerkmal), and a
+    line that is no "Feld:" (a value wrapped by the editor) continues the
+    field above. The old free "Vergleich 1-4" (and Highlight 1-4) are gone --
+    the comparison has the fixed Merkmale now: kept as "Vergleich N" for the
+    rewrite of the file, and noted. Anything odd goes to `problems` (a list)
+    if given."""
     row, last, old_highlights = {}, None, []
     for n, line in enumerate(path.read_text(encoding="utf-8-sig").splitlines(), 1):
         text = line.strip()
@@ -121,6 +143,14 @@ def read_info_file(path, problems=None):
                 num = num or len(old_highlights) + 1
                 old_highlights.append(num)
                 name, num = ("Vergleich", num) if num <= 4 else ("Alleinstellungsmerkmal", num - 4)
+            if name == "Vergleich":  # gone: kept aside, not shown
+                num = num or sum(1 for k in row if k.startswith("Vergleich ")) + 1
+                last = f"Vergleich {num}"
+                row[last] = value
+                if problems is not None and value:
+                    problems.append(f"Vergleich {num} gibt es nicht mehr -- in NPU … Flash "
+                                    f"eintragen: {value[:40]}")
+                continue
             if num is None:  # next free place
                 num = next((i for i in range(1, SLOTS[name] + 1)
                             if not row.get(f"{name} {i}")), SLOTS[name] + 1)
@@ -146,7 +176,8 @@ def read_info_file(path, problems=None):
 
 
 def from_sheet(row):
-    """A produktinfos.csv row (Highlight 1-8) in the slot form."""
+    """A produktinfos.csv row (Highlight 1-8) in the slot form (1-4 as the
+    old Vergleich, kept aside)."""
     row = dict(row)
     for i in range(1, 9):
         h = row.pop(f"Highlight {i}", "")
@@ -157,12 +188,14 @@ def from_sheet(row):
 
 def write_info_file(path, art, row):
     """A produktinfo.txt with every field, its place in the panel as a comment,
-    pre-filled from `row` (read_info_file's form, or {})."""
-    out = ["# Produktinfo für das Info-Fenster der Messe-Demo -- " + art,
+    pre-filled from `row` (read_info_file's form, or {}); old Vergleich lines
+    at the end as comments."""
+    out = ["# Produktinfo für Overlay und Vergleich der Messe-Demo -- " + art,
            "#",
            "# Eine Angabe pro Zeile:  Feld: Wert   (Zeilen mit # sind Kommentare)",
-           "# Leere Felder bleiben im Fenster einfach weg.",
-           "# Wo welches Feld erscheint ([1]..[15]): dataset/products/Info-Fenster_Aufbau.pdf",
+           "# Leer heißt \"nicht angegeben\": das Overlay lässt die Zeile weg, der Vergleich",
+           "# zeigt \"–\". Ein echtes Nein als \"nein\" eintragen.",
+           "# Aufbau [1]..[20]: Datensatz_Overlay_Vergleich.pdf (Marketing)",
            "# Vorschau ohne Hardware:  uv run tools/render_panel.py",
            "# Aufs Board:  uv run tools/product_info.py models/<modell> und tools/deploy.sh",
            ""]
@@ -171,7 +204,11 @@ def write_info_file(path, art, row):
         if field == "Artikelnummer":
             out += [f"# {tag}Artikelnummer {art} -- {where.split(' -- ')[1]}", ""]
             continue
-        if field != "Kit-Bezeichnung":
+        if field == "NPU":
+            out += ["# [10]..[16] Merkmale, feste Reihenfolge: ja = Häkchen, Zahl oder Text = "
+                    "Wert, nein = nein", "# (Overlay: Highlight-Zeile \"2,3 TOPS NPU\", "
+                    "Vergleich: eigene Zeile)"]
+        if field != "Kit-Bezeichnung" and field not in FEATURES:
             out.append(f"# {tag}{where}")
         if field in SLOTS:
             out += [f"{field} {i}: {row.get(f'{field} {i}', '')}".rstrip()
@@ -180,8 +217,14 @@ def write_info_file(path, art, row):
             out.append(f"Neu: {row.get('Neu (ja/nein)', '')}".rstrip())
         else:
             out.append(f"{field}: {row.get(field, '')}".rstrip())
-        if field not in ("Link Kit", "Kerne", "Größe in mm", "Temperatur"):
+        if field not in ("Link Kit", "Kerne", "Größe in mm", "Temperatur") + tuple(FEATURES[:-1]):
             out.append("")
+    old = [(k, v) for k, v in sorted(row.items()) if k.startswith("Vergleich ") and v]
+    if old:
+        out += ["# Bisher \"Vergleich 1-4\" (gibt es nicht mehr -- Inhalt in die Merkmale",
+                "# NPU … Flash oder als Alleinstellungsmerkmal übernehmen):"]
+        out += [f"#   {k}: {v}" for k, v in old]
+        out.append("")
     path.write_text("\n".join(out), encoding="utf-8")
 
 
@@ -317,16 +360,17 @@ def build(products_dir, labels, model_dir=None):
             out[art]["description"] = row["Kurzbeschreibung"]
         if row.get("Bezeichnung"):
             out[art]["name"] = row["Bezeichnung"]
-        compare = [row.get(f"Vergleich {i}", "") for i in range(1, 5)]
+        category = row.get("Kategorie", "")
+        # Merkmale: every key that applies to the category, in the fixed
+        # order, also the empty ones (the comparison shows "–" for them)
+        out[art]["features"] = [[k, row.get(k, "")] for k in FEATURES if applies(k, category)]
         usp = [row[f"Alleinstellungsmerkmal {i}"] for i in range(1, 5)
                if row.get(f"Alleinstellungsmerkmal {i}")]
-        if any(compare) or usp:
-            # highlights: the list on the single panel; compare: 4 places, kept
-            # in position for the side-by-side view; usp: what only it has
-            out[art]["highlights"] = [h for h in compare if h] + usp
-            out[art]["compare"] = compare
+        if usp:
             out[art]["usp"] = usp
-        facts = [(label, row.get(key, "")) for key, label in
+        if applies("Kerne", category):
+            out[art]["cores"] = row.get("Kerne", "")
+        facts = [(label, row.get(key, "") if applies(key, category) else "") for key, label in
                  (("Kerne", "Kerne"), ("Größe in mm", "Größe in mm"),
                   ("Temperatur", "Temperatur"), ("Verfügbar bis", "Verfügbar bis"))]
         if any(v for _, v in facts):

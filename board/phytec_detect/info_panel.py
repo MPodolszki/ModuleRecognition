@@ -1,15 +1,18 @@
 """Product info that slides in from the right when products are lifted.
 
   nothing lifted     no panel -- the table just shows boxes
-  one lifted         name, article number and its options (products.json,
-                     from info.tsv / summary.txt)
+  one lifted         the overlay: name, article number, short description,
+                     key figures, highlights (the Merkmale NPU ... Flash as
+                     "2,3 TOPS NPU", then the Alleinstellungsmerkmale), links
   (either)           slides out by itself after 30 s, until the lifted
                      products change
-  two lifted         both side by side; if they share the option layout
-                     (same family, same number of option rows) the rows are
-                     put next to each other and differences are highlighted
+  two lifted         the comparison: a column per product, the same fixed
+                     rows (Kerne, NPU ... Flash) for both, "–" where empty
 
-The panel covers `fraction` of the screen width and eases in/out over
+Layout and fields: marketing's "Datensatz pro Produkt: Overlay und
+Vergleich" (tools/product_info.py builds products.json from it). The overlay
+covers `single` of the screen width (960 px of 1920), the comparison
+`compare` (1240 px, the camera stays visible left); it eases in/out over
 `slide_s`. Its picture is rendered only when its content changes; every
 screen frame just blends the cached picture in at the current offset.
 """
@@ -27,11 +30,47 @@ WHITE, GREY, YELLOW, CYAN = (255, 255, 255, 255), (170, 170, 170, 255), (0, 230,
     (255, 220, 120, 255)
 
 
+FEATURES = ("NPU", "GPU", "ISP", "VPU", "CAN-FD", "RAM", "Flash")
+TICKED = ("NPU", "GPU", "ISP", "VPU", "CAN-FD")  # a tick in the comparison
+YES, NO = ("ja", "j", "yes", "x", "\u2713"), ("nein", "no", "n")
+
+
+def feature_line(key, value):
+    """A Merkmal as a highlight line of the overlay: "ja" -> "GPU", a
+    number -> "2× CAN-FD", text -> "2,3 TOPS NPU"; None if empty or no."""
+    value = (value or "").strip()
+    if not value or value.lower() in NO:
+        return None
+    if value.lower() in YES:
+        return key
+    if value.isdigit():
+        return f"{value}\u00d7 {key}"
+    return f"{value} {key}"
+
+
+def feature_cell(key, value):
+    """A Merkmal in the comparison: (tick, text, muted) -- "ja" a tick
+    alone, a number "2×", "nein" as it is, empty "–"."""
+    value = (value or "").strip()
+    if not value:
+        return False, "\u2013", True
+    if value.lower() in NO:
+        return False, "nein", True
+    if value.lower() in YES:
+        return True, "", False
+    return key in TICKED, f"{value}\u00d7" if value.isdigit() else value, False
+
+
 def _option_lines(info):
-    """(label, value) rows for one product: the hand-written highlights
-    (produktinfos.csv) if there are any, else the option export."""
+    """(label, value, field) rows for one product: the Merkmale and the
+    Alleinstellungsmerkmale if there are any (products.json from the
+    data set), older files' highlights, else the option export."""
+    if "features" in info or info.get("usp"):
+        rows = [(line, "", key) for key, value in info.get("features", [])
+                if (line := feature_line(key, value))]
+        return rows + [(u, "", "Alleinstellungsmerkmal") for u in info.get("usp", [])]
     if info.get("highlights"):
-        return [(h, "") for h in info["highlights"]]
+        return [(h, "", "Highlight") for h in info["highlights"]]
     rows = []
     for o in info.get("options", []):
         name = " ".join(o.get("Option", "").split())
@@ -39,9 +78,9 @@ def _option_lines(info):
         head = " ".join(o.get("Optionskopf Beschreibung", "").split())
         if not name or name == "-":
             continue
-        rows.append((name, desc or head))
+        rows.append((name, desc or head, "Option"))
     if not rows:
-        rows = [(line, "") for line in info.get("summary", [])]
+        rows = [(line, "", "Option") for line in info.get("summary", [])]
     return rows
 
 
@@ -111,9 +150,11 @@ def _put(img, text, x, y, scale, color, thickness=1):
 
 
 class InfoPanel:
-    def __init__(self, products, labels, fraction=0.5, slide_s=0.35, show_s=30.0):
+    def __init__(self, products, labels, single=0.5, compare=1240 / 1920, slide_s=0.35,
+                 show_s=30.0):
         self.products, self.labels = products, labels
-        self.fraction, self.slide_s, self.show_s = fraction, slide_s, show_s
+        self.single, self.compare = single, compare
+        self.slide_s, self.show_s = slide_s, show_s
         self._first, self._seen = {}, {}  # class -> first / last time seen lifted
         self._live = {}           # class -> BGR crop of the product in the drop zone
         self._live_dirty = False
@@ -126,6 +167,11 @@ class InfoPanel:
         self._copied = None       # width of the panel as last copied into the canvas
         self._target = 0.0
         self._last = time.monotonic()
+
+    @property
+    def fraction(self):
+        """Share of the screen width: the comparison is wider."""
+        return self.compare if len(self._key) > 1 else self.single
 
     def state(self):
         """What the panel shows right now (position, products, pictures) --
@@ -326,9 +372,9 @@ class Page:
     def rect(self, box, fill=None, outline=None, width=1, radius=0):
         self.draw.rounded_rectangle(box, radius=radius, fill=fill, outline=outline, width=width)
 
-    def check(self, x, y, s=18):
+    def check(self, x, y, s=18, color=PETROL):
         """phytec.de list bullet: petrol box with a white tick."""
-        self.rect((x, y, x + s, y + s), fill=PETROL, radius=3)
+        self.rect((x, y, x + s, y + s), fill=color, radius=3)
         self.draw.line([(x + 4, y + s * 0.52), (x + s * 0.42, y + s - 5), (x + s - 4, y + 5)],
                        fill=(255, 255, 255), width=3)
 
@@ -542,9 +588,9 @@ def _render_single(page, art, info):
         else:
             line = f"{line} {word}".strip()
     lines += [line] if line else []
-    if len(lines) > 4:
-        page.overflow.append(("Kurzbeschreibung", f"{len(lines)} Zeilen, nur 4 passen"))
-    for line in lines[:4]:
+    if len(lines) > 3:
+        page.overflow.append(("Kurzbeschreibung", f"{len(lines)} Zeilen, nur 3 passen"))
+    for line in lines[:3]:
         page.text(x, y, line, 19, fill=INK)
         y += 26
     if y > y_desc:
@@ -570,109 +616,133 @@ def _render_single(page, art, info):
         y += 8
     page.text(x, y, "Highlights", 28, "Bold")
     y += 48
-    n_compare = len([h for h in info.get("compare", []) if h])
-    tops = []
-    if not _option_lines(info):
+    rows = _option_lines(info)
+    if not rows:
         page.text(x, y, "Produktdaten folgen.", 20, fill=MUTED)
-    for k, (label, value) in enumerate(_option_lines(info)):
+    # Merkmale + Alleinstellungsmerkmale can be 11 lines: closer together
+    # (down to 30 px) before one is left out
+    pitch = 36 if any(v for _, v, _ in rows) else max(30, min(36, (bottom - y) // max(1, len(rows))))
+    size = 21 if pitch > 32 else 20
+    for k, (label, value, field) in enumerate(rows):
         lines = page.wrap(value, w - 2 * x - 34, 17) if value else []
-        need = 28 + 24 * min(len(lines), 1)
+        need = pitch - 8 + 24 * min(len(lines), 1)
         if y + need > bottom:
-            if info.get("highlights"):
-                page.overflow.append(("Highlight", f"nur {k} von {len(info['highlights'])} passen"))
+            page.overflow.append(("Highlights", f"nur {k} von {len(rows)} passen"))
             break
-        if info.get("highlights") and page.width(label, 21, "Medium") > w - 2 * x - 34:
-            page.overflow.append(("Highlight", f"zu breit: {label}"))
-        tops.append(y)
+        if field != "Option" and page.width(label, size, "Medium") > w - 2 * x - 34:
+            page.overflow.append((field, f"zu breit: {label}"))
         page.check(x, y + 3)
-        page.text(x + 34, y, label, 21, "Medium")
-        y += 28
+        page.text(x + 34, y, label, size, "Medium")
+        page.mark(field, (x, y - 2, x + 34 + page.width(label, size, "Medium"), y + 26))
+        y += pitch - 8
         for line in lines[:1]:
             page.text(x + 34, y, line, 17, fill=MUTED)
             y += 24
         y += 8
-    if info.get("highlights") and tops:
-        tops.append(y)  # end of the last row
-        groups = (("Vergleich", 0, n_compare), ("Alleinstellungsmerkmal", n_compare, len(tops) - 1))
-        for field, i0, i1 in groups:
-            if i1 > i0:
-                page.mark(field, (x, tops[i0] - 4, w - x, tops[i1] - 8))
+
+
+# the comparison's columns: first product petrol, second orange-brown
+COLUMN_COLORS = (PETROL, (186, 88, 18))
 
 
 def _render_compare(page, a, b):
-    (art_a, info_a), (art_b, info_b) = a, b
+    """Two columns, the same fixed rows for both (Kerne, NPU ... Flash; a
+    row neither product has a key for is left out), a "Zum Produkt" button
+    and QR code per product at the bottom."""
     _header(page, ["Produkte", "Vergleich"])
-    w, h = page.w, page.h
-    col = (w - 3 * 32) // 2
-    xs = (32, 64 + col)
-    y0 = 92
-    ends = []
-    for x, art, info in ((xs[0], art_a, info_a), (xs[1], art_b, info_b)):
-        y = y0
-        box = (x + col - THUMB_W, y0 - 6, x + col, y0 - 6 + THUMB_H)
+    w, h, m = page.w, page.h, 32
+    label_w = 150
+    col = (w - 2 * m - label_w - 24) // 2
+    xs = (m + label_w, m + label_w + col + 24)
+    infos = (a, b)
+    # column heads: colour bar, category + NEU, name, article number, picture
+    y0, ends = 84, []
+    for x, (art, info), color in zip(xs, infos, COLUMN_COLORS):
+        page.rect((x, y0, x + col, y0 + 4), fill=color)
+        y = y0 + 18
+        box = (x + col - THUMB_W, y, x + col, y + THUMB_H)
         _picture(page, info, box)
-        for line in page.wrap(info.get("name") or art, col - THUMB_W - 14, 30, "Bold")[:3]:
-            page.text(x, y, line, 30, "Bold")
-            y += 38
-        page.text(x, y, art, 17, fill=MUTED)
-        ends.append(max(y + 34, box[3] + 14))
+        tw = col - THUMB_W - 14
+        category = info.get("category", "")
+        if category:
+            page.text(x, y, category, 16, fill=MUTED)
+            page.mark("Kategorie", (x, y - 2, x + page.width(category, 16), y + 22))
+        if info.get("new"):
+            tx = x + (page.width(category, 16) + 10 if category else 0)
+            page.rect((tx, y - 1, tx + 44, y + 21), outline=ORANGE, width=2, radius=3)
+            page.text(tx + 8, y + 1, "NEU", 14, "Medium", fill=ORANGE)
+            page.mark("Neu", (tx, y - 1, tx + 44, y + 21))
+        y += 26
+        name = info.get("name") or art
+        size = next((s for s in (30, 26, 22) if page.width(name, s, "Bold") <= tw), 22)
+        y_name = y
+        for line in page.wrap(name, tw, size, "Bold")[:2]:
+            page.text(x, y, line, size, "Bold")
+            y += int(size * 1.25)
+        page.mark("Bezeichnung", (x, y_name, x + tw, y - 2))
+        if re.match(r"^[A-Z]{2,5}-[A-Z0-9]", art):
+            page.text(x, y + 2, art, 16, fill=MUTED)
+            page.mark("Artikelnummer", (x, y, x + page.width(art, 16), y + 22))
+            y += 24
+        ends.append(max(y + 14, box[3] + 14))
     y = max(ends)
-    page.draw.line([(32, y), (w - 32, y)], fill=RULE, width=2)
-    y += 20
-    rows_a, rows_b = _option_lines(info_a), _option_lines(info_b)
-    if any(info_a.get("compare", [])) and any(info_b.get("compare", [])):
-        # Vergleich 1-4: same topic on the same place, row by row, differences
-        # marked; then what only each of them has
-        for ta, tb in zip(info_a["compare"], info_b["compare"]):
-            if not (ta or tb) or y > h - 120:
-                continue
-            lines = [page.wrap(t, col - 30, 19)[:2] if t else ["-"] for t in (ta, tb)]
-            rh = 26 * max(len(l) for l in lines) + 18
-            if ta != tb:
-                page.rect((20, y - 6, w - 20, y + rh - 10), fill=ORANGE_TINT, radius=4)
-                page.rect((20, y - 6, 26, y + rh - 10), fill=ORANGE)
-            for x, ls in zip(xs, lines):
-                page.check(x, y + 3, 16)
-                for k, line in enumerate(ls):
-                    page.text(x + 28, y + 26 * k, line, 19)
-            y += rh
-        usps = (info_a.get("usp", []), info_b.get("usp", []))
-        if any(usps) and y < h - 120:
-            y += 14
-            page.text(32, y, "Alleinstellungsmerkmale", 24, "Bold")
-            y += 42
-            for x, items in zip(xs, usps):
-                yy = y
-                for item in items:
-                    for k, line in enumerate(page.wrap(item, col - 30, 19)[:2]):
-                        if yy > h - 50:
-                            break
-                        if k == 0:
-                            page.check(x, yy + 3, 16)
-                        page.text(x + 28, yy, line, 19)
-                        yy += 26
-                    yy += 12
-    elif len(rows_a) == len(rows_b):  # same option layout: row by row, differences marked
-        for (na, va), (nb, vb) in zip(rows_a, rows_b):
-            if y > h - 50:
-                break
-            differ = (na, va) != (nb, vb)
-            if differ:
-                page.rect((20, y - 6, w - 20, y + 34), fill=ORANGE_TINT, radius=4)
-                page.rect((20, y - 6, 26, y + 34), fill=ORANGE)
-            for x, text in ((xs[0], na), (xs[1], nb)):
-                shown = page.wrap(text, col - 30, 19)[0] if text else "-"
-                page.check(x, y + 3, 16)
-                page.text(x + 28, y, shown, 19, "Medium" if differ else "Regular")
-            y += 44
-    else:  # different families: each its own list
-        for x, rows in ((xs[0], rows_a), (xs[1], rows_b)):
-            yy = y
-            if not rows:
-                page.text(x, yy, "Produktdaten folgen.", 19, fill=MUTED)
-            for label, _ in rows:
-                if yy > h - 50:
-                    break
-                page.check(x, yy + 3, 16)
-                page.text(x + 28, yy, page.wrap(label, col - 30, 19)[0], 19)
-                yy += 40
+    # the rows
+    cells = []
+    if any("cores" in info for _, info in infos):
+        cells.append(("Kerne", [(False, info["cores"] or "\u2013", not info["cores"], True)
+                                if "cores" in info else (False, "\u2013", True, True)
+                                for _, info in infos]))
+    feats = [dict(info.get("features", [])) for _, info in infos]
+    for key in FEATURES:
+        if not any(key in f for f in feats):
+            continue  # applies to neither (category)
+        row = []
+        for f in feats:
+            tick, text, muted = feature_cell(key, f.get(key, ""))
+            row.append((tick, text, muted, key in ("RAM", "Flash")))
+        cells.append((key, row))
+    bottom = _compare_band(page, infos, xs, col)
+    rh = min(47, (bottom - 16 - y) // max(1, len(cells)))
+    page.draw.line([(m, y), (w - m, y)], fill=RULE, width=1)
+    for key, row in cells:
+        page.text(m, y + (rh - 18) / 2 - 2, key, 18, fill=MUTED)
+        for x, (tick, text, muted, colored), color in zip(xs, row, COLUMN_COLORS):
+            tx = x
+            if tick:
+                page.check(x, y + (rh - 22) / 2, 22, color)
+                tx += 34
+            if text:
+                page.text(tx, y + (rh - 22) / 2 - 3, text, 22 if not muted else 20,
+                          "Bold" if not muted else "Regular",
+                          fill=MUTED if muted else color if colored or key == "Kerne" else INK)
+                if not muted and page.width(text, 22, "Bold") > col - (tx - x):
+                    page.overflow.append((key, f"zu breit: {text}"))
+        page.mark(key, (m, y + 2, w - m, y + rh - 2))
+        y += rh
+        page.draw.line([(m, y), (w - m, y)], fill=RULE, width=1)
+
+
+def _compare_band(page, infos, xs, col, margin=32):
+    """Grey band at the bottom: per product a "Zum Produkt" button in its
+    column's colour with the QR code under it. Returns the band's top."""
+    codes = []
+    for (art, info), x, color in zip(infos, xs, COLUMN_COLORS):
+        url = next((u for label, u in info.get("links", []) if label == "Zum Produkt"), None)
+        q = _qr(url, 150) if url else None
+        if q is not None:
+            codes.append((x, color, q))
+    if not codes:
+        return page.h
+    block = max(q.shape[0] for _, _, q in codes)
+    top = page.h - margin - block - 64
+    page.rect((0, top - 24, page.w, page.h), fill=BAND)
+    page.draw.line([(0, top - 24), (page.w, top - 24)], fill=RULE, width=1)
+    for x, color, q in codes:
+        y = page.h - margin - q.shape[0]
+        page.pastes.append((q, x, y))
+        text = "Zum Produkt  \u203a"
+        bw = page.width(text, 18, "Medium") + 40
+        page.rect((x, top, x + bw, top + 44), fill=color, radius=4)
+        page.text(x + 20, top + 12, text, 18, "Medium", fill=(255, 255, 255))
+        page.mark("Link Produktseite", (x, top, x + max(bw, q.shape[0]), page.h - margin))
+    return top - 24

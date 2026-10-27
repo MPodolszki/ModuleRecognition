@@ -1,15 +1,16 @@
-# Produktinfo für das Info-Fenster der Messe-Demo -- phyCORE-AM62A
+# Produktinfo für Overlay und Vergleich der Messe-Demo -- phyCORE-AM62A
 #
 # Eine Angabe pro Zeile:  Feld: Wert   (Zeilen mit # sind Kommentare)
-# Leere Felder bleiben im Fenster einfach weg.
-# Wo welches Feld erscheint ([1]..[15]): dataset/products/Info-Fenster_Aufbau.pdf
+# Leer heißt "nicht angegeben": das Overlay lässt die Zeile weg, der Vergleich
+# zeigt "–". Ein echtes Nein als "nein" eintragen.
+# Aufbau [1]..[20]: Datensatz_Overlay_Vergleich.pdf (Marketing)
 # Vorschau ohne Hardware:  uv run tools/render_panel.py
 # Aufs Board:  uv run tools/product_info.py models/<modell> und tools/deploy.sh
 
-# [1] Titel (groß) und letzter Teil im Kopfbalken
+# [1] Titel (groß) und letzter Teil im Kopfbalken; Vergleich: Spaltenkopf
 Bezeichnung: phyCORE-AM62Ax
 
-# [2] graue Zeile über dem Titel und Kopfbalken, z. B. System on Module, Development Kit
+# [2] graue Zeile über dem Titel und Kopfbalken, z. B. System on Module, Development Kit, KI-Beschleuniger -- sie entscheidet, welche Merkmale gelten
 Kategorie: System on Module
 
 # [3] orangefarbenes NEU neben der Kategorie: ja / nein
@@ -17,41 +18,45 @@ Neu: nein
 
 # [4] Artikelnummer phyCORE-AM62A -- kommt aus dem Ordnernamen, nicht eintragen
 
-# [5] 1-2 Sätze unter der Artikelnummer, höchstens 3 Zeilen (ca. 270 Zeichen)
+# [5] 1-2 Sätze unter der Artikelnummer, höchstens 3 Zeilen (ca. 230 Zeichen); nur im Overlay
 Kurzbeschreibung: Low Power Edge Computing Modul für Machine-Vision- und Deep-Learning-Algorithmen.
 
-# [6] Kennzahl 1, kurz (ca. 16 Zeichen), z. B. 4 × A53 + M7
+# [6] Kennzahl, kurz (ca. 16 Zeichen), z. B. 4 × A53 + M7; auch im Vergleich
 Kerne: 4× A53, 2× R5F, C7x
-# [7] Kennzahl 2, z. B. 40 × 37 × 6
+# [7] Kennzahl, z. B. 40 × 37 × 6
 Größe in mm: 40 × 40 × 4,5
-# [8] Kennzahl 3, z. B. -40 °C / +85 °C
+# [8] Kennzahl, z. B. -40 °C / +85 °C
 Temperatur: -40 °C / +85 °C
-# [9] Kennzahl 4, z. B. 2035
+# [9] Kennzahl, z. B. 2035
 Verfügbar bis:
 
-# [10] Highlights 1-4 (je ca. 55 Zeichen) für den Vergleich: bei allen Produkten dasselbe Thema auf demselben Platz, z. B. 1 CPU, 2 KI, 3 Speicher, 4 Schnittstellen
-Vergleich 1: Single-/Dual-/Quad-Core Cortex-A53 bis 1,4 GHz
-Vergleich 2: Cortex-R5F bis 800 MHz für Echtzeit
-Vergleich 3: Vision Accelerator mit ISP (5 MP@60 fps)
-Vergleich 4: 1× C7 Deep Learning Accelerator (DLA)
+# [10]..[16] Merkmale, feste Reihenfolge: ja = Häkchen, Zahl oder Text = Wert, nein = nein
+# (Overlay: Highlight-Zeile "2,3 TOPS NPU", Vergleich: eigene Zeile)
+NPU:
+GPU:
+ISP:
+VPU:
+CAN-FD:
+RAM:
+Flash:
 
-# [11] Highlights 5-8 mit Häkchen -- was nur dieses Produkt kann, je ca. 55 Zeichen
+# [17] freie Zeilen mit Häkchen, je ca. 55 Zeichen -- nur im Overlay
 Alleinstellungsmerkmal 1: 2 TOPS KI-Leistung (C7x256v)
 Alleinstellungsmerkmal 2:
 Alleinstellungsmerkmal 3:
 Alleinstellungsmerkmal 4:
 
-# [12] Bild "Im Vergleich" unten links, Datei in diesem Ordner (z. B. chart.png)
-Diagramm-Datei:
-
-# [13] QR-Code "Zum Produkt" -- Produktseite auf phytec.de
+# [18] Knopf "Zum Produkt" + QR-Code (vollständig mit https://)
 Link Produktseite: https://www.phytec.de/produkte/system-on-modules/phycore-am62ax/
 
-# [14] QR-Code ganz rechts -- Entwicklungskit
+# [19] Knopf mit Kit-Bezeichnung + QR-Code -- nur im Overlay
 Link Kit:
 Kit-Bezeichnung:
 
-# [15] Foto oben rechts (Datei im Ordner, z. B. produkt.jpg); leer = Kamera-Referenzbild
+# [20] Bild "Im Vergleich" unten links, nur wenn die Datei im Ordner liegt (z. B. chart.png)
+Diagramm-Datei:
+
+# nicht im Layout -- Bild oben rechts, solange kein Kamerabild da ist (Datei im Ordner); leer = Kamera-Referenzbild
 Produktbild:
 
 # nicht angezeigt -- wie man den Namen spricht
@@ -59,3 +64,10 @@ Aussprache (Sprachsuche): a m zweiundsechzig a x
 
 # nicht angezeigt -- nur für euch
 Bemerkung: Quelle phytec.de Produktseite, Stand 20.10.2026. Größe widersprüchlich (Kopf 40 × 40 × 4,5, Tabelle 40,8 × 40,8 × 5). Kit phyBOARD-Lyra AM62Ax (KPB-07524) nur über "Angebot anfordern", keine eigene Kitseite -- Link Kit leer.
+
+# Bisher "Vergleich 1-4" (gibt es nicht mehr -- Inhalt in die Merkmale
+# NPU … Flash oder als Alleinstellungsmerkmal übernehmen):
+#   Vergleich 1: Single-/Dual-/Quad-Core Cortex-A53 bis 1,4 GHz
+#   Vergleich 2: Cortex-R5F bis 800 MHz für Echtzeit
+#   Vergleich 3: Vision Accelerator mit ISP (5 MP@60 fps)
+#   Vergleich 4: 1× C7 Deep Learning Accelerator (DLA)
