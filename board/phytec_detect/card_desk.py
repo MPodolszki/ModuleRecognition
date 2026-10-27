@@ -134,7 +134,10 @@ class CardDesk:
                 self.card_quad = _card_outline(rects, lines, name, offset)
                 self.version += 1
                 if classes:  # a card alone is no lead: only card and product together
-                    lines = self._read_rest(crop, lines, rects)
+                    t = time.perf_counter()
+                    lines, rects = self._read_rest(crop, lines, rects)
+                    print(f"card: whole card read in {time.perf_counter() - t:.1f} s "
+                          f"({' | '.join(x for x, _ in lines if x)})", flush=True)
                     full = name_from(lines, rects) or name
                     if full != name and _same_name(full, name):
                         name = full  # "Neumann" now that the mail line spells it
@@ -147,13 +150,21 @@ class CardDesk:
             self._busy = False
 
     def _read_rest(self, crop, lines, rects):
-        """The lines the greeting did not need, read now (the mail address)."""
-        rest = [i for i, (t, _) in enumerate(lines) if not t]
-        if rest:
-            lines = list(lines)
-            for i, line in zip(rest, self.reader.read(crop, [rects[i] for i in rest])):
-                lines[i] = line
-        return lines
+        """The whole card for the lead, read again with the print scaled up
+        more (ocr.DET_UP: the mail line is the smallest print; the greeting's
+        quick read lost it) -> (lines, rects); the quick read if this one
+        finds less."""
+        from .ocr import DET_UP
+        quick_up = self.reader.det_up
+        try:
+            self.reader.det_up = max(quick_up, DET_UP)
+            full_rects = self.reader.lines(crop)
+            full = self.reader.read(crop, full_rects)
+        finally:
+            self.reader.det_up = quick_up
+        if sum(bool(t) for t, _ in full) >= sum(bool(t) for t, _ in lines):
+            return full, full_rects
+        return lines, rects
 
     def _saved(self, path):
         """(first name, surname, e-mail, article) already in leads.csv. A file
