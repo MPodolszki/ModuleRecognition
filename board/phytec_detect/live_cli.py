@@ -373,13 +373,29 @@ def in_zone(dets, zone):
                                (cy >= zone[1]) & (cy <= zone[3])))
 
 
-def straight_crop(frame, quad, out_w=300):
+def straight_crop(frame, quad, out_w=300, turn=None):
     """The product inside its turned outline (detection camera), turned
-    straight with a margin, long side horizontal -- the panel's live picture."""
+    straight with a margin, long side horizontal -- the panel's live picture.
+    turn: {} kept per product between calls -- its outline's angle is known
+    only up to 180 degrees, of a nearly square one up to 90 (the picture
+    would flip from frame to frame): the one nearest the last is taken,
+    smoothed."""
     rect = cv2.minAreaRect(quad.astype(np.float32))
     (cx, cy), (w, h), angle = rect
     if w < h:
         w, h, angle = h, w, angle + 90
+    if turn is not None:
+        last = turn.get("angle")
+        if last is not None:
+            # nearly square: which side is the long one flips too -> 90 degrees
+            step = 90 if w < 1.15 * h else 180
+            k = round((last - angle) / step)
+            angle += step * k
+            if k % 2 and step == 90:
+                w, h = h, w
+            if abs(angle - last) < 20:  # jitter: smooth; a real turn: follow
+                angle = 0.7 * last + 0.3 * angle
+        turn["angle"] = angle
     w, h = w * 1.2, h * 1.2
     if w < 4 or h < 4:
         return None
@@ -702,6 +718,7 @@ def main(argv=None):
     one_zone = False
     banner_seen = None
     zone_classes, live_result = [], None
+    turns = {}  # class -> the angle its live picture was last turned by
     screen_tries = 0
     frames, shown_seq, last_draw, last_state = 0, -1, 0.0, None
     sig, last_sig = [], None
@@ -881,14 +898,21 @@ def main(argv=None):
                     if in_card and not one_zone:
                         inside = []
                     shown_now = in_card if in_card else inside
-                    zone_classes = [int(dets[k, 5]) for k in shown_now]
+                    # left to right as they lie (the comparison's columns;
+                    # the panel keeps the order while the same two lie there)
+                    shown_now = sorted(shown_now, key=lambda k: dets[k, 0] + dets[k, 2])
+                    zone_classes = list(dict.fromkeys(int(dets[k, 5]) for k in shown_now))
                     if panel is not None and shown_now and live_result is not result:
-                        live_result = result  # one new crop per detection result
-                        k = shown_now[0]
-                        crop = straight_crop(result[0], det_quads[k]) \
-                            if result[0] is not None and k < len(det_quads) else None
-                        if crop is not None:
-                            panel.set_live(int(dets[k, 5]), crop)
+                        live_result = result  # new crops once per detection result
+                        for cls in zone_classes[:2]:
+                            k = next(k for k in shown_now if int(dets[k, 5]) == cls)
+                            crop = straight_crop(result[0], det_quads[k],
+                                                 turn=turns.setdefault(cls, {})) \
+                                if result[0] is not None and k < len(det_quads) else None
+                            if crop is not None:
+                                panel.set_live(cls, crop)
+                        for cls in [c for c in turns if c not in zone_classes]:
+                            del turns[cls]  # taken away: its angle afresh
                     if zone is not None:
                         two = len({int(dets[k, 5]) for k in inside}) >= 2
                         draw_zone(half, zone, bool(inside), text=(

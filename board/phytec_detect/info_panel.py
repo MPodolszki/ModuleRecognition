@@ -223,6 +223,8 @@ class InfoPanel:
         key = tuple(c for c in lifted if now - self._first[c] < self.show_s)
         # a product in the drop zone: shown at once and as long as it lies there
         key = tuple(dict.fromkeys(list(zone_classes) + list(key)))[:2]
+        if set(key) == set(self._key):
+            key = self._key  # the same two: they keep their sides (no swapping)
         if key:
             self._target = 1.0
             if key != self._key:
@@ -650,7 +652,7 @@ def _render_compare(page, a, b):
     row neither product has a key for is left out), a "Zum Produkt" button
     and QR code per product at the bottom."""
     _header(page, ["Produkte", "Vergleich"])
-    w, h, m = page.w, page.h, 32
+    w, m = page.w, 32
     label_w = 150
     col = (w - 2 * m - label_w - 24) // 2
     xs = (m + label_w, m + label_w + col + 24)
