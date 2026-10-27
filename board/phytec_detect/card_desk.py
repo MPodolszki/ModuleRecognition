@@ -53,6 +53,7 @@ class CardDesk:
         self._tries, self._last_read = 0, 0.0
         self._shown_at = 0.0
         self._greeted = None      # greeted, card not taken away since
+        self._pending = None      # (crop, name, lines, rects): card read, no product yet
         self.card_quad = None     # the card's outline (detection picture), with the name
         self._seen = {}           # class -> last time detected in the zone
         self._name_classes = ()
@@ -93,6 +94,14 @@ class CardDesk:
             self.name, self._name_small, self.card_quad = None, None, None
             self._tries = RETRIES
             self.version += 1
+        if self._pending is not None and len(products) and not self._busy \
+                and self._greeted == self._pending[1]:
+            # the product beside the card is detected now (it came later, or
+            # the detector found it only after the card was read)
+            self._busy = True
+            classes = tuple(sorted({int(c) for c in products[:, 5]}))
+            threading.Thread(target=self._lead_later, args=(classes,), daemon=True,
+                             name="pd-ocr-lead").start()
         if now - self._still_since < HOLD_S:
             return
         if self._busy or self.reader is None:
@@ -116,7 +125,7 @@ class CardDesk:
 
     def _read(self, crop, small, offset, classes):
         try:
-            from .ocr import email_from, name_from
+            from .ocr import name_from
             t = time.perf_counter()
             lines, rects = self.reader(crop)
             name = name_from(lines, rects)
@@ -124,8 +133,13 @@ class CardDesk:
                   f"({' | '.join(t for t, _ in lines if t)})", flush=True)
             if not name:
                 self._greeted = None  # zone without a card: the next one is greeted
+                self._pending = None
             elif name == self._greeted:
-                pass  # still that card (only the product taken, or after SHOW_S)
+                # still that card (only the product taken, or after SHOW_S);
+                # read without a product before: the lead now that one lies there
+                if self._pending is not None and classes:
+                    self._pending = None
+                    self._lead(crop, name, lines, rects, classes)
             elif name != self.name:
                 self._greeted = name
                 self.name, self._name_small = name, small
@@ -133,17 +147,35 @@ class CardDesk:
                 self._shown_at = time.monotonic()
                 self.card_quad = _card_outline(rects, lines, name, offset)
                 self.version += 1
+                self._pending = None
                 if classes:  # a card alone is no lead: only card and product together
-                    t = time.perf_counter()
-                    lines, rects = self._read_rest(crop, lines, rects)
-                    print(f"card: whole card read in {time.perf_counter() - t:.1f} s "
-                          f"({' | '.join(x for x, _ in lines if x)})", flush=True)
-                    full = name_from(lines, rects) or name
-                    if full != name and _same_name(full, name):
-                        name = full  # "Neumann" now that the mail line spells it
-                    self._save(crop, name, email_from(lines, name), classes, lines)
+                    self._lead(crop, name, lines, rects, classes)
                 else:
-                    print("card: no product in the zone -- not saved", flush=True)
+                    self._pending = (crop, name, lines, rects)
+                    print("card: no product in the zone yet -- saved once one is", flush=True)
+        except Exception as error:  # noqa: BLE001
+            print(f"card reader: {type(error).__name__}: {error}", flush=True)
+        finally:
+            self._busy = False
+
+    def _lead(self, crop, name, lines, rects, classes):
+        """Card and product together: the whole card read, then saved."""
+        from .ocr import email_from, name_from
+        t = time.perf_counter()
+        lines, rects = self._read_rest(crop, lines, rects)
+        print(f"card: whole card read in {time.perf_counter() - t:.1f} s "
+              f"({' | '.join(x for x, _ in lines if x)})", flush=True)
+        full = name_from(lines, rects) or name
+        if full != name and _same_name(full, name):
+            name = full  # "Neumann" now that the mail line spells it
+        self._save(crop, name, email_from(lines, name), classes, lines)
+
+    def _lead_later(self, classes):
+        """The product of a card read alone showed up in the zone."""
+        crop, name, lines, rects = self._pending
+        self._pending = None
+        try:
+            self._lead(crop, name, lines, rects, classes)
         except Exception as error:  # noqa: BLE001
             print(f"card reader: {type(error).__name__}: {error}", flush=True)
         finally:
