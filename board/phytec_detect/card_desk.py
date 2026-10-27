@@ -12,10 +12,14 @@ or after SHOW_S at the latest; the same card lying on is not greeted again.
 A visit is saved in LEADS_DIR only with a name and a product in the zone
 (detected there within SEEN_S of the read -- the card may hide it): the
 zone picture (JPEG) and a line in leads.csv (time; first name; surname;
-article; product; all text read). The same person with the same product
-is saved once (leads.csv is checked, also after a restart; names as the
-reader spells them differently -- "Neu", "Neumann" -- count as one). That is personal data of visitors: delete it after the
-fair, and say at the stand that cards laid there are kept for contact.
+e-mail; article; product; all text read). For the lead the whole card is
+read (after the greeting, which needs only the name lines), the e-mail
+address put right where the reader lost its "@" (ocr.email_from). The
+same person (or e-mail address) with the same product is saved once
+(leads.csv is checked, also after a restart; names the reader spells
+differently -- "Neu", "Neumann" -- count as one). That is personal data
+of visitors: delete it after the fair, and say at the stand that cards
+laid there are kept for contact.
 """
 
 import csv
@@ -112,7 +116,7 @@ class CardDesk:
 
     def _read(self, crop, small, offset, classes):
         try:
-            from .ocr import name_from
+            from .ocr import email_from, name_from
             t = time.perf_counter()
             lines, rects = self.reader(crop)
             name = name_from(lines, rects)
@@ -130,7 +134,11 @@ class CardDesk:
                 self.card_quad = _card_outline(rects, lines, name, offset)
                 self.version += 1
                 if classes:  # a card alone is no lead: only card and product together
-                    self._save(crop, name, classes, lines)
+                    lines = self._read_rest(crop, lines, rects)
+                    full = name_from(lines, rects) or name
+                    if full != name and _same_name(full, name):
+                        name = full  # "Neumann" now that the mail line spells it
+                    self._save(crop, name, email_from(lines, name), classes, lines)
                 else:
                     print("card: no product in the zone -- not saved", flush=True)
         except Exception as error:  # noqa: BLE001
@@ -138,26 +146,41 @@ class CardDesk:
         finally:
             self._busy = False
 
+    def _read_rest(self, crop, lines, rects):
+        """The lines the greeting did not need, read now (the mail address)."""
+        rest = [i for i, (t, _) in enumerate(lines) if not t]
+        if rest:
+            lines = list(lines)
+            for i, line in zip(rest, self.reader.read(crop, [rects[i] for i in rest])):
+                lines[i] = line
+        return lines
+
     def _saved(self, path):
-        """(first name, surname, article) already in leads.csv."""
+        """(first name, surname, e-mail, article) already in leads.csv. A file
+        of the earlier layout (no e-mail column) is put aside as leads_alt.csv."""
         done = set()
         try:
             with open(path, encoding="utf-8", newline="") as f:
-                for row in list(csv.reader(f, delimiter=";"))[1:]:
-                    if len(row) >= 4:
-                        done.add((row[1].lower(), row[2].lower(), row[3]))
+                rows = list(csv.reader(f, delimiter=";"))
         except OSError:
-            pass
+            return done
+        if rows and "E-Mail" not in rows[0]:
+            os.replace(path, os.path.join(os.path.dirname(path), "leads_alt.csv"))
+            return done
+        for row in rows[1:]:
+            if len(row) >= 5:
+                done.add((row[1], row[2], row[3].lower(), row[4]))
         return done
 
-    def _save(self, crop, name, classes, lines):
+    def _save(self, crop, name, email, classes, lines):
         try:
             os.makedirs(self.leads_dir, exist_ok=True)
             stamp = time.strftime("%Y%m%d-%H%M%S")
             path = os.path.join(self.leads_dir, "leads.csv")
             done = self._saved(path)
             arts = [a for a in (self.labels[c] if c < len(self.labels) else str(c) for c in classes)
-                    if not any(art == a and _same_name(name, (f, l)) for f, l, art in done)]
+                    if not any(art == a and (_same_name(name, (f, l)) or email and email == m)
+                               for f, l, m, art in done)]
             if not arts:
                 print(f"card: {name[0]} {name[1]} with this product saved before", flush=True)
                 return
@@ -167,11 +190,13 @@ class CardDesk:
             with open(path, "a", encoding="utf-8", newline="") as f:
                 w = csv.writer(f, delimiter=";")
                 if new:
-                    w.writerow(["Zeit", "Vorname", "Nachname", "Artikelnummer", "Produkt",
+                    w.writerow(["Zeit", "Vorname", "Nachname", "E-Mail", "Artikelnummer", "Produkt",
                                 "Text der Karte"])
                 for art in arts:
-                    w.writerow([time.strftime("%Y-%m-%d %H:%M:%S"), name[0], name[1], art,
-                                self.names.get(art, art), " | ".join(t for t, _ in lines if t)])
+                    w.writerow([time.strftime("%Y-%m-%d %H:%M:%S"), name[0], name[1], email or "",
+                                art, self.names.get(art, art), " | ".join(t for t, _ in lines if t)])
+            print(f"lead saved: {name[0]} {name[1]} <{email or 'no e-mail read'}> {'+'.join(arts)}",
+                  flush=True)
         except OSError as error:
             print(f"lead not saved: {error}", flush=True)
 

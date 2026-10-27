@@ -26,6 +26,7 @@ like a name, preferably the one the e-mail address on the card spells
 """
 
 import argparse
+import difflib
 import os
 import re
 import sys
@@ -337,6 +338,58 @@ def _stacked(a, b):
 
 def _words(text):
     return [w for w in text.replace(",", " ").split() if not TITLES.match(w)]
+
+
+def email_from(lines, name=None):
+    """The card's e-mail address or None. The reader often misreads the
+    "@" ("n.neumannpphytec.de", "...neumachäphytec.de"): when a line
+    ends in the domain of the card's www line, the character before it is
+    the "@". With the name (first, last) a local part that nearly spells
+    one of the usual forms (n.neumann, nico.neumann, ...) is put right."""
+    texts = [t.replace(" ", "") for t, _ in lines if t]
+    domains = [m.group(1).lower() for t in texts
+               for m in [re.search(r"www\.?([a-z0-9\-]+(?:\.[a-z0-9\-]+)*\.[a-z]{2,})", t, re.I)] if m]
+    local, domain = None, None
+    for t in texts:
+        m = re.search(r"([\w.\-+]+)@([\w\-]+(?:\.[\w\-]+)*\.[a-z]{2,})", t, re.I)
+        if m:
+            local, domain = m.group(1), m.group(2).lower()
+            break
+    if local is None:
+        for t in texts:
+            if re.match(r"(www|http)", t, re.I):
+                continue
+            for d in domains:
+                i = t.lower().rfind(d)
+                if i > 1 and t[i - 1] != "." and i + len(d) >= len(t) - 1:
+                    local, domain = t[:i - 1], d
+                    break
+            if local:
+                break
+    if local is None:  # no www line read: an odd character between two plain parts
+        for t in texts:
+            m = re.fullmatch(r"([a-z0-9.\-_]{2,})[^a-z0-9.\-_]([a-z0-9\-]+\.(?:de|com|eu|net|org|ai|io|at|ch|fr|it|nl|uk))",
+                             t, re.I)
+            if m and not re.match(r"(www|http)", t, re.I):
+                local, domain = m.group(1), m.group(2).lower()
+                break
+    if not local:
+        return None
+    local = re.sub(r"^(e-?mail|mail)[:.]?", "", local, flags=re.I).strip(".-").lower()
+    for d in domains:  # "phytac.de" read for the www line's "phytec.de"
+        if domain != d and difflib.SequenceMatcher(None, domain, d).ratio() >= 0.8:
+            domain = d
+    if name:
+        f, l = (re.sub(r"[^a-z]", "", _simple(w.split()[0] if w.split() else w)) for w in name)
+        if f and l:
+            forms = [f"{f[0]}.{l}", f"{f}.{l}", f"{f[0]}{l}", f"{f}{l}", f"{f}_{l}",
+                     f"{l}.{f}", f"{f[0]}_{l}", l]
+            best = max(forms, key=lambda c: difflib.SequenceMatcher(None, c, local).ratio())
+            # not shorter: the name may be the cut-off one ("Neu" for "Neumann")
+            if difflib.SequenceMatcher(None, best, local).ratio() >= 0.75 \
+                    and len(best) >= len(local) - 1:
+                local = best
+    return f"{local}@{domain}" if domain else None
 
 
 def name_from(lines, rects=None):
