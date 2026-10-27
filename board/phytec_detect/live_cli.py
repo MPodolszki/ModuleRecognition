@@ -860,9 +860,12 @@ def main(argv=None):
                     # both zones show a product's info at once, with its live picture
                     inside = in_zone(dets, zone)
                     in_card = in_zone(dets, card_zone)
-                    # the orange zone decides (one: info, two: comparison); the
-                    # blue one shows its product only while the orange one is empty
-                    shown_now = inside if inside else in_card
+                    # the blue zone decides: a product there (with a visitor's
+                    # card) puts the orange zone's products aside; else the
+                    # orange one (one: info, two: comparison)
+                    if in_card:
+                        inside = []
+                    shown_now = in_card if in_card else inside
                     zone_classes = [int(dets[k, 5]) for k in shown_now]
                     if panel is not None and shown_now and live_result is not result:
                         live_result = result  # one new crop per detection result
@@ -897,9 +900,11 @@ def main(argv=None):
                             q = q * view_scale if view_source is None and view_geo is None \
                                 else quads_to_view(q, det_source.cam, view, plane)
                             draw_card(half, q[0], cards.name)
-                        if cards.name is not None and not inside:  # visitor greeted: their product's info,
-                            zone_classes += [c for c in cards.product_classes()  # even when
-                                             if c not in zone_classes]  # the card hides it
+                        if cards.name is not None and cards.product_classes():
+                            # visitor greeted: their product's info, even when
+                            # the card hides it -- before the orange zone's
+                            zone_classes = list(cards.product_classes()) + [
+                                c for c in (zone_classes if in_card else []) if c not in cards.product_classes()]
                     sig.append((bool(inside), bool(in_card)))
                 t_ = tick("zone + live crop", t_)
                 sig.append((np.round(dets).astype(np.int32).tobytes(),

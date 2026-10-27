@@ -9,9 +9,10 @@ zone is not read again. The name goes when the card or the product is
 taken out (a patch of the zone differs from the picture it was read in)
 or after SHOW_S at the latest; the same card lying on is not greeted again.
 
-Every visit with a name is saved in LEADS_DIR: the zone picture (JPEG)
-and a line in leads.csv (time; first name; surname; article; product;
-all text read). That is personal data of visitors: delete it after the
+A visit is saved in LEADS_DIR only with a name and a product in the zone
+(detected there within SEEN_S of the read -- the card may hide it): the
+zone picture (JPEG) and a line in leads.csv (time; first name; surname;
+article; product; all text read). That is personal data of visitors: delete it after the
 fair, and say at the stand that cards laid there are kept for contact.
 """
 
@@ -28,6 +29,7 @@ MOVED, CHANGED = 4.0, 8.0  # mean grey difference (0..255) of the zone, 64 x 64
 RETRIES, RETRY_S = 3, 3.0  # no name: read the still zone again (exposure settling, a hand)
 SHOW_S = 30.0              # the banner at most this long
 TAKEN = 0.03               # this share of the zone changed by > 25 grey levels: taken out
+SEEN_S = 3.0               # a product detected in the zone this recently lies there
 LEADS_DIR = "/var/lib/phytec-detect/leads"
 
 
@@ -45,7 +47,7 @@ class CardDesk:
         self._shown_at = 0.0
         self._greeted = None      # greeted, card not taken away since
         self.card_quad = None     # the card's outline (detection picture), with the name
-        self._classes = ()
+        self._seen = {}           # class -> last time detected in the zone
         self._name_classes = ()
 
         def load():  # the NPU compiles its graph on the first run (~15 s)
@@ -73,8 +75,8 @@ class CardDesk:
         if self._prev is None or np.abs(small - self._prev).mean() > MOVED:
             self._still_since = now  # hands, a card being laid: wait
         self._prev = small
-        if len(products):
-            self._classes = tuple(sorted({int(c) for c in products[:, 5]}))
+        for c in products[:, 5]:
+            self._seen[int(c)] = now
         if self.name is not None and (
                 now - self._shown_at > SHOW_S or
                 (self._name_small is not None
@@ -101,10 +103,11 @@ class CardDesk:
             cv2.rectangle(crop, (bx0 - x0 - 4, by0 - y0 - 4), (bx1 - x0 + 4, by1 - y0 + 4),
                           int(np.median(crop)), -1)
         self._busy, self._read_small = True, small
-        threading.Thread(target=self._read, args=(crop, small, (x0, y0)), daemon=True,
+        classes = tuple(sorted(c for c, t in self._seen.items() if now - t <= SEEN_S))
+        threading.Thread(target=self._read, args=(crop, small, (x0, y0), classes), daemon=True,
                          name="pd-ocr").start()
 
-    def _read(self, crop, small, offset):
+    def _read(self, crop, small, offset, classes):
         try:
             from .ocr import name_from
             t = time.perf_counter()
@@ -119,11 +122,14 @@ class CardDesk:
             elif name != self.name:
                 self._greeted = name
                 self.name, self._name_small = name, small
-                self._name_classes = self._classes
+                self._name_classes = classes
                 self._shown_at = time.monotonic()
                 self.card_quad = _card_outline(rects, lines, name, offset)
                 self.version += 1
-                self._save(crop, name, self._classes, lines)
+                if classes:  # a card alone is no lead: only card and product together
+                    self._save(crop, name, classes, lines)
+                else:
+                    print("card: no product in the zone -- not saved", flush=True)
         except Exception as error:  # noqa: BLE001
             print(f"card reader: {type(error).__name__}: {error}", flush=True)
         finally:
@@ -133,8 +139,7 @@ class CardDesk:
         try:
             os.makedirs(self.leads_dir, exist_ok=True)
             stamp = time.strftime("%Y%m%d-%H%M%S")
-            arts = [self.labels[c] if c < len(self.labels) else str(c) for c in classes] \
-                or ["unbekannt"]
+            arts = [self.labels[c] if c < len(self.labels) else str(c) for c in classes]
             cv2.imwrite(os.path.join(self.leads_dir, f"{stamp}_{'+'.join(arts)}.jpg"), crop,
                         [cv2.IMWRITE_JPEG_QUALITY, 92])
             path = os.path.join(self.leads_dir, "leads.csv")
