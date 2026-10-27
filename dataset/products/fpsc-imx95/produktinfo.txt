@@ -32,13 +32,13 @@ Verfügbar bis: 2041+
 
 # [10]..[16] Merkmale, feste Reihenfolge: ja = Häkchen, Zahl oder Text = Wert, nein = nein
 # (Overlay: Highlight-Zeile "2,3 TOPS NPU", Vergleich: eigene Zeile)
-NPU:
-GPU:
-ISP:
-VPU:
-CAN-FD:
-RAM:
-Flash:
+NPU: 2 TOPS
+GPU: Arm Mali-G310
+ISP: ja
+VPU: 4Kp60 H.265/H.264
+CAN-FD: bis 5
+RAM: bis 16 GB LPDDR5
+Flash: bis 256 GB eMMC
 
 # [17] freie Zeilen mit Häkchen, je ca. 55 Zeichen -- nur im Overlay
 Alleinstellungsmerkmal 1: Zwei 4-Lane-MIPI-CSI-Schnittstellen

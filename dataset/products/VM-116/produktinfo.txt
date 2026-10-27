@@ -1,0 +1,66 @@
+# Produktinfo für Overlay und Vergleich der Messe-Demo -- VM-116
+#
+# Eine Angabe pro Zeile:  Feld: Wert   (Zeilen mit # sind Kommentare)
+# Leer heißt "nicht angegeben": das Overlay lässt die Zeile weg, der Vergleich
+# zeigt "–". Ein echtes Nein als "nein" eintragen.
+# Aufbau [1]..[20]: Datensatz_Overlay_Vergleich.pdf (Marketing)
+# Vorschau ohne Hardware:  uv run tools/render_panel.py
+# Aufs Board:  uv run tools/product_info.py models/<modell> und tools/deploy.sh
+
+# [1] Titel (groß) und letzter Teil im Kopfbalken; Vergleich: Spaltenkopf
+Bezeichnung: phyCAM-M-mini AR0144
+
+# [2] graue Zeile über dem Titel und Kopfbalken, z. B. System on Module, Development Kit, KI-Beschleuniger -- sie entscheidet, welche Merkmale gelten
+Kategorie: Kameramodul
+
+# [3] orangefarbenes NEU neben der Kategorie: ja / nein
+Neu: ja
+
+# [4] Artikelnummer VM-116 -- kommt aus dem Ordnernamen, nicht eintragen
+
+# [5] 1-2 Sätze unter der Artikelnummer, höchstens 3 Zeilen (ca. 230 Zeichen); nur im Overlay
+Kurzbeschreibung: Extrem kleine Board-Level-Kamera mit onsemi AR0144: 1 MP (1280 × 800) mit Global Shutter, bis 60 fps, monochrom oder farbig, MIPI CSI-2 über das EMV-optimierte phyCAM-M Interface.
+
+# [6] Kennzahl, kurz (ca. 16 Zeichen), z. B. 4 × A53 + M7; auch im Vergleich
+Kerne:
+# [7] Kennzahl, z. B. 40 × 37 × 6
+Größe in mm: 18 × 26
+# [8] Kennzahl, z. B. -40 °C / +85 °C
+Temperatur: -25 °C / +85 °C
+# [9] Kennzahl, z. B. 2035
+Verfügbar bis:
+
+# [10]..[16] Merkmale, feste Reihenfolge: ja = Häkchen, Zahl oder Text = Wert, nein = nein
+# (Overlay: Highlight-Zeile "2,3 TOPS NPU", Vergleich: eigene Zeile)
+NPU:
+GPU:
+ISP:
+VPU:
+CAN-FD:
+RAM:
+Flash:
+
+# [17] freie Zeilen mit Häkchen, je ca. 55 Zeichen -- nur im Overlay
+Alleinstellungsmerkmal 1: 1 MP (1280 × 800) mit 60 fps
+Alleinstellungsmerkmal 2: Global Shutter für schnell bewegte Motive
+Alleinstellungsmerkmal 3: Monochrom- oder Farbsensor onsemi AR0144
+Alleinstellungsmerkmal 4: Mini: 18 × 26 mm, wahlweise M12-Objektivhalter
+
+# [18] Knopf "Zum Produkt" + QR-Code (vollständig mit https://)
+Link Produktseite: https://www.phytec.de/produkte/embedded-imaging/kameramodule/vm-116-phycam-m-mini/
+
+# [19] Knopf mit Kit-Bezeichnung + QR-Code -- nur im Overlay
+Link Kit:
+Kit-Bezeichnung:
+
+# [20] Bild "Im Vergleich" unten links, nur wenn die Datei im Ordner liegt (z. B. chart.png)
+Diagramm-Datei:
+
+# nicht im Layout -- Bild oben rechts, solange kein Kamerabild da ist (Datei im Ordner); leer = Kamera-Referenzbild
+Produktbild:
+
+# nicht angezeigt -- wie man den Namen spricht
+Aussprache (Sprachsuche): fei kam m mini a r null eins vier vier, v m eins eins sechs
+
+# nicht angezeigt -- nur für euch
+Bemerkung: von phytec.de übernommen, 27.10.

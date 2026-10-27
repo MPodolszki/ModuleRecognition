@@ -32,13 +32,13 @@ Verfügbar bis: 2035+
 
 # [10]..[16] Merkmale, feste Reihenfolge: ja = Häkchen, Zahl oder Text = Wert, nein = nein
 # (Overlay: Highlight-Zeile "2,3 TOPS NPU", Vergleich: eigene Zeile)
-NPU:
-GPU:
-ISP:
-VPU:
-CAN-FD:
-RAM:
-Flash:
+NPU: nein
+GPU: bis 50 GFLOPS
+ISP: nein
+VPU: H.264/H.265
+CAN-FD: 3
+RAM: bis 8 GB LPDDR4
+Flash: bis 128 GB eMMC
 
 # [17] freie Zeilen mit Häkchen, je ca. 55 Zeichen -- nur im Overlay
 Alleinstellungsmerkmal 1: H.264/H.265 Encoder/Decoder bis 300 MPixel

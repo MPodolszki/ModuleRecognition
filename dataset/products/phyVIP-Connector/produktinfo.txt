@@ -1,0 +1,66 @@
+# Produktinfo für Overlay und Vergleich der Messe-Demo -- phyVIP-Connector
+#
+# Eine Angabe pro Zeile:  Feld: Wert   (Zeilen mit # sind Kommentare)
+# Leer heißt "nicht angegeben": das Overlay lässt die Zeile weg, der Vergleich
+# zeigt "–". Ein echtes Nein als "nein" eintragen.
+# Aufbau [1]..[20]: Datensatz_Overlay_Vergleich.pdf (Marketing)
+# Vorschau ohne Hardware:  uv run tools/render_panel.py
+# Aufs Board:  uv run tools/product_info.py models/<modell> und tools/deploy.sh
+
+# [1] Titel (groß) und letzter Teil im Kopfbalken; Vergleich: Spaltenkopf
+Bezeichnung: phyVIP-Connector Board
+
+# [2] graue Zeile über dem Titel und Kopfbalken, z. B. System on Module, Development Kit, KI-Beschleuniger -- sie entscheidet, welche Merkmale gelten
+Kategorie: Erweiterungsboard
+
+# [3] orangefarbenes NEU neben der Kategorie: ja / nein
+Neu: ja
+
+# [4] Artikelnummer phyVIP-Connector -- kommt aus dem Ordnernamen, nicht eintragen
+
+# [5] 1-2 Sätze unter der Artikelnummer, höchstens 3 Zeilen (ca. 230 Zeichen); nur im Overlay
+Kurzbeschreibung: Projektspezifisches Connector Board der phyVIP Vision Integration Platform: übernimmt Steckverbinder, Signalführung, mechanische Integration und anwendungsspezifische I/Os.
+
+# [6] Kennzahl, kurz (ca. 16 Zeichen), z. B. 4 × A53 + M7; auch im Vergleich
+Kerne:
+# [7] Kennzahl, z. B. 40 × 37 × 6
+Größe in mm:
+# [8] Kennzahl, z. B. -40 °C / +85 °C
+Temperatur:
+# [9] Kennzahl, z. B. 2035
+Verfügbar bis:
+
+# [10]..[16] Merkmale, feste Reihenfolge: ja = Häkchen, Zahl oder Text = Wert, nein = nein
+# (Overlay: Highlight-Zeile "2,3 TOPS NPU", Vergleich: eigene Zeile)
+NPU:
+GPU:
+ISP:
+VPU:
+CAN-FD:
+RAM:
+Flash:
+
+# [17] freie Zeilen mit Häkchen, je ca. 55 Zeichen -- nur im Overlay
+Alleinstellungsmerkmal 1: Kundenspezifische Varianten ohne neues Base Board
+Alleinstellungsmerkmal 2: Steckverbinder und Signalführung nach Bedarf
+Alleinstellungsmerkmal 3: Mechanische Integration ins Zielgerät
+Alleinstellungsmerkmal 4:
+
+# [18] Knopf "Zum Produkt" + QR-Code (vollständig mit https://)
+Link Produktseite: https://www.phytec.de/produkte/embedded-vision/phyvip-vision-integration-platform-imx-95/
+
+# [19] Knopf mit Kit-Bezeichnung + QR-Code -- nur im Overlay
+Link Kit:
+Kit-Bezeichnung:
+
+# [20] Bild "Im Vergleich" unten links, nur wenn die Datei im Ordner liegt (z. B. chart.png)
+Diagramm-Datei:
+
+# nicht im Layout -- Bild oben rechts, solange kein Kamerabild da ist (Datei im Ordner); leer = Kamera-Referenzbild
+Produktbild:
+
+# nicht angezeigt -- wie man den Namen spricht
+Aussprache (Sprachsuche): fei vip konnektor board
+
+# nicht angezeigt -- nur für euch
+Bemerkung: Quelle phytec.de phyVIP-Produktseite (Abschnitt "Modulares Plattformkonzept mit Connector Board"), Stand 27.10.2026. Keine eigene Produktseite, keine Maße/Temperatur; Board ist projektspezifisch.

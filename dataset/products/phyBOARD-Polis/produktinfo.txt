@@ -32,13 +32,13 @@ Verfügbar bis:
 
 # [10]..[16] Merkmale, feste Reihenfolge: ja = Häkchen, Zahl oder Text = Wert, nein = nein
 # (Overlay: Highlight-Zeile "2,3 TOPS NPU", Vergleich: eigene Zeile)
-NPU:
-GPU:
-ISP:
-VPU:
+NPU: nein
+GPU: ja
+ISP: nein
+VPU: ja
 CAN-FD:
-RAM:
-Flash:
+RAM: 2 GB LPDDR4
+Flash: 8 GB eMMC
 
 # [17] freie Zeilen mit Häkchen, je ca. 55 Zeichen -- nur im Overlay
 Alleinstellungsmerkmal 1: Gigabit-Ethernet, WLAN und BLE 4.2

@@ -32,13 +32,13 @@ Verfügbar bis:
 
 # [10]..[16] Merkmale, feste Reihenfolge: ja = Häkchen, Zahl oder Text = Wert, nein = nein
 # (Overlay: Highlight-Zeile "2,3 TOPS NPU", Vergleich: eigene Zeile)
-NPU:
-GPU:
-ISP:
-VPU:
-CAN-FD:
-RAM:
-Flash:
+NPU: nein
+GPU: nein
+ISP: nein
+VPU: nein
+CAN-FD: nein
+RAM: bis 2 GB DDR3
+Flash: bis 128 GB eMMC
 
 # [17] freie Zeilen mit Häkchen, je ca. 55 Zeichen -- nur im Overlay
 Alleinstellungsmerkmal 1: MIPI DSI und Parallel 24-bit

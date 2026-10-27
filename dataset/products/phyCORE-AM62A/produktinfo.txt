@@ -32,19 +32,19 @@ Verfügbar bis:
 
 # [10]..[16] Merkmale, feste Reihenfolge: ja = Häkchen, Zahl oder Text = Wert, nein = nein
 # (Overlay: Highlight-Zeile "2,3 TOPS NPU", Vergleich: eigene Zeile)
-NPU:
-GPU:
-ISP:
-VPU:
-CAN-FD:
-RAM:
-Flash:
+NPU: 2 TOPS
+GPU: nein
+ISP: ja
+VPU: H.264/H.265
+CAN-FD: 3
+RAM: bis 4 GB LPDDR4
+Flash: bis 128 GB eMMC
 
 # [17] freie Zeilen mit Häkchen, je ca. 55 Zeichen -- nur im Overlay
 Alleinstellungsmerkmal 1: 2 TOPS KI-Leistung (C7x256v)
-Alleinstellungsmerkmal 2:
-Alleinstellungsmerkmal 3:
-Alleinstellungsmerkmal 4:
+Alleinstellungsmerkmal 2: ISP für 5 MP bei 60 fps (315 MP/s)
+Alleinstellungsmerkmal 3: Pinkompatibel zum phyCORE-AM62x
+Alleinstellungsmerkmal 4: Secure Boot mit Root-of-Trust im Prozessor
 
 # [18] Knopf "Zum Produkt" + QR-Code (vollständig mit https://)
 Link Produktseite: https://www.phytec.de/produkte/system-on-modules/phycore-am62ax/

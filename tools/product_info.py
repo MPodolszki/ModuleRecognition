@@ -75,7 +75,10 @@ FIELDS = [
 FEATURES = ["NPU", "GPU", "ISP", "VPU", "CAN-FD", "RAM", "Flash"]
 # Which apply depends on the category: an AI accelerator card has no cores
 # (its TOPS go to NPU), no GPU, ...
-NOT_FOR = {"KI-Beschleuniger": {"Kerne", "GPU", "ISP", "VPU", "CAN-FD", "Flash"}}
+NOT_FOR = {"KI-Beschleuniger": {"Kerne", "GPU", "ISP", "VPU", "CAN-FD", "Flash"},
+           # a camera, an adapter board: no processor, so none of the Merkmale
+           "Kameramodul": {"Kerne"} | set(FEATURES),
+           "Erweiterungsboard": {"Kerne"} | set(FEATURES)}
 
 SLOTS = {"Alleinstellungsmerkmal": 4}   # numbered fields, 4 places each
 KEYS = {field.lower(): field for _, field, _ in FIELDS

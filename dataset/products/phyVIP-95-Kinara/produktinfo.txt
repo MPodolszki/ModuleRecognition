@@ -32,11 +32,11 @@ Verfügbar bis: 2036
 
 # [10]..[16] Merkmale, feste Reihenfolge: ja = Häkchen, Zahl oder Text = Wert, nein = nein
 # (Overlay: Highlight-Zeile "2,3 TOPS NPU", Vergleich: eigene Zeile)
-NPU:
-GPU:
-ISP:
-VPU:
-CAN-FD:
+NPU: bis 40 TOPS
+GPU: ja
+ISP: ja
+VPU: ja
+CAN-FD: ja
 RAM:
 Flash:
 

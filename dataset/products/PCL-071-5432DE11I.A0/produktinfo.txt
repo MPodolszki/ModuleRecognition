@@ -32,13 +32,13 @@ Verfügbar bis:
 
 # [10]..[16] Merkmale, feste Reihenfolge: ja = Häkchen, Zahl oder Text = Wert, nein = nein
 # (Overlay: Highlight-Zeile "2,3 TOPS NPU", Vergleich: eigene Zeile)
-NPU:
+NPU: nein
 GPU: bis 8 GFLOPS
-ISP:
-VPU:
+ISP: nein
+VPU: nein
 CAN-FD: 3
-RAM:
-Flash:
+RAM: bis 4 GB DDR4
+Flash: bis 256 GB eMMC
 
 # [17] freie Zeilen mit Häkchen, je ca. 55 Zeichen -- nur im Overlay
 Alleinstellungsmerkmal 1: Wählbare GPU mit bis zu 8 GFLOPS

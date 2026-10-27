@@ -32,19 +32,19 @@ Verfügbar bis:
 
 # [10]..[16] Merkmale, feste Reihenfolge: ja = Häkchen, Zahl oder Text = Wert, nein = nein
 # (Overlay: Highlight-Zeile "2,3 TOPS NPU", Vergleich: eigene Zeile)
-NPU:
-GPU:
-ISP:
-VPU:
-CAN-FD:
-RAM:
-Flash:
+NPU: bis 1,35 TOPS
+GPU: bis 25,6 GFLOPS
+ISP: ja
+VPU: H.264/VP8
+CAN-FD: bis 3
+RAM: bis 4 GB LPDDR4
+Flash: bis 256 GB eMMC
 
 # [17] freie Zeilen mit Häkchen, je ca. 55 Zeichen -- nur im Overlay
 Alleinstellungsmerkmal 1: PCIe und USB 3.2 Gen 1
 Alleinstellungsmerkmal 2: Bis zu 3× Gigabit-Ethernet, 3× CAN FD
 Alleinstellungsmerkmal 3: SESIP3-Vorzertifizierung, Secure Boot
-Alleinstellungsmerkmal 4: Yocto-basiertes OpenSTLinux
+Alleinstellungsmerkmal 4:
 
 # [18] Knopf "Zum Produkt" + QR-Code (vollständig mit https://)
 Link Produktseite: https://www.phytec.de/produkte/system-on-modules/phyflex-stm32mp2x-fpsc/

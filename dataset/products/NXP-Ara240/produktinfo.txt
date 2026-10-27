@@ -37,7 +37,7 @@ GPU:
 ISP:
 VPU:
 CAN-FD:
-RAM:
+RAM: 16 GB LPDDR4
 Flash:
 
 # [17] freie Zeilen mit Häkchen, je ca. 55 Zeichen -- nur im Overlay
