@@ -429,8 +429,11 @@ def draw_zone(canvas, zone, busy, color=style.ORANGE,
 
 CARD_ZONE_TEXT = ("Produkt + Visitenkarte hier ablegen", "Erkannt")
 DROP_ZONE_TEXT = ("Produkt hier ablegen \u00b7 zwei zum Vergleich", "Erkannt")
-BOTH_ZONE_TEXT = ("Produkt hier ablegen \u00b7 zwei zum Vergleich \u00b7 "
-                  "mit Visitenkarte: Kontakt", "Erkannt")
+# one zone for both (default): its tag says what to do next
+ZONE_EMPTY = "Place product here | Compare two | Capture business card"
+ZONE_ONE = "Found 1 product, add 1 to compare, Business Card for contact"
+ZONE_TWO = "Comparing {} vs {}"
+ZONE_CARD = "Reading Business Card"
 
 
 def draw_card(canvas, quad, name):
@@ -913,10 +916,20 @@ def main(argv=None):
                                 panel.set_live(cls, crop)
                         for cls in [c for c in turns if c not in zone_classes]:
                             del turns[cls]  # taken away: its angle afresh
-                    if zone is not None:
+                    if zone is not None and one_zone:
+                        here = list(dict.fromkeys(int(dets[k, 5]) for k in shown_now))
+                        if len(here) >= 2:
+                            text = ZONE_TWO.format(*(display_labels(
+                                worker.detector.labels, products)[c] for c in here[:2]))
+                        elif here and cards is not None and cards.card_present:
+                            text = ZONE_CARD
+                        else:
+                            text = ZONE_ONE if here else ZONE_EMPTY
+                        draw_zone(half, zone, bool(here), text=(text, text))
+                        sig.append(text)
+                    elif zone is not None:
                         two = len({int(dets[k, 5]) for k in inside}) >= 2
-                        draw_zone(half, zone, bool(inside), text=(
-                            BOTH_ZONE_TEXT if one_zone else DROP_ZONE_TEXT)[:1] + (
+                        draw_zone(half, zone, bool(inside), text=DROP_ZONE_TEXT[:1] + (
                             "Vergleich" if two else "Erkannt",))
                     if card_zone is not None and not one_zone:
                         draw_zone(half, card_zone, bool(in_card), style.BLUE, CARD_ZONE_TEXT)

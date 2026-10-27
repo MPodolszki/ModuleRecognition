@@ -40,6 +40,8 @@ RETRIES, RETRY_S = 3, 3.0  # no name: read the still zone again (exposure settli
 SHOW_S = 30.0              # the banner at most this long
 TAKEN = 0.03               # this share of the zone changed by > 25 grey levels: taken out
 SEEN_S = 3.0               # a product detected in the zone this recently lies there
+CARD_EVERY_S = 0.3         # look for a card outline this often (Canny, ~5 ms)
+CARD_S = 1.5               # a card found this recently lies there
 LEADS_DIR = "/var/lib/phytec-detect/leads"
 LEAD_COLUMNS = ["Zeit", "Vorname", "Nachname", "E-Mail", "Artikelnummer", "Produkt",
                 "Text der Karte"]
@@ -63,6 +65,7 @@ class CardDesk:
         self.card_quad = None     # the card's outline (detection picture), with the name
         self._seen = {}           # class -> last time detected in the zone
         self._name_classes = ()
+        self._card_seen, self._card_looked = 0.0, 0.0
 
         def load():  # the NPU compiles its graph on the first run (~15 s)
             try:
@@ -91,6 +94,10 @@ class CardDesk:
         self._prev = small
         for c in products[:, 5]:
             self._seen[int(c)] = now
+        if now - self._card_looked > CARD_EVERY_S:  # for the zone's text only
+            self._card_looked = now
+            if find_card(zone if zone.ndim == 2 else cv2.cvtColor(zone, cv2.COLOR_BGR2GRAY)):
+                self._card_seen = now
         if self.name is not None and (
                 now - self._shown_at > SHOW_S or
                 (self._name_small is not None
@@ -258,12 +265,43 @@ class CardDesk:
         except OSError as error:
             print(f"lead not saved: {error}", flush=True)
 
+    @property
+    def card_present(self):
+        """A business card lies in the zone (its outline seen just now)."""
+        return time.monotonic() - self._card_seen < CARD_S
+
     def product_classes(self):
         """The products last detected in the zone while the name was read."""
         return self._name_classes if self.name is not None else ()
 
     def banner(self):
         return None if self.name is None else self.name
+
+
+def find_card(gray):
+    """A business card in the zone picture (detection camera, grey): an
+    outline of a card's size and shape (~210 x 135 px on the i.MX95's table,
+    85 x 55 mm) with print inside -- not brightness: on the light table the
+    card is darker. Modules (nearly square) and M.2 cards (long) fall out by
+    shape. Returns the outline's corners or None."""
+    edges = cv2.Canny(cv2.GaussianBlur(gray, (3, 3), 0), 12, 36)
+    edges = cv2.dilate(edges, np.ones((3, 3), np.uint8))
+    contours, _ = cv2.findContours(edges, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    for c in contours:
+        (cx, cy), (w, h), a = cv2.minAreaRect(c)
+        if w < h:
+            w, h = h, w
+        if not (150 < w < 300 and 90 < h < 200 and 1.4 < w / h < 1.85):
+            continue
+        if cv2.contourArea(cv2.convexHull(c)) < 0.85 * w * h:
+            continue
+        box = cv2.boxPoints(((cx, cy), (w, h), a))
+        inner = np.zeros_like(gray)
+        cv2.fillPoly(inner, [box.astype(np.int32)], 255)
+        inner = cv2.erode(inner, np.ones((15, 15), np.uint8))
+        if (edges[inner > 0] > 0).mean() >= 0.03:  # printed (a shadow is not)
+            return box
+    return None
 
 
 def _same_word(a, b):
