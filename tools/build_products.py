@@ -49,7 +49,7 @@ REAL_SIZE = 1600      # long side of the real photos in the dataset
 SYNTH_SIZE = 1280     # long side of synthetic scenes
 # pictures from the demo setup's detection camera (phytec-photo): VM-017,
 # and the VM-117 (same AR0521 sensor, other lens and view) from 2026-10-23
-SETUP_FOLDERS = ("vm017", "vm017_isp", "vm117", "vm117_isp")
+SETUP_FOLDERS = ("vm017", "vm017_isp", "vm117", "vm117_isp", "imx95_isp")
 
 
 def read_image(path):
@@ -217,6 +217,9 @@ def main():
         (out / "cutouts" / art).mkdir(parents=True)
         tiles = []
         for k, path in enumerate(images_in(products / art)):
+            # the folder in the name: each board numbers its pictures from
+            # 001 (vm017_isp/X_001 and imx95_isp/X_001 must not overwrite)
+            stem = path.stem if path.parent == products / art else f"{path.parent.name}_{path.stem}"
             img = read_image(path)
             meta_path = path.with_suffix(".json")
             rect = None
@@ -233,7 +236,7 @@ def main():
                     print(f"  {path.name}: no product found -- skipped")
                     continue
             cut = cut_module(img, rect)
-            cv2.imwrite(str(out / "cutouts" / art / f"{path.stem}.png"), cut)
+            cv2.imwrite(str(out / "cutouts" / art / f"{stem}.png"), cut)
             cutouts[cid].append(cut)
             scale = REAL_SIZE / max(img.shape[:2])
             small = cv2.resize(img, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
@@ -244,14 +247,14 @@ def main():
             # thousands of synthetic scenes.
             copies = args.setup_repeat if (split == "train" and path.parent.name in SETUP_FOLDERS) else 1
             for c in range(copies):
-                write(out, split, f"real_{art}_{path.stem}" + (f"_r{c}" if c else ""),
+                write(out, split, f"real_{art}_{stem}" + (f"_r{c}" if c else ""),
                       to_out(small, gray), [(cid, x0, y0, x1, y1)])
                 n_real[split] += 1
             small960 = to_isp960(img) if args.isp960 else None
             if small960 is not None:
                 boxes960 = boxes_to_isp960([(cid, *rect_box(rect, img.shape))])
                 for c in range(copies if boxes960 else 0):
-                    write(out, split, f"real960_{art}_{path.stem}" + (f"_r{c}" if c else ""),
+                    write(out, split, f"real960_{art}_{stem}" + (f"_r{c}" if c else ""),
                           to_out(small960, gray), boxes960)
                     n_real[split] += 1
             vis = small.copy()
