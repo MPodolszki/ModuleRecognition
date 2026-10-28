@@ -485,8 +485,8 @@ def main(argv=None):
     verifier = Verifier(args.model, args.article, args.verify_conf,
                         {a: n for a, n in read_products(args.list_csv)} if args.list_csv else None,
                         hold=MEASURE_S if args.skip_above else VERIFY_S)
-    if args.no_verify or args.dry_run:
-        verifier.done = True
+    if args.no_verify or args.dry_run or args.start:
+        verifier.done = True  # going on after a stop: checked before its first shot
     try:
         while not stop.is_set() and step < len(plan):
             ok, gray = cam.read()
