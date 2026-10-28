@@ -228,6 +228,38 @@ def find_products(gray, min_frac=0.0005, max_frac=0.25):
     return found
 
 
+def find_table(gray):
+    """The table in the picture: (x0, y0, x1, y1) inside the largest light
+    area (Otsu on every 8th pixel), None if it covers less
+    than a fifth of the picture. On the i.MX95 stand the table is a band in
+    the middle; above and below it monitor, edge and floor."""
+    s = 8
+    small = cv2.GaussianBlur(np.ascontiguousarray(gray[::s, ::s]), (5, 5), 0)
+    _, mask = cv2.threshold(small, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    # no closing: it would fill the dark strips beside the table too; the
+    # products' holes go when the outline is drawn filled below
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if not contours:
+        return None
+    c = max(contours, key=cv2.contourArea)
+    if cv2.contourArea(c) < 0.2 * mask.size:
+        return None
+    table = np.zeros_like(mask)
+    cv2.drawContours(table, [c], -1, 1, -1)
+    # the edges run slanted: rows, then columns, that are (almost) all table
+    # -- the box inside it, not around it
+    x, y, bw, bh = cv2.boundingRect(c)
+    rows = np.flatnonzero(table[:, x:x + bw].mean(1) >= 0.97)
+    if not len(rows):
+        return None
+    y0, y1 = rows[0], rows[-1] + 1
+    cols = np.flatnonzero(table[y0:y1].mean(0) >= 0.97)
+    if not len(cols):
+        return None
+    return int(cols[0] * s), int(y0 * s), int((cols[-1] + 1) * s), int(y1 * s)
+
+
 def angle_diff(a, b):
     """Difference of two rectangle angles, symmetric under 90 degrees."""
     d = abs((a - b) % 90)
@@ -440,6 +472,7 @@ def main(argv=None):
         if size is None:
             die("no reference shot in " + out_dir + " -- start without --start")
     stable_since, last_c = None, None
+    table_box = None  # where the table is: from the first frame, then the empty table
     flip_until, banner, flip_text = None, None, ""
     frame_times, n_frames = [], 0
     flash_until, countdown_at = 0.0, None
@@ -459,6 +492,9 @@ def main(argv=None):
             ok, gray = cam.read()
             if not ok:
                 die("could not read from camera")
+            if table_box is None:
+                table_box = find_table(gray)
+                print(f"table: {table_box}", flush=True)
             now = time.monotonic()
             h, w = gray.shape[:2]
             step_px = max(1, w // VIEW_W)   # 2 for the 2592-wide sensor
@@ -490,15 +526,20 @@ def main(argv=None):
                 hold = args.hold
             else:
                 p = plan[step]
-                tx, ty = p["x"] * w, p["y"] * h
+                # the plan's places spread over the table, not the picture
+                tx0, ty0, tx1, ty1 = table_box or (0, 0, w, h)
+                tx, ty = tx0 + p["x"] * (tx1 - tx0), ty0 + p["y"] * (ty1 - ty0)
                 if size is not None:  # a big board must fit, clear of the table edge
                     # (the product finder misses products right at the edge)
                     a = math.radians(p["angle"])
-                    hx = (abs(math.cos(a)) * size[0] + abs(math.sin(a)) * size[1]) / 2 + 0.09 * w
-                    hy = (abs(math.sin(a)) * size[0] + abs(math.cos(a)) * size[1]) / 2 + 0.09 * h
-                    top = 160 * h / 1080  # the instruction bar covers the picture's top
-                    tx = min(max(tx, hx), w - hx) if 2 * hx < w else w / 2
-                    ty = min(max(ty, hy + top), h - hy) if 2 * hy + top < h else (h + top) / 2
+                    mx, my = (0.03 * w, 0.03 * h) if table_box else (0.09 * w, 0.09 * h)
+                    hx = (abs(math.cos(a)) * size[0] + abs(math.sin(a)) * size[1]) / 2 + mx
+                    hy = (abs(math.sin(a)) * size[0] + abs(math.cos(a)) * size[1]) / 2 + my
+                    top = max(ty0, 160 * h / 1080)  # the instruction bar covers the top
+                    tx = min(max(tx, tx0 + hx), tx1 - hx) if 2 * hx < tx1 - tx0 \
+                        else (tx0 + tx1) / 2
+                    ty = min(max(ty, top + hy), ty1 - hy) if 2 * hy < ty1 - top \
+                        else (top + ty1) / 2
                 target = ((tx, ty), size, p["angle"])
                 prev = plan[step - 1] if step > 0 else {"side": "Vorderseite", "kind": "table"}
                 if p["side"] != prev["side"] and p["kind"] == "table" and flip_until is None:
@@ -597,6 +638,8 @@ def main(argv=None):
                 if args.isp:
                     meta.update(path="isp", aspect=None, crop_y=None, sensor_window=cam.crop)
                 if step == -2:
+                    table_box = find_table(gray) or table_box  # the empty table
+                    print(f"table: {table_box}", flush=True)
                     if not args.dry_run:
                         save(os.path.join(args.out, "_background"),
                              f"bg_{args.article}_{int(time.time())}", gray, None, meta)
