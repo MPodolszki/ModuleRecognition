@@ -6,7 +6,10 @@ pen opens the whole picture to draw the box by hand.
 The choice is stored in the picture's .json as "skip_user" (true: out,
 false: in even if tools/clean_photo_labels.py skipped it); build_products.py
 reads it.  A drawn box replaces "rect" (the first one is kept as "rect_orig")
-and is marked "box_user", which clean_photo_labels.py leaves alone.  Pictures clean_photo_labels.py skipped start out red.
+and is marked "box_user", which clean_photo_labels.py leaves alone.
+
+Several people can work at once: every page asks the server every 2 s for
+the changes since its last look and shows them (yellow flash).  Pictures clean_photo_labels.py skipped start out red.
 
     uv run tools/label_review.py [--port 8765] [--products dataset/products]
 """
@@ -16,6 +19,7 @@ import html
 import json
 import pathlib
 import sys
+import threading
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -91,13 +95,14 @@ h2{margin:24px 0 6px;font-size:18px}h2 small{font-weight:normal;color:#666}
 #ed svg{position:absolute;pointer-events:none}
 #ed polygon{fill:none;stroke-width:2;vector-effect:non-scaling-stroke}#eo{stroke:#2c2}#en{stroke:#29f}
 #ed .bar{color:#fff;font-size:15px}#ed button{font-size:16px;margin-left:8px;padding:4px 14px}
+.t.flash{outline:4px solid #fc0}
 .t.off::after{content:"aus";position:absolute;right:4px;bottom:4px;background:#d22;color:#fff;font-size:12px;line-height:16px;padding:0 5px}
 header{position:sticky;top:0;background:#f4f4f4;padding:6px 0;border-bottom:1px solid #ccc;z-index:1}
 select{font-size:15px}
 </style></head><body><header>Klick = Bild aus dem Training nehmen / wieder aufnehmen. Grün = wird trainiert, rot = aus.
 &nbsp; Produkt: <select onchange="location.hash=this.value">%(options)s</select> &nbsp; <b id="n"></b></header>
 %(body)s
-<div id="ed"><div class="bar"><span id="et"></span> &nbsp; 1. Maus an einer Kante des Produkts entlang ziehen, 2. loslassen und zur Gegenkante fahren, 3. klicken.
+<div id="ed"><div class="bar"><span id="et"></span> <b id="ew" style="color:#fc0"></b> &nbsp; 1. Maus an einer Kante des Produkts entlang ziehen, 2. loslassen und zur Gegenkante fahren, 3. klicken.
 <button id="es">Speichern</button><button id="ec">Abbrechen</button></div>
 <div class="w"><img id="ei" draggable="false"><svg id="sv"><polygon id="eo"/><polygon id="en"/></svg></div></div>
 <script>
@@ -112,7 +117,7 @@ function frame(){const W=ei.parentElement.clientWidth,sv=document.getElementById
  for(const el of [ei,sv]){el.style.left=-x0*k+'px';el.style.top=-y0*k+'px';el.style.width=meta.w*k+'px';el.style.height=meta.h*k+'px';}
  sv.setAttribute('viewBox','0 0 '+meta.w+' '+meta.h);}
 function place(el,pts){el.setAttribute('points',pts?pts.map(q=>q[0]+','+q[1]).join(' '):'');}
-async function edit(t){cur=t;meta=await (await fetch('/meta?p='+encodeURIComponent(t.dataset.p))).json();box=null;phase=0;
+async function edit(t){cur=t;document.getElementById('ew').textContent='';meta=await (await fetch('/meta?p='+encodeURIComponent(t.dataset.p))).json();box=null;phase=0;
  document.getElementById('et').textContent=t.querySelector('span').textContent;
  ei.onload=()=>{frame();place(eo,meta.pts);place(en,null);};ei.src='/full?p='+encodeURIComponent(t.dataset.p);ed.classList.add('on');}
 function pt(e){const r=ei.getBoundingClientRect(),k=meta.w/r.width;
@@ -131,16 +136,29 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')ed.classList.remove(
 document.getElementById('es').onclick=async()=>{
  if(phase!==3||!box||box.w<5||box.h<5){alert('Erst den Rahmen fertig zeichnen (Kante ziehen, Gegenkante klicken)');return;}
  const r=await fetch('/box?p='+encodeURIComponent(cur.dataset.p)+'&b='+[box.cx,box.cy,box.w,box.h,box.a].map(v=>v.toFixed(1)).join(','),{method:'POST'});
- if(r.ok){const img=cur.querySelector('img');img.src=img.src.split('&v=')[0]+'&v='+Date.now();cur.classList.remove('off');count();ed.classList.remove('on');}};
+ if(r.ok){mine.add((await r.json()).v);reload(cur);cur.classList.remove('off');count();ed.classList.remove('on');}};
 document.querySelectorAll('.t b').forEach(b=>b.onclick=e=>{e.stopPropagation();edit(b.parentElement);});
 document.querySelectorAll('.t').forEach(t=>t.onclick=async()=>{
- const r=await fetch('/toggle?p='+encodeURIComponent(t.dataset.p),{method:'POST'});
- if(r.ok){t.classList.toggle('off',(await r.json()).off);count();}});
+ const off=!t.classList.contains('off');
+ const r=await fetch('/toggle?p='+encodeURIComponent(t.dataset.p)+'&off='+(off?1:0),{method:'POST'});
+ if(r.ok){const j=await r.json();mine.add(j.v);t.classList.toggle('off',j.off);count();}});
 count();
+// the others' changes: poll the server's change list
+let since=%(v)d;const mine=new Set();
+function reload(t){const img=t.querySelector('img');img.src=img.src.split('&v=')[0]+'&v='+Date.now();}
+async function poll(){try{const j=await (await fetch('/changes?since='+since)).json();
+ if(j.reload){location.reload();return;}
+ for(const c of j.items){since=Math.max(since,c.v);if(mine.delete(c.v))continue;
+  const t=document.querySelector('.t[data-p="'+CSS.escape(c.p)+'"]');if(!t)continue;
+  t.classList.toggle('off',c.off);if(c.box)reload(t);
+  t.classList.add('flash');setTimeout(()=>t.classList.remove('flash'),3000);
+  if(cur===t&&ed.classList.contains('on'))document.getElementById('ew').textContent='Jemand anderes hat dieses Bild gerade geändert';}
+ since=Math.max(since,j.v);count();}catch(e){}setTimeout(poll,2000);}
+setTimeout(poll,2000);
 </script></body></html>"""
 
 
-def page(products):
+def page(products, version):
     body, options = [], []
     for art, metas in photos(products):
         tiles = []
@@ -159,7 +177,7 @@ def page(products):
         options.append(f'<option value="{html.escape(art)}">{html.escape(art)}</option>')
         body.append(f'<h2 id="{html.escape(art)}">{html.escape(art)} <small>{len(metas)} Bilder</small></h2>'
                     f'<div class="grid">{"".join(tiles)}</div>')
-    return PAGE % {"t": THUMB, "options": "".join(options), "body": "".join(body)}
+    return PAGE % {"t": THUMB, "options": "".join(options), "body": "".join(body), "v": version}
 
 
 def main():
@@ -179,6 +197,14 @@ def main():
             return None
         return path
 
+    lock = threading.Lock()   # one change at a time
+    changes = []              # {"v", "p", "off", "box"}: v = position + 1
+
+    def changed(path, meta, box):
+        changes.append({"v": len(changes) + 1, "p": str(path.relative_to(products)),
+                        "off": skipped(meta), "box": box})
+        return len(changes)
+
     class Handler(BaseHTTPRequestHandler):
         def _send(self, code, data, ctype):
             self.send_response(code)
@@ -190,7 +216,15 @@ def main():
         def do_GET(self):
             url = urllib.parse.urlparse(self.path)
             if url.path == "/":
-                self._send(200, page(products).encode(), "text/html; charset=utf-8")
+                with lock:
+                    version = len(changes)
+                self._send(200, page(products, version).encode(), "text/html; charset=utf-8")
+            elif url.path == "/changes":
+                since = int(urllib.parse.parse_qs(url.query).get("since", ["0"])[0])
+                with lock:
+                    data = {"reload": True} if since > len(changes) else \
+                        {"v": len(changes), "items": changes[since:]}
+                self._send(200, json.dumps(data).encode(), "application/json")
             elif url.path == "/thumb" and (path := resolve(url.query)):
                 self._send(200, thumb(path), "image/jpeg")
             elif url.path == "/full" and (path := resolve(url.query)):
@@ -210,10 +244,16 @@ def main():
             if path is None:
                 self._send(404, b"", "text/plain")
                 return
+            with lock:
+                data = self._change(url, path)
+            self._send(200, json.dumps(data).encode(), "application/json")
+
+        def _change(self, url, path):
             meta = json.loads(path.read_text())
+            query = urllib.parse.parse_qs(url.query)
             if url.path == "/box":
                 # centre, size along the drawn edge and across it, angle of the edge
-                cx, cy, w, h, angle = map(float, urllib.parse.parse_qs(url.query)["b"][0].split(","))
+                cx, cy, w, h, angle = map(float, query["b"][0].split(","))
                 meta.setdefault("rect_orig", meta.get("rect"))
                 meta["rect"] = [[cx, cy], [w, h], angle]
                 meta["box_user"] = True
@@ -221,12 +261,16 @@ def main():
                 meta["skip_user"] = False
                 path.write_text(json.dumps(meta, indent=1))
                 print(f"box {path.relative_to(products)}: {cx:.0f},{cy:.0f} {w:.0f}x{h:.0f} {angle:.0f} deg", flush=True)
-                self._send(200, b"{}", "application/json")
-                return
-            meta["skip_user"] = not skipped(meta)
+                return {"off": False, "v": changed(path, meta, True)}
+            # the state the clicker saw flipped -- not a blind toggle, so two
+            # people clicking the same picture do not undo each other
+            if "off" in query:
+                meta["skip_user"] = query["off"][0] == "1"
+            else:  # a page from before the sync: plain toggle
+                meta["skip_user"] = not skipped(meta)
             path.write_text(json.dumps(meta, indent=1))
             print(f"{'aus' if meta['skip_user'] else 'an '} {path.relative_to(products)}", flush=True)
-            self._send(200, json.dumps({"off": meta["skip_user"]}).encode(), "application/json")
+            return {"off": meta["skip_user"], "v": changed(path, meta, False)}
 
         def log_message(self, *_):
             pass
