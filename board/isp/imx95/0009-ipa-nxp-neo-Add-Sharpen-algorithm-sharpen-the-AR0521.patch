@@ -1,0 +1,354 @@
+From: Martin Podolszki <m.podolszki@phytec.de>
+Date: Thu, 29 Oct 2026 15:00:00 +0100
+Subject: [PATCH] ipa: nxp: neo: Add Sharpen algorithm, sharpen the AR0521
+
+The NXP IPA leaves the edge enhancement (EE), noise reduction (NR),
+direction filter (DF) and convolution/median (CONVMED) units of the NEO
+ISP at the kernel defaults (off) and the Bayer noise reduction (BNR) on;
+only the closed uGuzzi IPA programs them, from an MMS tuning database
+that does not exist for the AR0521.
+
+Add a static "Sharpen" algorithm that programs these units from the
+tuning file, once at the first frame, and scales the EE gain with the
+Sharpness control (so the libcamerasrc "sharpness" property works).
+
+Use it for the AR0521 (VM-016/VM-017 phyCAMs), together with the black
+level correction of its data pedestal (168 at 12 bit): on a lens test
+chart the blur circle of the Siemens star got about a third smaller.
+
+Upstream-Status: Inappropriate [PHYTEC trade fair demo]
+Signed-off-by: Martin Podolszki <m.podolszki@phytec.de>
+---
+--- a/src/ipa/nxp/neo/algorithms/meson.build
++++ b/src/ipa/nxp/neo/algorithms/meson.build
+@@ -15,4 +15,5 @@
+     'lsc.cpp',
+     'pipe_conf.cpp',
+     'rgbir.cpp',
++    'sharpen.cpp',
+ ])
+--- a/src/ipa/nxp/neo/algorithms/sharpen.cpp
++++ b/src/ipa/nxp/neo/algorithms/sharpen.cpp
+@@ -0,0 +1,223 @@
++/* SPDX-License-Identifier: LGPL-2.1-or-later */
++/*
++ * Copyright 2026 PHYTEC Messtechnik GmbH
++ *
++ * NXP NEO sharpening and noise reduction (EE, NR, BNR, DF, CONVMED units)
++ */
++
++#include "sharpen.h"
++
++#include <algorithm>
++#include <cmath>
++
++#include <linux/nxp_neoisp.h>
++
++#include <libcamera/base/log.h>
++
++#include <libcamera/control_ids.h>
++
++#include "libcamera/internal/value_node.h"
++
++/**
++ * \file sharpen.cpp
++ */
++
++namespace libcamera {
++
++namespace ipa::nxpneo::algorithms {
++
++/**
++ * \class Sharpen
++ * \brief Static configuration of the NEO ISP sharpening and noise units
++ *
++ * The NXP IPA leaves the edge enhancement (EE), noise reduction (NR),
++ * direction filter (DF) and convolution/median (CONVMED) units at the kernel
++ * defaults (off), the Bayer noise reduction (BNR) on. This algorithm
++ * programs them from the tuning file, once at the first frame. Only the
++ * sections present in the tuning file are touched.
++ *
++ * The EE gain follows the Sharpness control (libcamerasrc "sharpness"):
++ * Sharpness 1.0 is the gain of the tuning file, 0.0 switches EE off.
++ *
++ * Example (ar0521.yaml):
++ *   - Sharpen:
++ *       ee:
++ *         enable: true
++ *         gain: 2.0        # HPF mask gain, u4.4 (0 .. 15.9)
++ *         coring: 64       # u20: high-pass below this is left out (noise)
++ *         clip: 4095       # u20: limit of the added high-pass
++ *         debug: 0         # 1/2: edge pixels shown white
++ *       bnr:
++ *         enable: false
++ *       nr:
++ *         enable: false
++ *       df:
++ *         enable: false
++ *       convmed: 0
++ */
++
++LOG_DEFINE_CATEGORY(NxpNeoAlgoSharpen)
++
++namespace {
++
++template<typename T>
++std::optional<T> opt(const ValueNode &node, const char *key)
++{
++	return node[key].get<T>();
++}
++
++} /* namespace */
++
++/**
++ * \copydoc libcamera::ipa::Algorithm::init
++ */
++int Sharpen::init(IPAContext &context, const ValueNode &tuningData)
++{
++	const ValueNode &ee = tuningData["ee"];
++	if (ee.isDictionary()) {
++		ee_.present = true;
++		ee_.enabled = ee["enable"].get<bool>(true);
++		eeGain_ = std::clamp(ee["gain"].get<float>(1.0f), 0.0f, 255.0f / 16);
++		eeCoring_ = std::min<uint32_t>(ee["coring"].get<uint32_t>(0), 0xfffff);
++		eeClip_ = std::min<uint32_t>(ee["clip"].get<uint32_t>(0xfffff), 0xfffff);
++		eeDebug_ = ee["debug"].get<uint8_t>(0);
++	}
++	baseGain_ = eeGain_;
++
++	const ValueNode &nr = tuningData["nr"];
++	if (nr.isDictionary()) {
++		nr_.present = true;
++		nr_.enabled = nr["enable"].get<bool>(true);
++		nrGain_ = opt<uint8_t>(nr, "gain");
++		nrShift_ = opt<uint8_t>(nr, "shift");
++		nrScale_ = opt<uint16_t>(nr, "scale");
++		nrTh0_ = opt<uint32_t>(nr, "th0");
++	}
++
++	const ValueNode &bnr = tuningData["bnr"];
++	if (bnr.isDictionary()) {
++		bnr_.present = true;
++		bnr_.enabled = bnr["enable"].get<bool>(true);
++	}
++
++	const ValueNode &df = tuningData["df"];
++	if (df.isDictionary()) {
++		df_.present = true;
++		df_.enabled = df["enable"].get<bool>(true);
++		dfShift_ = opt<uint8_t>(df, "shift");
++		dfScale_ = opt<uint32_t>(df, "scale");
++		dfTh0_ = opt<uint32_t>(df, "th0");
++	}
++
++	convmed_ = opt<uint8_t>(tuningData, "convmed");
++
++	/* Sharpness 1.0 = the tuning file's EE gain. */
++	context.ctrlMap[&controls::Sharpness] = ControlInfo(0.0f, 16.0f, 1.0f);
++
++	LOG(NxpNeoAlgoSharpen, Info)
++		<< "EE " << (ee_.present ? (ee_.enabled ? "on" : "off") : "untouched")
++		<< " gain " << eeGain_ << " coring " << eeCoring_ << " clip " << eeClip_
++		<< ", NR " << (nr_.present ? (nr_.enabled ? "on" : "off") : "untouched")
++		<< ", BNR " << (bnr_.present ? (bnr_.enabled ? "on" : "off") : "untouched")
++		<< ", DF " << (df_.present ? (df_.enabled ? "on" : "off") : "untouched")
++		<< ", CONVMED " << (convmed_ ? std::to_string(*convmed_) : "untouched");
++
++	return 0;
++}
++
++/**
++ * \copydoc libcamera::ipa::Algorithm::queueRequest
++ */
++void Sharpen::queueRequest([[maybe_unused]] IPAContext &context,
++			   const uint32_t frame,
++			   [[maybe_unused]] IPAFrameContext &frameContext,
++			   const ControlList &controls)
++{
++	if (frame == 0)
++		update_ = true;
++
++	const auto &sharpness = controls.get(controls::Sharpness);
++	if (sharpness && ee_.present) {
++		float gain = std::clamp(baseGain_ * *sharpness, 0.0f, 255.0f / 16);
++		if (gain != eeGain_ || (gain > 0.0f) != ee_.enabled) {
++			eeGain_ = gain;
++			ee_.enabled = gain > 0.0f;
++			update_ = true;
++			LOG(NxpNeoAlgoSharpen, Debug) << "Sharpness " << *sharpness
++						      << " -> EE gain " << gain;
++		}
++	}
++}
++
++/**
++ * \copydoc libcamera::ipa::Algorithm::prepare
++ */
++void Sharpen::prepare([[maybe_unused]] IPAContext &context,
++		      [[maybe_unused]] const uint32_t frame,
++		      [[maybe_unused]] IPAFrameContext &frameContext,
++		      NxpNeoParams *params)
++{
++	if (!update_)
++		return;
++	update_ = false;
++
++	if (ee_.present) {
++		auto config = params->block<BlockParamsType::Ee>();
++		config.setEnabled(ee_.enabled);
++		config->ctrl_debug = eeDebug_;
++		config->maskgain_gain = static_cast<uint8_t>(std::lround(eeGain_ * 16));
++		config->coring_coring = eeCoring_;
++		config->clip_clip = eeClip_;
++	}
++
++	if (nr_.present) {
++		auto config = params->block<BlockParamsType::Nr>();
++		config.setEnabled(nr_.enabled);
++		config->ctrl_debug = 0;
++		config->blend_scale_gain = nrGain_.value_or(16);	/* u4.4: 1.0 */
++		config->blend_scale_shift = nrShift_.value_or(10);
++		config->blend_scale_scale = nrScale_.value_or(1 << 10);
++		config->blend_th0_th = nrTh0_.value_or(20);
++	}
++
++	if (bnr_.present && !bnr_.enabled) {
++		/* Off only: switching back on needs the kernel defaults (reload) */
++		auto config = params->block<BlockParamsType::Bnr>();
++		config.setEnabled(false);
++		/* Applied even with BNR off: keep the output gain at 1.0 (u8.8) */
++		config->ctrl_obpp = 3;
++		config->stretch_gain = 1 << 8;
++	}
++
++	if (df_.present) {
++		auto config = params->block<BlockParamsType::Df>();
++		config.setEnabled(df_.enabled);
++		config->ctrl_debug = 0;
++		config->blend_shift_shift = dfShift_.value_or(10);
++		config->th_scale_scale = dfScale_.value_or(1 << 10);
++		config->blend_th0_th = dfTh0_.value_or(20);
++	}
++
++	if (convmed_) {
++		auto config = params->block<BlockParamsType::Convmed>();
++		config.setEnabled(true);
++		config->ctrl_flt = *convmed_;
++	}
++}
++
++/**
++ * \copydoc libcamera::ipa::Algorithm::process
++ */
++void Sharpen::process([[maybe_unused]] IPAContext &context,
++		      [[maybe_unused]] const uint32_t frame,
++		      [[maybe_unused]] IPAFrameContext &frameContext,
++		      [[maybe_unused]] const NxpNeoStats *stats,
++		      [[maybe_unused]] ControlList &metadata)
++{
++}
++
++REGISTER_IPA_ALGORITHM(Sharpen, "Sharpen")
++
++} /* namespace ipa::nxpneo::algorithms */
++
++} /* namespace libcamera */
+--- a/src/ipa/nxp/neo/algorithms/sharpen.h
++++ b/src/ipa/nxp/neo/algorithms/sharpen.h
+@@ -0,0 +1,72 @@
++/* SPDX-License-Identifier: LGPL-2.1-or-later */
++/*
++ * Copyright 2026 PHYTEC Messtechnik GmbH
++ *
++ * NXP NEO sharpening and noise reduction (EE, NR, BNR, DF, CONVMED units)
++ */
++
++#pragma once
++
++#include <optional>
++
++#include "algorithm.h"
++
++namespace libcamera {
++
++namespace ipa::nxpneo::algorithms {
++
++class Sharpen : public Algorithm
++{
++public:
++	Sharpen() = default;
++	~Sharpen() = default;
++
++	int init(IPAContext &context, const ValueNode &tuningData) override;
++	void queueRequest(IPAContext &context, const uint32_t frame,
++			  IPAFrameContext &frameContext,
++			  const ControlList &controls) override;
++	void prepare(IPAContext &context, const uint32_t frame,
++		     IPAFrameContext &frameContext,
++		     NxpNeoParams *params) override;
++	void process(IPAContext &context, const uint32_t frame,
++		     IPAFrameContext &frameContext,
++		     const NxpNeoStats *stats,
++		     ControlList &metadata) override;
++
++private:
++	struct Unit {
++		bool present = false;	/* a section in the tuning file */
++		bool enabled = false;
++	};
++
++	/* Edge enhancement */
++	Unit ee_;
++	float eeGain_ = 1.0f;		/* HPF mask gain, u4.4: 0 .. 15.94 */
++	float baseGain_ = 1.0f;		/* the tuning file's gain (Sharpness 1.0) */
++	uint32_t eeCoring_ = 0;		/* u20 */
++	uint32_t eeClip_ = 0xfffff;	/* u20 */
++	uint8_t eeDebug_ = 0;
++
++	/* Noise reduction (YUV) */
++	Unit nr_;
++	std::optional<uint8_t> nrGain_, nrShift_;
++	std::optional<uint16_t> nrScale_;
++	std::optional<uint32_t> nrTh0_;
++
++	/* Bayer noise reduction: only switched on or off (the kernel defaults stay) */
++	Unit bnr_;
++
++	/* Direction filter */
++	Unit df_;
++	std::optional<uint8_t> dfShift_;
++	std::optional<uint32_t> dfScale_, dfTh0_;
++
++	/* Convolution / median filter: 0 bypass, 1 5x5 binomial, 2 5x5 median */
++	std::optional<uint8_t> convmed_;
++
++	bool update_ = true;
++};
++
++} /* namespace ipa::nxpneo::algorithms */
++
++} /* namespace libcamera */
+--- a/src/ipa/nxp/neo/data/ar0521.yaml
++++ b/src/ipa/nxp/neo/data/ar0521.yaml
+@@ -3,6 +3,21 @@
+ ---
+ version: 1
+ algorithms:
++  - BlackLevelCorrection:
++      # AR0521 data pedestal 168 at 12 bit (0x301E default), as 16 bit: 168 * 16
++      R: 2688
++      Gr: 2688
++      Gb: 2688
++      B: 2688
++  - Sharpen:
++      # Edge enhancement: on a lens test chart (Siemens star) the blur
++      # circle of the AR0521 phyCAMs got ~1/3 smaller with gain 4, coring 2048.
++      # coring 16384 and more: no effect; below ~1024 the noise is sharpened.
++      ee:
++        enable: true
++        gain: 4.0
++        coring: 2048
++        clip: 262144
+   - Agc:
+   - Awb:
+ ...
