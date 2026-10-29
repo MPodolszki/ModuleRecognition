@@ -91,9 +91,14 @@ def thumb(meta_path):
     meta = load(meta_path) or {}
     img = cv2.imread(str(meta_path.with_suffix(".jpg")))
     rect = meta.get("rect")
-    if not rect:
-        small = cv2.resize(img, (THUMB, THUMB * img.shape[0] // img.shape[1]))
-        return cv2.imencode(".jpg", small)[1].tobytes()
+    if not rect:  # no box (a hand-held picture): the whole picture, letterboxed square
+        h, w = img.shape[:2]
+        small = cv2.resize(img, (THUMB, THUMB * h // w) if w >= h else (THUMB * w // h, THUMB),
+                           interpolation=cv2.INTER_AREA)
+        square = np.full((THUMB, THUMB, 3), 40, np.uint8)
+        y, x = (THUMB - small.shape[0]) // 2, (THUMB - small.shape[1]) // 2
+        square[y:y + small.shape[0], x:x + small.shape[1]] = small
+        return cv2.imencode(".jpg", square, [cv2.IMWRITE_JPEG_QUALITY, 85])[1].tobytes()
     pts = box_points(rect)
     h, w = img.shape[:2]
     x0, y0 = np.clip(pts.min(0), 0, [w, h]).astype(int)
