@@ -6,6 +6,11 @@ draw the box by hand (an edge, then the opposite side: a turned box).
     phytec-review                       # http://<board>:8765/
     phytec-review --port 8080 --capture /var/lib/phytec-detect/capture
 
+At the top: the product list (products.csv) with what is still to be
+photographed, and "Neues Produkt": a name puts a new product at the top of
+the list and starts the photo queue (phytec-mode training) on the board.
+Works with a pen or a finger (iPad): the box is drawn in two strokes.
+
 Runs all the time (phytec-review.service). New pictures appear by themselves,
 newest first, while phytec-photo / the photo queue takes them -- and those of
 the trade-fair show (phytec-trial --show-pictures, capture/VORFUEHRUNG/, on
@@ -20,8 +25,11 @@ one is kept as "rect_orig") and is marked "box_user".
 import argparse
 import html
 import json
+import os
 import pathlib
+import re
 import socket
+import subprocess
 import threading
 import time
 import urllib.parse
@@ -34,6 +42,7 @@ CAPTURE = "/var/lib/phytec-detect/capture"
 PRODUCTS = "/var/lib/phytec-detect/products.csv"
 THUMB = 220
 SCAN_S = 1.0
+QUEUE_UNIT = "phytec-photo-queue.service"
 SHOW = "VORFUEHRUNG"   # phytec-trial's article: the show, not training data
 
 
@@ -83,6 +92,45 @@ def taken(meta_path, meta):
         "%Y-%m-%d %H:%M:%S", time.localtime(meta_path.with_suffix(".jpg").stat().st_mtime))
 
 
+def product_status(capture, products_csv):
+    """The list as phytec-photo-queue works it: [{art, name, state, n}], the
+    open ones first (in queue order), "running" for the one at work."""
+    queue = subprocess.run(["systemctl", "is-active", "-q", QUEUE_UNIT]).returncode == 0
+    rows, first_open = [], True
+    for art, name in read_products(products_csv):
+        folder = capture / art
+        n = len(list(folder.glob("*.jpg"))) if folder.is_dir() else 0
+        if (folder / "SKIP").exists():
+            state = "skip"
+        elif (folder / "DONE").exists():
+            state = "done"
+        else:
+            state = "running" if queue and first_open else "open"
+            first_open = False
+        rows.append({"art": art, "name": name, "state": state, "n": n})
+    rows.sort(key=lambda r: r["state"] not in ("running", "open"))
+    return {"queue": queue, "rows": rows}
+
+
+def add_product(products_csv, name):
+    """New product at the top of the list (photographed next); its article
+    is the name made file-safe. Returns the article or raises ValueError."""
+    name = " ".join(name.split())[:60]
+    art = re.sub(r"[^A-Za-z0-9.+-]+", "-", name).strip("-.")
+    if not art:
+        raise ValueError("Name fehlt")
+    rows = read_products(products_csv)
+    if any(a.lower() == art.lower() or n.lower() == name.lower() for a, n in rows):
+        raise ValueError(f"{name} steht schon auf der Liste")
+    rows.insert(0, (art, name))
+    tmp = f"{products_csv}.new"
+    with open(tmp, "w", encoding="utf-8") as f:
+        f.write("Artikelnummer;Bezeichnung\n")
+        f.writelines(f"{a};{n}\n" for a, n in rows)
+    os.replace(tmp, products_csv)
+    return art
+
+
 def box_points(rect):
     return cv2.boxPoints((tuple(rect[0]), tuple(rect[1]), rect[2]))
 
@@ -110,7 +158,7 @@ def thumb(meta_path):
     return cv2.imencode(".jpg", cv2.resize(zoom, (THUMB, THUMB)), [cv2.IMWRITE_JPEG_QUALITY, 85])[1].tobytes()
 
 
-PAGE = """<!doctype html><html lang="de"><head><meta charset="utf-8">
+PAGE = """<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Trainingsbilder %(host)s</title><style>
 body{font-family:sans-serif;margin:16px;background:#f4f4f4;color:#222}
 h2{margin:24px 0 6px;font-size:18px}h2 small{font-weight:normal;color:#666}
@@ -119,22 +167,33 @@ h2{margin:24px 0 6px;font-size:18px}h2 small{font-weight:normal;color:#666}
 .t img{width:%(t)dpx;height:%(t)dpx}
 .t.off{border-color:#d22}.t.off img{opacity:.35}
 .t span{position:absolute;left:0;top:0;background:rgba(0,0,0,.6);color:#fff;font-size:11px;line-height:14px;padding:1px 4px}
-.t b{position:absolute;right:0;top:0;background:rgba(0,0,0,.6);color:#fff;font-size:15px;line-height:20px;padding:2px 7px;font-weight:normal}
+.t b{position:absolute;right:0;top:0;background:rgba(0,0,0,.6);color:#fff;font-size:22px;line-height:30px;padding:4px 12px;font-weight:normal}
 .t b:hover{background:#06c}
 #ed{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9;align-items:center;justify-content:center;flex-direction:column;gap:10px}
 #ed.on{display:flex}#ed .w{position:relative;overflow:hidden;width:min(94vw,84vh);height:min(94vw,84vh);background:#000}
 #ed img{position:absolute;cursor:crosshair;user-select:none;max-width:none}
 #ed svg{position:absolute;pointer-events:none}
 #ed polygon{fill:none;stroke-width:2;vector-effect:non-scaling-stroke}#eo{stroke:#2c2}#en{stroke:#29f}
-#ed .bar{color:#fff;font-size:15px}#ed button{font-size:16px;margin-left:8px;padding:4px 14px}
+#ed .bar{color:#fff;font-size:16px;max-width:94vw}#ed button{font-size:18px;margin-left:8px;padding:8px 18px}
+#ei{touch-action:none}
+#plist{margin:10px 0 4px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+#plist a{display:inline-block;padding:6px 10px;border-radius:6px;background:#fff;border:1px solid #ccc;color:#222;text-decoration:none;font-size:14px}
+#plist a.running{background:#ffd54a;border-color:#d9a400;font-weight:bold}#plist a.open{background:#fff}
+#plist a.done{background:#dff0d8;color:#2a6a2a}#plist a.skip{color:#999}
+#np input{font-size:17px;padding:7px 10px;width:16em}#np button{font-size:17px;padding:7px 14px}
+details summary{cursor:pointer;color:#555;font-size:14px}
 .t.flash{outline:4px solid #fc0}
 .t.off::after{content:"aus";position:absolute;right:4px;bottom:4px;background:#d22;color:#fff;font-size:12px;line-height:16px;padding:0 5px}
 header{position:sticky;top:0;background:#f4f4f4;padding:6px 0;border-bottom:1px solid #ccc;z-index:1}
 select{font-size:15px}
 </style></head><body><header><b>%(host)s</b> &nbsp; Neue Fotos erscheinen von selbst. Klick = Bild aus dem Training nehmen / wieder aufnehmen. Grün = wird trainiert, rot = aus.
-&nbsp; Produkt: <select onchange="location.hash=this.value">%(options)s</select> &nbsp; <b id="n"></b></header>
+&nbsp; Produkt: <select onchange="location.hash=this.value">%(options)s</select> &nbsp; <b id="n"></b>
+<form id="np" style="margin-top:8px"><b>Neues Produkt:</b> <input id="nn" placeholder="Name, z.B. phyCORE-RT1170" autocomplete="off">
+<button>Anlegen und fotografieren</button> <span id="nm"></span></form>
+<div><b>Zu fotografieren:</b> <span id="plist">&hellip;</span></div>
+<details><summary id="pdone">Fertig</summary><div id="pdlist" style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0"></div></details></header>
 %(body)s
-<div id="ed"><div class="bar"><span id="et"></span> <b id="ew" style="color:#fc0"></b> &nbsp; 1. Maus an einer Kante des Produkts entlang ziehen, 2. loslassen und zur Gegenkante fahren, 3. klicken.
+<div id="ed"><div class="bar"><span id="et"></span> <b id="ew" style="color:#fc0"></b> &nbsp; 1. Stift (oder Maus) an einer Kante des Produkts entlang ziehen, 2. an der Gegenkante tippen oder ziehen.
 <button id="es">Speichern</button><button id="ec">Abbrechen</button></div>
 <div class="w"><img id="ei" draggable="false"><svg id="sv"><polygon id="eo"/><polygon id="en"/></svg></div></div>
 <script>
@@ -159,10 +218,28 @@ function rect(q){const dx=p1[0]-p0[0],dy=p1[1]-p0[1],L=Math.hypot(dx,dy)||1,nx=-
  const h=(q[0]-p0[0])*nx+(q[1]-p0[1])*ny;
  return {pts:[p0,p1,[p1[0]+nx*h,p1[1]+ny*h],[p0[0]+nx*h,p0[1]+ny*h]],
   cx:(p0[0]+p1[0])/2+nx*h/2,cy:(p0[1]+p1[1])/2+ny*h/2,w:L,h:Math.abs(h),a:Math.atan2(dy,dx)*180/Math.PI};}
-ei.onmousedown=e=>{e.preventDefault();if(phase===2){phase=3;return;}p0=pt(e);p1=p0;phase=1;box=null;};
-window.onmousemove=e=>{if(phase===1){p1=pt(e);place(en,[p0,p1,p1,p0]);}
+// pen, finger or mouse: stroke 1 = one edge; stroke 2 (or a tap) = the opposite side
+let down=false;
+ei.onpointerdown=e=>{e.preventDefault();try{ei.setPointerCapture(e.pointerId);}catch(_){}down=true;
+ if(phase===2){box=rect(pt(e));place(en,box.pts);return;}
+ p0=pt(e);p1=p0;phase=1;box=null;};
+ei.onpointermove=e=>{e.preventDefault();if(phase===1&&down){p1=pt(e);place(en,[p0,p1,p1,p0]);}
  else if(phase===2){box=rect(pt(e));place(en,box.pts);}};
-window.onmouseup=e=>{if(phase===1){p1=pt(e);phase=Math.hypot(p1[0]-p0[0],p1[1]-p0[1])>5?2:0;}};
+ei.onpointerup=e=>{down=false;if(phase===1){p1=pt(e);phase=Math.hypot(p1[0]-p0[0],p1[1]-p0[1])>5?2:0;place(en,phase?[p0,p1,p1,p0]:null);}
+ else if(phase===2&&box){box=rect(pt(e));place(en,box.pts);phase=3;}};
+// the product list and the new product
+const ST={running:'wird fotografiert',open:'offen',done:'fertig',skip:'übersprungen'};
+async function status(){try{const j=await (await fetch('/status')).json();
+ const a=r=>'<a class="'+r.state+'" href="#'+encodeURIComponent(r.art)+'" title="'+ST[r.state]+'">'+(r.name||r.art).replace(/</g,'&lt;')+' &middot; '+(r.state==='running'?ST.running+' &middot; ':'')+r.n+' Bilder</a>';
+ const todo=j.rows.filter(r=>r.state==='running'||r.state==='open'),done=j.rows.filter(r=>r.state==='done'||r.state==='skip');
+ document.getElementById('plist').innerHTML=todo.length?todo.map(a).join(''):'nichts offen';
+ document.getElementById('pdone').textContent='Fertig ('+done.length+')'+(j.queue?' \u00b7 Fotostation l\u00e4uft':'');
+ document.getElementById('pdlist').innerHTML=done.map(a).join('');}catch(e){}setTimeout(status,3000);}
+status();
+document.getElementById('np').onsubmit=async e=>{e.preventDefault();const nn=document.getElementById('nn'),nm=document.getElementById('nm');
+ const name=nn.value.trim();if(!name)return;nm.textContent='…';
+ const r=await fetch('/new?name='+encodeURIComponent(name),{method:'POST'});const j=await r.json();
+ nm.textContent=r.ok?name+' angelegt – die Fotostation startet auf dem Gerät':j.error;if(r.ok)nn.value='';status();};
 document.getElementById('ec').onclick=()=>ed.classList.remove('on');
 document.addEventListener('keydown',e=>{if(e.key==='Escape')ed.classList.remove('on');});
 document.getElementById('es').onclick=async()=>{
@@ -306,6 +383,9 @@ def main(argv=None):
                 self._send(200, thumbs[key], "image/jpeg")
             elif url.path == "/full" and (path := resolve(url.query)):
                 self._send(200, path.with_suffix(".jpg").read_bytes(), "image/jpeg")
+            elif url.path == "/status":
+                self._send(200, json.dumps(product_status(capture, args.csv)).encode(),
+                           "application/json")
             elif url.path == "/meta" and (path := resolve(url.query)):
                 img = cv2.imread(str(path.with_suffix(".jpg")))
                 rect = (load(path) or {}).get("rect")
@@ -317,6 +397,19 @@ def main(argv=None):
 
         def do_POST(self):
             url = urllib.parse.urlparse(self.path)
+            if url.path == "/new":
+                name = urllib.parse.parse_qs(url.query).get("name", [""])[0]
+                try:
+                    with lock:
+                        art = add_product(args.csv, name)
+                except ValueError as error:
+                    self._send(400, json.dumps({"error": str(error)}).encode(), "application/json")
+                    return
+                print(f"new product: {art} ({name}) -- photo queue started", flush=True)
+                from .mode_cli import switch  # as the training button (stops the demo)
+                switch("training")
+                self._send(200, json.dumps({"art": art}).encode(), "application/json")
+                return
             path = resolve(url.query) if url.path in ("/toggle", "/box") else None
             if path is None or load(path) is None:
                 self._send(404, b"", "text/plain")
