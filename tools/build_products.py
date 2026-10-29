@@ -222,10 +222,14 @@ def main():
             stem = path.stem if path.parent == products / art else f"{path.parent.name}_{path.stem}"
             img = read_image(path)
             meta_path = path.with_suffix(".json")
-            rect = None
+            rect, lifted = None, False
             if meta_path.exists():  # phytec-photo found the product already
                 import json
                 m = json.loads(meta_path.read_text())
+                # tools/label_review.py (by hand) over clean_photo_labels.py
+                if m["skip_user"] if m.get("skip_user") is not None else m.get("skip"):
+                    continue
+                lifted = m.get("kind") == "lifted"
                 if m.get("rect"):
                     (cx, cy), (rw, rh), ang = m["rect"]
                     rect = ((cx, cy), (rw, rh), ang)
@@ -235,9 +239,10 @@ def main():
                 except ValueError:
                     print(f"  {path.name}: no product found -- skipped")
                     continue
-            cut = cut_module(img, rect)
-            cv2.imwrite(str(out / "cutouts" / art / f"{stem}.png"), cut)
-            cutouts[cid].append(cut)
+            if not lifted:  # a hand around it: no cutout for the synthetic scenes
+                cut = cut_module(img, rect)
+                cv2.imwrite(str(out / "cutouts" / art / f"{stem}.png"), cut)
+                cutouts[cid].append(cut)
             scale = REAL_SIZE / max(img.shape[:2])
             small = cv2.resize(img, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
             x0, y0, x1, y1 = rect_box(rect, img.shape) * scale
