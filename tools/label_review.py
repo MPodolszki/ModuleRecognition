@@ -20,6 +20,7 @@ import json
 import pathlib
 import sys
 import threading
+import time
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -49,6 +50,12 @@ def photos(products):
         if meta.with_suffix(".jpg").exists() and not meta.parent.parent.name.startswith("_"):
             found.setdefault(meta.parent.parent.name, []).append(meta)
     return sorted(found.items(), key=lambda kv: order.index(kv[0]) if kv[0] in order else 999)
+
+
+def taken(meta_path, meta):
+    """When the picture was taken (sort key, newest first)."""
+    return meta.get("time") or time.strftime(
+        "%Y-%m-%d %H:%M:%S", time.localtime(meta_path.with_suffix(".jpg").stat().st_mtime))
 
 
 def current_rect(meta, img):
@@ -162,8 +169,9 @@ def page(products, version):
     body, options = [], []
     for art, metas in photos(products):
         tiles = []
-        for m in metas:
-            meta = json.loads(m.read_text())
+        loaded = sorted(((m, json.loads(m.read_text())) for m in metas),
+                        key=lambda mm: taken(*mm), reverse=True)  # newest first
+        for m, meta in loaded:
             rel = str(m.relative_to(products))
             label = f"{m.parent.name.replace('_isp', '')} {m.stem[-3:]}"
             if meta.get("kind") == "lifted":

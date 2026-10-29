@@ -20,6 +20,8 @@ SINCE="${SINCE:-}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SRC=/var/lib/phytec-detect/capture
 SSH="ssh -o BatchMode=yes root@$BOARD"
+# rsync --update: a file here that is newer than the board's stays
+fetch() { src="$1"; dest="$2"; shift 2; rsync -a --update -e "ssh -o BatchMode=yes" "$@" "root@$BOARD:$src/" "$dest/"; }
 ARTICLES="${*:-$($SSH "ls $SRC" | grep -v '^_raw_alt$\|^_verworfen$')}"
 for art in $ARTICLES; do
     case "$art" in
@@ -28,7 +30,7 @@ for art in $ARTICLES; do
         _scenes) dest="$ROOT/dataset/products/_scenes" ;;
         _isp960) dest="$ROOT/dataset/products/_isp960"   # phytec-improve, one folder per article
                  mkdir -p "$dest"
-                 $SSH "cd $SRC/_isp960 && tar -cf - ." | tar -C "$dest" --keep-newer-files -xf - 2>/dev/null
+                 fetch "$SRC/_isp960" "$dest"
                  echo "_isp960: $(find "$dest" -name '*.jpg' ! -name '*_ref.jpg' | wc -l) pictures -> ${dest#$ROOT/}"
                  continue ;;
         *) if $SSH "grep -qs '\"path\": \"isp\"' $SRC/$art/*.json"; then
@@ -41,10 +43,10 @@ for art in $ARTICLES; do
         files="$($SSH "cd $SRC/$art && touch -d '$SINCE' /tmp/.fetch_since && find . -type f -newer /tmp/.fetch_since")"
         [ -n "$files" ] || continue
         mkdir -p "$dest"
-        $SSH "cd $SRC/$art && tar -cf - $(echo $files)" | tar -C "$dest" --keep-newer-files -xf - 2>/dev/null
+        echo "$files" | fetch "$SRC/$art" "$dest" --files-from=-
     else
         mkdir -p "$dest"
-        $SSH "cd $SRC/$art && tar -cf - ." | tar -C "$dest" --keep-newer-files -xf - 2>/dev/null
+        fetch "$SRC/$art" "$dest"
     fi
     echo "$art: $(ls "$dest" | grep -c '\.jpg$') pictures -> ${dest#$ROOT/}"
 done
