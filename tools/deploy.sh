@@ -63,6 +63,10 @@ PYTHONPATH=$DEST exec python3 -m phytec_detect.mode_cli "\$@"
 EOF2
 $SSH "systemctl daemon-reload && systemctl enable -q phytec-mode && systemctl restart phytec-mode"
 
+# The pictures as a web page (http://<board>:8765/): take bad ones out, draw boxes.
+$SSH "cat > /etc/systemd/system/phytec-review.service && systemctl daemon-reload \
+    && systemctl enable -q phytec-review && systemctl restart phytec-review" < "$ROOT/board/systemd/phytec-review.service"
+
 # Search requests ("Wo ist der i.MX6?", phytec-find / voice) for the demo.
 $SSH "echo 'd /run/phytec-detect 0777 root root -' > /etc/tmpfiles.d/phytec-detect.conf && systemd-tmpfiles --create /etc/tmpfiles.d/phytec-detect.conf"
 $SSH "cat > /var/lib/phytec-detect/szenen.csv && chown weston:weston /var/lib/phytec-detect/szenen.csv" \

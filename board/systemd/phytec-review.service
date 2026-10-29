@@ -1,0 +1,14 @@
+[Unit]
+Description=PHYTEC trade fair: the photographed pictures as a web page (port 8765), to take bad ones out and draw boxes
+After=network-online.target
+
+[Service]
+# root: the captures belong to root (phytec-photo writes them as root)
+Environment=PYTHONPATH=/opt/phytec-detect PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 -m phytec_detect.review_cli
+Restart=always
+RestartSec=5
+Nice=10
+
+[Install]
+WantedBy=multi-user.target
