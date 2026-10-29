@@ -37,6 +37,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 
 import cv2
 import numpy as np
@@ -331,10 +332,17 @@ class Camera:
                     self._nv12 = (out_w, out_h)
                     # x and y scale differ a little (544 / 1080 vs 960 / 1920)
                     self.scale = np.array([out_w / sensor_w, out_h / sensor_h])
-                self._cap = cv2.VideoCapture(
-                    isp_source(csi, f"video/x-raw,width={out_w},height={out_h},format={fmt}"
-                               + (f",framerate={isp_fps}/1" if isp_fps else ""))
-                    + " ! appsink drop=true max-buffers=1", cv2.CAP_GSTREAMER)
+                pipeline = (isp_source(csi, f"video/x-raw,width={out_w},height={out_h},format={fmt}"
+                                       + (f",framerate={isp_fps}/1" if isp_fps else ""))
+                            + " ! appsink drop=true max-buffers=1")
+                # Switching demo <-> training: the other program may still be
+                # letting go of the cameras (a few seconds with the NEO IPA)
+                for attempt in range(8):
+                    self._cap = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
+                    if self._cap.isOpened() or attempt == 7:
+                        break
+                    self._cap.release()
+                    time.sleep(1.0)
                 if self._nv12:
                     self._cap.set(cv2.CAP_PROP_CONVERT_RGB, 0)
                 if not mono:
