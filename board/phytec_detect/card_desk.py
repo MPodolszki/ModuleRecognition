@@ -96,7 +96,7 @@ class CardDesk:
             self._seen[int(c)] = now
         if now - self._card_looked > CARD_EVERY_S:  # for the zone's text only
             self._card_looked = now
-            if find_card(zone if zone.ndim == 2 else cv2.cvtColor(zone, cv2.COLOR_BGR2GRAY)):
+            if find_card(zone if zone.ndim == 2 else cv2.cvtColor(zone, cv2.COLOR_BGR2GRAY)) is not None:
                 self._card_seen = now
         if self.name is not None and (
                 now - self._shown_at > SHOW_S or
