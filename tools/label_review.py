@@ -167,6 +167,8 @@ def main():
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--products", default=str(ROOT / "dataset/products"))
     parser.add_argument("--port", type=int, default=8765)
+    parser.add_argument("--host", default="127.0.0.1",
+                        help="0.0.0.0: reachable from other computers (no login!)")
     args = parser.parse_args()
     products = pathlib.Path(args.products).resolve()
 
@@ -229,8 +231,8 @@ def main():
         def log_message(self, *_):
             pass
 
-    print(f"http://localhost:{args.port}/", flush=True)
-    ThreadingHTTPServer(("127.0.0.1", args.port), Handler).serve_forever()
+    print(f"http://{args.host}:{args.port}/", flush=True)
+    ThreadingHTTPServer((args.host, args.port), Handler).serve_forever()
 
 
 if __name__ == "__main__":
