@@ -2,7 +2,9 @@
 # Fetch phytec-photo / phytec-capture pictures from the board into the
 # project: dataset/products/<Artikelnummer>/vm017/ (raw path) or
 # .../vm017_isp/ (phytec-photo --isp, "path": "isp" in the .json), and
-# _background/. Existing files are kept; the board's copies stay.
+# _background/. A file already here is replaced only by a newer one from the
+# board (a .json changed in phytec-review), a newer one here stays (changed
+# in tools/label_review.py); the board's copies stay.
 #
 #   tools/fetch_captures.sh 172.25.32.142                 # all articles
 #   tools/fetch_captures.sh 172.25.32.142 PCM-070-0F3243I.A3
@@ -26,7 +28,7 @@ for art in $ARTICLES; do
         _scenes) dest="$ROOT/dataset/products/_scenes" ;;
         _isp960) dest="$ROOT/dataset/products/_isp960"   # phytec-improve, one folder per article
                  mkdir -p "$dest"
-                 $SSH "cd $SRC/_isp960 && tar -cf - ." | tar -C "$dest" --skip-old-files -xf -
+                 $SSH "cd $SRC/_isp960 && tar -cf - ." | tar -C "$dest" --keep-newer-files -xf - 2>/dev/null
                  echo "_isp960: $(find "$dest" -name '*.jpg' ! -name '*_ref.jpg' | wc -l) pictures -> ${dest#$ROOT/}"
                  continue ;;
         *) if $SSH "grep -qs '\"path\": \"isp\"' $SRC/$art/*.json"; then
@@ -39,10 +41,10 @@ for art in $ARTICLES; do
         files="$($SSH "cd $SRC/$art && touch -d '$SINCE' /tmp/.fetch_since && find . -type f -newer /tmp/.fetch_since")"
         [ -n "$files" ] || continue
         mkdir -p "$dest"
-        $SSH "cd $SRC/$art && tar -cf - $(echo $files)" | tar -C "$dest" --skip-old-files -xf -
+        $SSH "cd $SRC/$art && tar -cf - $(echo $files)" | tar -C "$dest" --keep-newer-files -xf - 2>/dev/null
     else
         mkdir -p "$dest"
-        $SSH "cd $SRC/$art && tar -cf - ." | tar -C "$dest" --skip-old-files -xf -
+        $SSH "cd $SRC/$art && tar -cf - ." | tar -C "$dest" --keep-newer-files -xf - 2>/dev/null
     fi
     echo "$art: $(ls "$dest" | grep -c '\.jpg$') pictures -> ${dest#$ROOT/}"
 done
