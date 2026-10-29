@@ -6,8 +6,10 @@ draw the box by hand (an edge, then the opposite side: a turned box).
     phytec-review                       # http://<board>:8765/
     phytec-review --port 8080 --capture /var/lib/phytec-detect/capture
 
-Runs all the time (phytec-review.service). New pictures appear by themselves
-while phytec-photo / the photo queue takes them, and several people can work
+Runs all the time (phytec-review.service). New pictures appear by themselves,
+newest first, while phytec-photo / the photo queue takes them -- and those of
+the trade-fair show (phytec-trial --show-pictures, capture/VORFUEHRUNG/, on
+top; not training data, the next pass replaces them), and several people can work
 at once: each page asks every 2 s for the changes since its last look (yellow
 flash). Everything is stored in the picture's .json, which
 tools/fetch_captures.sh brings to the project and build_products.py reads:
@@ -31,7 +33,8 @@ import numpy as np
 CAPTURE = "/var/lib/phytec-detect/capture"
 PRODUCTS = "/var/lib/phytec-detect/products.csv"
 THUMB = 220
-SCAN_S = 2.0
+SCAN_S = 1.0
+SHOW = "VORFUEHRUNG"   # phytec-trial's article: the show, not training data
 
 
 def read_products(path):
@@ -72,6 +75,12 @@ def pictures(capture):
             continue
         found.setdefault(art, []).append(meta)
     return found
+
+
+def taken(meta_path, meta):
+    """When the picture was taken (sort key, newest first)."""
+    return (meta or {}).get("time") or time.strftime(
+        "%Y-%m-%d %H:%M:%S", time.localtime(meta_path.with_suffix(".jpg").stat().st_mtime))
 
 
 def box_points(rect):
@@ -168,8 +177,10 @@ function reload(t){const img=t.querySelector('img');img.src=img.src.split('&v=')
 async function poll(){try{const j=await (await fetch('/changes?since='+since)).json();
  if(j.reload){location.reload();return;}
  for(const c of j.items){since=Math.max(since,c.v);if(mine.delete(c.v))continue;
-  if(c.tile){const g=document.getElementById('g-'+c.art);if(!g){location.reload();return;}
-   g.insertAdjacentHTML('beforeend',c.tile);const t=g.lastElementChild;wire(t);
+  if(c.gone){const t=document.querySelector('.t[data-p="'+CSS.escape(c.p)+'"]');if(t)t.remove();continue;}
+  if(c.tile){if(document.querySelector('.t[data-p="'+CSS.escape(c.p)+'"]'))continue;
+   const g=document.getElementById('g-'+c.art);if(!g){location.reload();return;}
+   g.insertAdjacentHTML('afterbegin',c.tile);const t=g.firstElementChild;wire(t);
    t.classList.add('flash');setTimeout(()=>t.classList.remove('flash'),5000);continue;}
   const t=document.querySelector('.t[data-p="'+CSS.escape(c.p)+'"]');if(!t)continue;
   t.classList.toggle('off',c.off);if(c.box)reload(t);
@@ -198,14 +209,19 @@ def page(capture, products_csv, version):
     order = list(names)
     found = pictures(capture)
     body, options = [], []
-    for art in sorted(found, key=lambda a: order.index(a) if a in order else len(order)):
-        tiles = [tile(capture, m, meta) for m in found[art] if (meta := load(m)) is not None]
-        title = html.escape(art) + (f" &middot; {html.escape(names[art])}" if names.get(art) else "")
+    def rank(art):
+        return -1 if art == SHOW else order.index(art) if art in order else len(order)
+    for art in sorted(found, key=rank):
+        metas = [(m, meta) for m in found[art] if (meta := load(m)) is not None]
+        metas.sort(key=lambda mm: taken(*mm), reverse=True)
+        tiles = [tile(capture, m, meta) for m, meta in metas]
+        title = "Messe-Training (Vorf&uuml;hrung, wird nicht trainiert)" if art == SHOW else \
+            html.escape(art) + (f" &middot; {html.escape(names[art])}" if names.get(art) else "")
         options.append(f'<option value="{html.escape(art)}">{html.escape(art)}</option>')
         body.append(f'<h2 id="{html.escape(art)}">{title} <small>{len(tiles)} Bilder</small></h2>'
                     f'<div class="grid" id="g-{html.escape(art)}">{"".join(tiles)}</div>')
     if not body:
-        body.append("<p>Noch keine Fotos.</p>")
+        body.append('<p id="none">Noch keine Fotos.</p>')
     return PAGE % {"t": THUMB, "options": "".join(options), "body": "".join(body),
                    "v": version, "host": html.escape(socket.gethostname())}
 
@@ -236,18 +252,25 @@ def main(argv=None):
         return entry["v"]
 
     def watch():
-        """New pictures of phytec-photo into the change list."""
+        """New and removed pictures (phytec-photo, the show) into the change list."""
         known = {m for metas in pictures(capture).values() for m in metas}
         while True:
             time.sleep(SCAN_S)
+            now = {}
             for art, metas in pictures(capture).items():
                 for m in metas:
-                    if m in known or (meta := load(m)) is None:
-                        continue
-                    known.add(m)
-                    with lock:
-                        changed({"p": str(m.relative_to(capture)), "art": art,
-                                 "tile": tile(capture, m, meta)})
+                    now[m] = art
+            for m in sorted(known - set(now)):
+                known.discard(m)
+                with lock:
+                    changed({"p": str(m.relative_to(capture)), "gone": True})
+            for m, art in sorted(now.items()):
+                if m in known or (meta := load(m)) is None:
+                    continue
+                known.add(m)
+                with lock:
+                    changed({"p": str(m.relative_to(capture)), "art": art,
+                             "tile": tile(capture, m, meta)})
 
     thumbs = {}  # (path, mtime of jpg and json) -> jpeg
 

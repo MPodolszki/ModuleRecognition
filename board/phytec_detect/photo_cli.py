@@ -285,6 +285,14 @@ def text(img, s, y, scale=1.0, color=(255, 255, 255, 255), thick=2):
     cv2.putText(img, s, (24, y), cv2.FONT_HERSHEY_SIMPLEX, scale, color, thick, cv2.LINE_AA)
 
 
+def clear_pictures(out_dir):
+    """The show's pictures (--show-pictures) of the pass before."""
+    if os.path.isdir(out_dir):
+        for name in os.listdir(out_dir):
+            if name.endswith((".jpg", ".json", ".txt")):
+                os.remove(os.path.join(out_dir, name))
+
+
 def save(out_dir, name, gray, rect, meta):
     os.makedirs(out_dir, exist_ok=True)
     base = os.path.join(out_dir, name)
@@ -414,6 +422,10 @@ def main(argv=None):
     parser.add_argument("--dry-run", action="store_true",
                         help="show the whole procedure without saving anything, over and "
                              "over (trade fair: phytec-trial)")
+    parser.add_argument("--show-pictures", action="store_true",
+                        help="with --dry-run: keep the pictures of the current pass in "
+                             "<out>/<article>/ for phytec-review, cleared when the next pass "
+                             "takes its first picture (not training data)")
     parser.add_argument("--isp", action="store_true",
                         help="through the ISP in its current mode (as phytec-detect --isp); "
                              "--aspect/--crop-y do not apply")
@@ -649,6 +661,10 @@ def main(argv=None):
                     meta.update(plan[step] if step >= 0 else {"kind": "reference"})
                     shot += 1
                     if not args.dry_run:
+                        save(out_dir, f"{args.article}_{shot:03d}", gray, rect, meta)
+                    elif args.show_pictures:
+                        if shot == 1:  # a new pass: the last visitor's pictures go
+                            clear_pictures(out_dir)
                         save(out_dir, f"{args.article}_{shot:03d}", gray, rect, meta)
                     print(f"shot {shot}: {meta.get('kind')} {meta.get('side', '')} "
                           f"{meta.get('where', '')}", flush=True)
