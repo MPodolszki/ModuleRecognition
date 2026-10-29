@@ -22,7 +22,7 @@ SRC=/var/lib/phytec-detect/capture
 SSH="ssh -o BatchMode=yes root@$BOARD"
 # rsync --update: a file here that is newer than the board's stays
 fetch() { src="$1"; dest="$2"; shift 2; rsync -a --update -e "ssh -o BatchMode=yes" "$@" "root@$BOARD:$src/" "$dest/"; }
-ARTICLES="${*:-$($SSH "ls $SRC" | grep -v '^_raw_alt$\|^_verworfen$')}"
+ARTICLES="${*:-$($SSH "ls $SRC" | grep -v '^_raw_alt$\|^_verworfen$\|^VORFUEHRUNG$')}"
 for art in $ARTICLES; do
     case "$art" in
         bg_*|_background) dest="$ROOT/dataset/products/_background/$CAM" ;;
