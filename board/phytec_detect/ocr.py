@@ -377,7 +377,9 @@ def email_from(lines, name=None):
         return None
     local = re.sub(r"^(e-?mail|mail)[:.]?", "", local, flags=re.I).strip(".-").lower()
     for d in domains:  # "phytac.de" read for the www line's "phytec.de"
-        if domain != d and difflib.SequenceMatcher(None, domain, d).ratio() >= 0.8:
+        if domain in domains:  # read right (phytec.de beside www.phytec.es: not .es)
+            break
+        if difflib.SequenceMatcher(None, domain, d).ratio() >= 0.8:
             domain = d
     if name:
         f, l = (re.sub(r"[^a-z]", "", _simple(w.split()[0] if w.split() else w)) for w in name)

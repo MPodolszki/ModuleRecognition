@@ -895,6 +895,9 @@ def main(argv=None):
                     # both zones show a product's info at once, with its live picture
                     inside = in_zone(dets, zone)
                     in_card = in_zone(dets, card_zone)
+                    if cards is not None:  # not the business card itself
+                        inside, in_card = ([k for k, keep in zip(ks, cards.off_card(det_dets[ks])) if keep]
+                                           for ks in (inside, in_card))
                     # two zones: the blue one decides, a product there (with a
                     # visitor's card) puts the orange zone's products aside; else
                     # the orange one (one: info, two: comparison). One zone: both

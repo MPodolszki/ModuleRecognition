@@ -66,6 +66,7 @@ class CardDesk:
         self._seen = {}           # class -> last time detected in the zone
         self._name_classes = ()
         self._card_seen, self._card_looked = 0.0, 0.0
+        self._card_box = None  # the card's corners in the detection picture
 
         def load():  # the NPU compiles its graph on the first run (~15 s)
             try:
@@ -92,12 +93,15 @@ class CardDesk:
         if self._prev is None or np.abs(small - self._prev).mean() > MOVED:
             self._still_since = now  # hands, a card being laid: wait
         self._prev = small
-        for c in products[:, 5]:
-            self._seen[int(c)] = now
         if now - self._card_looked > CARD_EVERY_S:  # for the zone's text only
             self._card_looked = now
-            if find_card(zone if zone.ndim == 2 else cv2.cvtColor(zone, cv2.COLOR_BGR2GRAY)) is not None:
+            card = find_card(zone if zone.ndim == 2 else cv2.cvtColor(zone, cv2.COLOR_BGR2GRAY))
+            if card is not None:
                 self._card_seen = now
+            self._card_box = None if card is None else card + (x0, y0)
+        products = products[self.off_card(products)]
+        for c in products[:, 5]:
+            self._seen[int(c)] = now
         if self.name is not None and (
                 now - self._shown_at > SHOW_S or
                 (self._name_small is not None
@@ -269,6 +273,18 @@ class CardDesk:
     def card_present(self):
         """A business card lies in the zone (its outline seen just now)."""
         return time.monotonic() - self._card_seen < CARD_S
+
+    def off_card(self, boxes):
+        """Mask of the boxes (detection picture) not lying on the card seen
+        just now -- the card itself was once taken for a Hailo-10H."""
+        keep = np.ones(len(boxes), bool)
+        if self._card_box is None or time.monotonic() - self._card_seen > 1.0:
+            return keep
+        quad = self._card_box.astype(np.float32)
+        for i, (bx0, by0, bx1, by1) in enumerate(boxes[:, :4]):
+            keep[i] = cv2.pointPolygonTest(quad, (float(bx0 + bx1) / 2, float(by0 + by1) / 2),
+                                           False) < 0
+        return keep
 
     def product_classes(self):
         """The products last detected in the zone while the name was read."""
