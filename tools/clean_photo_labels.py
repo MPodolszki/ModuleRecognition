@@ -82,8 +82,8 @@ def main():
         meta = json.loads(meta_path.read_text())
         art = meta_path.parent.parent.name
         lifted = meta.get("kind") == "lifted"
-        if art != CABLE and not lifted:
-            continue
+        if (art != CABLE and not lifted) or meta.get("box_user"):
+            continue  # a box drawn in label_review.py stays
         img = cv2.imread(str(photo))
         orig = meta.get("rect_orig", meta.get("rect")) or find_module(img)
         orig = [list(map(float, orig[0])), list(map(float, orig[1])), float(orig[2])]
