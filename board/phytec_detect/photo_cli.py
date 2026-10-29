@@ -285,6 +285,21 @@ def text(img, s, y, scale=1.0, color=(255, 255, 255, 255), thick=2):
     cv2.putText(img, s, (24, y), cv2.FONT_HERSHEY_SIMPLEX, scale, color, thick, cv2.LINE_AA)
 
 
+def picture_count(out_dir):
+    """Pictures of the product taken so far: those here, or the number of
+    the last one tools/fetch_captures.sh took away (FETCHED) -- the next one
+    is numbered on, never over a picture already in the project."""
+    if not os.path.isdir(out_dir):
+        return 0
+    here = [f for f in os.listdir(out_dir) if f.endswith(".jpg")]
+    try:
+        with open(os.path.join(out_dir, "FETCHED")) as f:
+            fetched = int(f.read().strip() or 0)
+    except (OSError, ValueError):
+        fetched = 0
+    return max(len(here), fetched + len(here))
+
+
 def clear_pictures(out_dir):
     """The show's pictures (--show-pictures) of the pass before."""
     if os.path.isdir(out_dir):
@@ -451,8 +466,7 @@ def main(argv=None):
     plan = make_plan(back=not args.no_back, lifted=args.lifted,
                      seed=sum(map(ord, args.article)))
     out_dir = os.path.join(args.out, args.article)
-    done = 0 if args.dry_run else len([f for f in os.listdir(out_dir) if f.endswith(".jpg")]) \
-        if os.path.isdir(out_dir) else 0
+    done = 0 if args.dry_run else picture_count(out_dir)
 
     try:
         cam = Camera(args.source, isp=True) if args.isp else \

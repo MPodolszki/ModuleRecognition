@@ -72,8 +72,7 @@ def main(argv=None):
         article, name = pending[0]
         print(f"next: {article} {name} ({len(pending)} to do)", flush=True)
         folder = os.path.join(args.out, article)
-        shots = len([f for f in os.listdir(folder) if f.endswith(".jpg")]) \
-            if os.path.isdir(folder) else 0
+        shots = photo_cli.picture_count(folder)
         if args.round > 1:  # only this round's pictures count for going on
             start_file = os.path.join(folder, f"R{args.round}_START")
             if not os.path.exists(start_file):
